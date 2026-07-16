@@ -85,6 +85,7 @@ def generate_project_plan_safe(api_key: str, interview_data: dict) -> dict:
     try:
         return json.loads(raw.strip())
     except json.JSONDecodeError:
+        # محاولة استخراج JSON باستخدام Regex
         match = re.search(r"{.*}", raw, re.DOTALL)
         if match:
             return json.loads(match.group())
