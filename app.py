@@ -8,7 +8,7 @@ import uuid
 import requests  # <--- المكتبة الجديدة
 from datetime import datetime
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 
 # ============================================================
 # 1. إعدادات الصفحة والتصميم البصري
