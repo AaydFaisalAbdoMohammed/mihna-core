@@ -50,7 +50,7 @@ def generate_project_plan_safe(api_key: str, interview_data: dict) -> dict:
 - التوجيه التقني: {interview_data["tech_pref"]}
 
 **مطلوب**: أخرج خطة عمل على شكل JSON فقط، بدون أي نص إضافي، وفق الهيكل التالي:
-{
+{{
   "client_name": "اسم العميل",
   "project_summary": "ملخص المشروع (جملة أو جملتين)",
   "suggested_tech_stack": ["تقنية1", "تقنية2", "تقنية3"],
@@ -58,7 +58,7 @@ def generate_project_plan_safe(api_key: str, interview_data: dict) -> dict:
   "generated_tasks": [
     {{ "title": "المهمة", "description": "الوصف", "estimated_days": 2, "priority": "High" }}
   ]
-}
+}}
 تأكد من أن الأولوية هي: High أو Medium أو Low.
 """
     response = model.generate_content(prompt)
