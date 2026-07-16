@@ -35,38 +35,41 @@ st.markdown("""
 # 2. دالة توليد الخطة (المحرك الآمن - بدون Schema معقد)
 # ============================================================
 def generate_project_plan_safe(api_key: str, interview_data: dict) -> dict:
-    client_genai = genai.Client(api_key=api_key)
+    """توليد خطة عمل باستخدام Gemini (متوافق مع جميع الإصدارات)."""
+    import google.generativeai as genai
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
     
     prompt = f"""
 أنت خبير منتجات تقني (Technical Product Manager) في منصة "مهنة" للعمل الحر.
 العميل التالي يريد بناء مشروع برمجي:
-- الاسم: {interview_data['name']}
-- الفكرة: {interview_data['idea']}
-- الميزانية: {interview_data['budget']}
-- الجدول الزمني: {interview_data['timeline']}
-- التوجيه التقني: {interview_data['tech_pref']}
+- الاسم: {interview_data["name"]}
+- الفكرة: {interview_data["idea"]}
+- الميزانية: {interview_data["budget"]}
+- الجدول الزمني: {interview_data["timeline"]}
+- التوجيه التقني: {interview_data["tech_pref"]}
 
 **مطلوب**: أخرج خطة عمل على شكل JSON فقط، بدون أي نص إضافي، وفق الهيكل التالي:
-{{
+{
   "client_name": "اسم العميل",
   "project_summary": "ملخص المشروع (جملة أو جملتين)",
   "suggested_tech_stack": ["تقنية1", "تقنية2", "تقنية3"],
   "estimated_budget_range": "نطاق الميزانية",
   "generated_tasks": [
-    {{ "title": "المهمة", "description": "الوصف", "estimated_days": 2, "priority": "High" }}
+    { "title": "المهمة", "description": "الوصف", "estimated_days": 2, "priority": "High" }
   ]
-}}
+}
 تأكد من أن الأولوية هي: High أو Medium أو Low.
 """
-    response = client_genai.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=prompt,
-        config={"response_mime_type": "application/json", "temperature": 0.3}
-    )
-    
+    response = model.generate_content(prompt)
     raw = response.text
     try:
         return json.loads(raw.strip())
+    except:
+        match = re.search(r"{.*}", raw, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        raise ValueError("لم نتمكن من استخراج JSON.")
     except:
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:
