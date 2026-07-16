@@ -56,7 +56,7 @@ def generate_project_plan_safe(api_key: str, interview_data: dict) -> dict:
   "suggested_tech_stack": ["تقنية1", "تقنية2", "تقنية3"],
   "estimated_budget_range": "نطاق الميزانية",
   "generated_tasks": [
-    { "title": "المهمة", "description": "الوصف", "estimated_days": 2, "priority": "High" }
+    {{ "title": "المهمة", "description": "الوصف", "estimated_days": 2, "priority": "High" }}
   ]
 }
 تأكد من أن الأولوية هي: High أو Medium أو Low.
