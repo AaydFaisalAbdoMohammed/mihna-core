@@ -149,13 +149,31 @@ def save_to_supabase(url: str, key: str, project_data: dict) -> bool:
 # 5. الواجهة الرسومية الرئيسية (مع Telegram)
 # ============================================================
 def main():
-    st.markdown('<div class="main-header"><h1>🧠 وكيل مهنة الذكي</h1></div>', unsafe_allow_html=True)
+    # الهيدر المحدث
+    st.markdown('<div class="main-header"><h1>🧠 وكيل مهنة <span>PRO</span></h1></div>', unsafe_allow_html=True)
     st.markdown('<p style="text-align: center; margin-top: -20px;">حوّل فكرتك إلى خطة هندسية متكاملة في 3 ثوانٍ</p>', unsafe_allow_html=True)
+    st.info("💡 **توفر عليك 40 ساعة عمل و 500$ من استشارة مدير مشروع**", icon="💎")
     st.divider()
 
-    # ---------- الشريط الجانبي (الإعدادات المتقدمة) ----------
     with st.sidebar:
-
+        st.header("⚙️ إعدادات الاتصال")
+        default_gemini = os.getenv("GEMINI_API_KEY", "")
+        gemini_key = st.text_input("🔑 مفتاح Gemini API", value=default_gemini, type="password")
+        if gemini_key:
+            st.success("✅ Gemini متصل")
+        else:
+            st.error("❌ Gemini غير متصل (أدخل المفتاح)")
+        default_sub_url = os.getenv("SUPABASE_URL", "")
+        default_sub_key = os.getenv("SUPABASE_SERVICE_KEY", "")
+        supabase_url = st.text_input("🔗 Supabase URL (اختياري)", value=default_sub_url)
+        supabase_key = st.text_input("⚡ Supabase Service Key (اختياري)", value=default_sub_key, type="password")
+        st.divider()
+        st.header("🤖 إشعارات Telegram (الميزة الذهبية)")
+        st.caption("احصل على تنبيه فوري على هاتفك عند إنشاء أي مشروع جديد!")
+        telegram_token = st.text_input("🔑 Bot Token", type="password", placeholder="مثال: 123456:ABC-DEF")
+        telegram_chat_id = st.text_input("💬 Chat ID", placeholder="مثال: 987654321")
+        if telegram_token and telegram_chat_id:
+            st.success("✅ سيتم إرسال الإشعارات إلى هاتفك فوراً!")
         st.divider()
         st.subheader("📊 رصيدك المجاني")
         init_usage()
@@ -168,48 +186,58 @@ def main():
             if st.button("💎 الترقية للاشتراك الشهري (محاكاة)"):
                 st.session_state.is_premium = True
                 st.rerun()
-
-        st.header("⚙️ إعدادات الاتصال")
-        
-        # مفاتيح Gemini
-        default_gemini = os.getenv("GEMINI_API_KEY", "")
-        gemini_key = st.text_input("🔑 مفتاح Gemini API", value=default_gemini, type="password")
-        
-        # مفاتيح Supabase (اختياري)
-        default_sub_url = os.getenv("SUPABASE_URL", "")
-        default_sub_key = os.getenv("SUPABASE_SERVICE_KEY", "")
-        supabase_url = st.text_input("🔗 Supabase URL (اختياري)", value=default_sub_url)
-        supabase_key = st.text_input("⚡ Supabase Service Key (اختياري)", value=default_sub_key, type="password")
-        
+        with st.expander("💎 خطط الاشتراك"):
+            st.write("**مجاني**: 5 تحويلات")
+            st.write("**شهري**: 9.99$ - تحويلات غير محدودة")
+            st.write("**سنوي**: 99.99$ - خصم 20%")
         st.divider()
-        st.header("🤖 إشعارات Telegram (الميزة الذهبية)")
-        st.caption("احصل على تنبيه فوري على هاتفك عند إنشاء أي مشروع جديد!")
-        telegram_token = st.text_input("🔑 Bot Token", type="password", placeholder="مثال: 123456:ABC-DEF")
-        telegram_chat_id = st.text_input("💬 Chat ID", placeholder="مثال: 987654321")
-        
-        if telegram_token and telegram_chat_id:
-            st.success("✅ سيتم إرسال الإشعارات إلى هاتفك فوراً!")
+        st.caption("🌟 يثق بنا: 5 عملاء حقيقيون في اليمن")
+        st.caption("🏅 أفضل وكيل تخطيط في الشرق الأوسط")
 
-    # ---------- نموذج إدخال المشروع ----------
     st.markdown("### 📝 أدخل تفاصيل مشروعك")
-    
+    col_q1, col_q2 = st.columns(2)
+    with col_q1:
+        if st.button("📚 منصة تعليمية"):
+            st.session_state.example = "education"
+    with col_q2:
+        if st.button("🛒 متجر إلكتروني"):
+            st.session_state.example = "ecommerce"
+    if "example" not in st.session_state:
+        st.session_state.example = ""
+    if st.session_state.example == "education":
+        default_name = "مؤسسة أفق التعليمية"
+        default_idea = "منصة تعليمية تفاعلية للطلاب في اليمن تدعم الفصول المباشرة والاختبارات الآلية ولوحة تحكم للمعلمين، مع نظام دفع محلي وتجربة مستخدم محسّنة لسرعات الإنترنت المنخفضة"
+        default_budget = "8000 - 12000"
+        default_timeline = "8 أسابيع"
+        default_tech = "Flutter, Node.js, Supabase, Gemini AI, WebRTC"
+    elif st.session_state.example == "ecommerce":
+        default_name = "متجر اليمن الرقمي"
+        default_idea = "منصة تجارة إلكترونية بسيطة وآمنة تعمل في اليمن، تدعم المنتجات المحلية والدفع عند الاستلام، مع لوحة تحكم للتجار"
+        default_budget = "5000 - 8000"
+        default_timeline = "6 أسابيع"
+        default_tech = "Flutter, Node.js, Supabase, Stripe"
+    else:
+        default_name = ""
+        default_idea = ""
+        default_budget = ""
+        default_timeline = ""
+        default_tech = ""
     with st.form("project_form"):
         col1, col2 = st.columns(2)
         with col1:
-            client_name = st.text_input("👤 اسم العميل / الشركة")
+            client_name = st.text_input("👤 اسم العميل / الشركة", value=default_name)
         with col2:
-            budget = st.text_input("💰 الميزانية المتوقعة", placeholder="مثال: 2000 - 3000 دولار")
-            
-        project_idea = st.text_area("💡 صف رؤية أو فكرة مشروعك بالتفصيل", height=120)
+            budget = st.text_input("💰 الميزانية المتوقعة", placeholder="مثال: 2000 - 3000 دولار", value=default_budget)
+        project_idea = st.text_area("💡 صف رؤية أو فكرة مشروعك بالتفصيل", height=120, value=default_idea)
+        word_count = len(project_idea.split()) if project_idea else 0
+        st.caption(f"📝 {word_count} كلمة (يُفضل 50-100 كلمة)")
         col3, col4 = st.columns(2)
         with col3:
-            timeline = st.text_input("📅 الجدول الزمني المستهدف", placeholder="4 أسابيع")
+            timeline = st.text_input("📅 الجدول الزمني المستهدف", placeholder="4 أسابيع", value=default_timeline)
         with col4:
-            tech_pref = st.text_input("⚙️ تفضيلات تقنية (اختياري)")
-            
+            tech_pref = st.text_input("⚙️ تفضيلات تقنية (اختياري)", value=default_tech)
         submitted = st.form_submit_button("🚀 توليد الخطة الهندسية الآن")
 
-    # ---------- معالجة الطلب ----------
     if submitted:
         if not gemini_key:
             st.error("❌ يرجى إدخال مفتاح Gemini API.")
@@ -217,12 +245,9 @@ def main():
         if not client_name or not project_idea:
             st.error("❌ يرجى ملء اسم العميل وفكرة المشروع.")
             return
-
-        # التحقق من الرصيد المجاني
         if not can_use():
             st.error("🚫 لقد استنفذت استخداماتك المجانية. يرجى الاشتراك الشهري للمتابعة!")
             return
-
         interview_data = {
             "name": client_name,
             "idea": project_idea,
@@ -230,20 +255,15 @@ def main():
             "timeline": timeline if timeline else "غير محدد",
             "tech_pref": tech_pref if tech_pref else "اعتمد أفضل الممارسات"
         }
-
         with st.spinner('🔄 وكيل مهنة يحلل المتطلبات...'):
             try:
                 plan_json = generate_project_plan_safe(gemini_key, interview_data)
-                
-                # خصم استخدام مجاني
                 deduct_usage()
-                
                 if supabase_url and supabase_key:
                     if save_to_supabase(supabase_url, supabase_key, plan_json):
                         st.success("☁️ تم حفظ الخطة في Supabase!")
                     else:
                         st.warning("⚠️ فشل الحفظ في Supabase، لكن الخطة متاحة.")
-
                 if telegram_token and telegram_chat_id:
                     with st.spinner('📱 جاري إرسال الإشعار إلى Telegram...'):
                         alert_sent = send_telegram_alert(telegram_token, telegram_chat_id, plan_json)
@@ -251,13 +271,10 @@ def main():
                             st.toast('🚀 تم إرسال إشعار Telegram إلى هاتفك!', icon='📱')
                         else:
                             st.toast('⚠️ فشل إرسال الإشعار، تحقق من المفاتيح.', icon='⚠️')
-
                 st.success("✅ تم توليد الخطة بنجاح!")
                 st.divider()
-                
                 st.markdown(f"**📌 ملخص المشروع**: {plan_json['project_summary']}")
                 st.markdown(f"**🛠️ التقنيات المقترحة**: {', '.join(plan_json['suggested_tech_stack'])}")
-                
                 st.markdown("### 📋 المهام المقترحة")
                 for idx, task in enumerate(plan_json['generated_tasks'], 1):
                     emoji = "🔴" if task['priority'] == "High" else "🟡" if task['priority'] == "Medium" else "🟢"
@@ -268,18 +285,22 @@ def main():
                         <p>{task['description']}</p>
                     </div>
                     ''', unsafe_allow_html=True)
-                
                 st.divider()
                 st.markdown("### 💾 تحميل الخطة")
                 session_id = str(uuid.uuid4())[:8]
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                
                 json_str = json.dumps(plan_json, indent=2, ensure_ascii=False)
                 st.download_button("📥 تحميل JSON", data=json_str, file_name=f"plan_{timestamp}_{session_id}.json", mime="application/json")
-                
+                st.markdown("### ⭐ تقييمك للخطة")
+                rating = st.select_slider("ما مدى دقة الخطة؟", options=[1,2,3,4,5], value=4)
+                if rating < 3:
+                    st.warning("سنحسن الخطة بناءً على ملاحظاتك، شكراً لك!")
+                else:
+                    st.success("شكراً لتقييمك الإيجابي!")
                 st.balloons()
-                
             except Exception as e:
                 st.error(f"❌ خطأ: {e}")
+
+
 if __name__ == "__main__":
     main()
