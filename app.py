@@ -223,7 +223,6 @@ def main():
             st.error("🚫 لقد استنفذت استخداماتك المجانية. يرجى الاشتراك الشهري للمتابعة!")
             return
 
-
         interview_data = {
             "name": client_name,
             "idea": project_idea,
@@ -234,17 +233,17 @@ def main():
 
         with st.spinner('🔄 وكيل مهنة يحلل المتطلبات...'):
             try:
-                # 1. توليد الخطة
                 plan_json = generate_project_plan_safe(gemini_key, interview_data)
                 
-                # 2. حفظ في Supabase (إن وُجدت المفاتيح)
+                # خصم استخدام مجاني
+                deduct_usage()
+                
                 if supabase_url and supabase_key:
                     if save_to_supabase(supabase_url, supabase_key, plan_json):
                         st.success("☁️ تم حفظ الخطة في Supabase!")
                     else:
                         st.warning("⚠️ فشل الحفظ في Supabase، لكن الخطة متاحة.")
 
-                # 3. إرسال إشعار Telegram (الميزة الجديدة!)
                 if telegram_token and telegram_chat_id:
                     with st.spinner('📱 جاري إرسال الإشعار إلى Telegram...'):
                         alert_sent = send_telegram_alert(telegram_token, telegram_chat_id, plan_json)
@@ -253,29 +252,23 @@ def main():
                         else:
                             st.toast('⚠️ فشل إرسال الإشعار، تحقق من المفاتيح.', icon='⚠️')
 
-                # 4. عرض النتيجة
-                
-                # خصم استخدام مجاني
-                deduct_usage()
-st.success("✅ تم توليد الخطة بنجاح!")
+                st.success("✅ تم توليد الخطة بنجاح!")
                 st.divider()
                 
                 st.markdown(f"**📌 ملخص المشروع**: {plan_json['project_summary']}")
                 st.markdown(f"**🛠️ التقنيات المقترحة**: {', '.join(plan_json['suggested_tech_stack'])}")
                 
-                # عرض المهام
                 st.markdown("### 📋 المهام المقترحة")
                 for idx, task in enumerate(plan_json['generated_tasks'], 1):
                     emoji = "🔴" if task['priority'] == "High" else "🟡" if task['priority'] == "Medium" else "🟢"
-                    st.markdown(f"""
+                    st.markdown(f'''
                     <div class="card-task">
                         <strong>{idx}. {task['title']}</strong> {emoji} ({task['priority']})<br>
                         <small>📅 {task['estimated_days']} أيام</small><br>
                         <p>{task['description']}</p>
                     </div>
-                    """, unsafe_allow_html=True)
+                    ''', unsafe_allow_html=True)
                 
-                # تحميل الملفات
                 st.divider()
                 st.markdown("### 💾 تحميل الخطة")
                 session_id = str(uuid.uuid4())[:8]
@@ -288,6 +281,5 @@ st.success("✅ تم توليد الخطة بنجاح!")
                 
             except Exception as e:
                 st.error(f"❌ خطأ: {e}")
-
 if __name__ == "__main__":
     main()
