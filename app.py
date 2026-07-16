@@ -65,20 +65,12 @@ def generate_project_plan_safe(api_key: str, interview_data: dict) -> dict:
     raw = response.text
     try:
         return json.loads(raw.strip())
-    except:
+    except json.JSONDecodeError:
         match = re.search(r"{.*}", raw, re.DOTALL)
         if match:
             return json.loads(match.group())
         raise ValueError("لم نتمكن من استخراج JSON.")
-    except:
-        match = re.search(r'\{.*\}', raw, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        raise ValueError("لم نتمكن من استخراج JSON.")
 
-# ============================================================
-# 3. دالة إرسال إشعار Telegram (الميزة الذهبية الجديدة)
-# ============================================================
 def send_telegram_alert(bot_token: str, chat_id: str, project_plan: dict) -> bool:
     """ترسل رسالة ملخصة إلى تيليجرام فور اكتمال توليد الخطة."""
     try:
