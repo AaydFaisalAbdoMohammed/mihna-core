@@ -13,6 +13,25 @@ import google.generativeai as genai
 # ============================================================
 # 1. إعدادات الصفحة والتصميم البصري
 # ============================================================
+
+# ============================================================
+# 6. نظام الفريميوم (Freemium) - 5 استخدامات مجانية
+# ============================================================
+def init_usage():
+    if 'free_uses' not in st.session_state:
+        st.session_state.free_uses = 5
+        st.session_state.is_premium = False
+
+def can_use():
+    init_usage()
+    return st.session_state.is_premium or st.session_state.free_uses > 0
+
+def deduct_usage():
+    init_usage()
+    if not st.session_state.is_premium:
+        st.session_state.free_uses -= 1
+    return True
+
 st.set_page_config(
     page_title="وكيل مهنة - مخطط المشاريع الذكي",
     page_icon="🧠",
@@ -135,6 +154,20 @@ def main():
 
     # ---------- الشريط الجانبي (الإعدادات المتقدمة) ----------
     with st.sidebar:
+
+    st.divider()
+    st.subheader("📊 رصيدك المجاني")
+    init_usage()
+    if st.session_state.is_premium:
+        st.success("✨ مشترك مميز (غير محدود)")
+    else:
+        st.info(f"⚡ متبقي {st.session_state.free_uses} تحويلات مجانية")
+        if st.session_state.free_uses <= 0:
+            st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
+        if st.button("💎 الترقية للاشتراك الشهري (محاكاة)"):
+            st.session_state.is_premium = True
+            st.rerun()
+
         st.header("⚙️ إعدادات الاتصال")
         
         # مفاتيح Gemini
@@ -184,6 +217,12 @@ def main():
             st.error("❌ يرجى ملء اسم العميل وفكرة المشروع.")
             return
 
+        # التحقق من الرصيد المجاني
+        if not can_use():
+            st.error("🚫 لقد استنفذت استخداماتك المجانية. يرجى الاشتراك الشهري للمتابعة!")
+            return
+
+
         interview_data = {
             "name": client_name,
             "idea": project_idea,
@@ -214,7 +253,10 @@ def main():
                             st.toast('⚠️ فشل إرسال الإشعار، تحقق من المفاتيح.', icon='⚠️')
 
                 # 4. عرض النتيجة
-                st.success("✅ تم توليد الخطة بنجاح!")
+                
+                # خصم استخدام مجاني
+                deduct_usage()
+st.success("✅ تم توليد الخطة بنجاح!")
                 st.divider()
                 
                 st.markdown(f"**📌 ملخص المشروع**: {plan_json['project_summary']}")
