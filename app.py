@@ -155,18 +155,18 @@ def main():
     # ---------- الشريط الجانبي (الإعدادات المتقدمة) ----------
     with st.sidebar:
 
-    st.divider()
-    st.subheader("📊 رصيدك المجاني")
-    init_usage()
-    if st.session_state.is_premium:
-        st.success("✨ مشترك مميز (غير محدود)")
-    else:
-        st.info(f"⚡ متبقي {st.session_state.free_uses} تحويلات مجانية")
-        if st.session_state.free_uses <= 0:
-            st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
-        if st.button("💎 الترقية للاشتراك الشهري (محاكاة)"):
-            st.session_state.is_premium = True
-            st.rerun()
+        st.divider()
+        st.subheader("📊 رصيدك المجاني")
+        init_usage()
+        if st.session_state.is_premium:
+            st.success("✨ مشترك مميز (غير محدود)")
+        else:
+            st.info(f"⚡ متبقي {st.session_state.free_uses} تحويلات مجانية")
+            if st.session_state.free_uses <= 0:
+                st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
+            if st.button("💎 الترقية للاشتراك الشهري (محاكاة)"):
+                st.session_state.is_premium = True
+                st.rerun()
 
         st.header("⚙️ إعدادات الاتصال")
         
