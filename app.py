@@ -243,6 +243,13 @@ def main():
 
     with st.sidebar:
         st.header("⚙️ إعدادات الاتصال")
+        # عرض جزء من المفتاح للتأكد من قراءته
+        try:
+            key_preview = config.LEMONSQUEEZY_API_KEY[:10] if config.LEMONSQUEEZY_API_KEY else "غير موجود"
+            st.caption(f"🔑 Lemon Squeezy Key: {key_preview}...")
+        except:
+            st.caption("🔑 Lemon Squeezy Key: غير محمّل")
+
         
         # قراءة المفتاح من st.secrets (وليس من واجهة المستخدم)
         gemini_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
