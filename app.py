@@ -15,19 +15,61 @@ from lemonsqueezy import LemonSqueezy
 import config
 
 def create_checkout_url(user_email: str, user_name: str) -> str:
-    """إنشاء رابط دفع فريد للمستخدم."""
-    client = LemonSqueezy(api_key=config.LEMONSQUEEZY_API_KEY)
+    """إنشاء رابط دفع فريد للمستخدم باستخدام Lemon Squeezy API مباشرة."""
+    import requests
+    import json
     
-    checkout = client.create_checkout(
-        store_id=config.LEMONSQUEEZY_STORE_ID,
-        variant_id=config.MONTHLY_VARIANT_ID,
-        checkout_data={
-            "email": user_email,
-            "name": user_name,
-            "custom": {"user_id": str(st.session_state.user_id)}  # لربط الدفع بالمستخدم
+    url = "https://api.lemonsqueezy.com/v1/checkouts"
+    
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.LEMONSQUEEZY_API_KEY}"
+    }
+    
+    # بيانات الطلب وفقاً لوثائق Lemon Squeezy API
+    payload = {
+        "data": {
+            "type": "checkouts",
+            "attributes": {
+                "checkout_data": {
+                    "email": user_email,
+                    "name": user_name,
+                    "custom": {
+                        "user_id": str(st.session_state.get("user_id", "guest"))
+                    }
+                }
+            },
+            "relationships": {
+                "store": {
+                    "data": {
+                        "type": "stores",
+                        "id": config.LEMONSQUEEZY_STORE_ID
+                    }
+                },
+                "variant": {
+                    "data": {
+                        "type": "variants",
+                        "id": config.MONTHLY_VARIANT_ID
+                    }
+                }
+            }
         }
-    )
-    return checkout.attributes.url
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    
+    if response.status_code == 201 or response.status_code == 200:
+        data = response.json()
+        # استخراج رابط الدفع من الاستجابة
+        checkout_url = data.get("data", {}).get("attributes", {}).get("url")
+        if checkout_url:
+            return checkout_url
+        else:
+            raise Exception("لم يتم العثور على رابط الدفع في الاستجابة")
+    else:
+        error_msg = response.text
+        raise Exception(f"فشل إنشاء رابط الدفع: {error_msg}")
 
 def verify_webhook_signature(payload: dict, signature: str) -> bool:
     """التحقق من أن الطلب قادم من Lemon Squeezy."""
