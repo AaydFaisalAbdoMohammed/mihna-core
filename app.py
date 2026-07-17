@@ -186,12 +186,12 @@ def main():
 
     with st.sidebar:
         st.header("⚙️ إعدادات الاتصال")
-        default_gemini = os.getenv("GEMINI_API_KEY", "")
-        gemini_key = st.text_input("🔑 مفتاح Gemini API", value=default_gemini, type="password")
+        # قراءة المفتاح من st.secrets (وليس من واجهة المستخدم)
+        gemini_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
         if gemini_key:
-            st.success("✅ Gemini متصل")
+            st.success("✅ Gemini متصل (جاهز للتوليد)")
         else:
-            st.error("❌ Gemini غير متصل (أدخل المفتاح)")
+            st.error("❌ Gemini غير متصل (يرجى إضافة المفتاح في st.secrets)")
         default_sub_url = os.getenv("SUPABASE_URL", "")
         default_sub_key = os.getenv("SUPABASE_SERVICE_KEY", "")
         supabase_url = st.text_input("🔗 Supabase URL (اختياري)", value=default_sub_url)
@@ -213,6 +213,16 @@ def main():
             if st.session_state.free_uses <= 0:
                 st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
             if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
+                st.info("💳 سيتم تحويلك إلى صفحة دفع آمنة من Lemon Squeezy")
+                user_email = st.text_input("✉️ بريدك الإلكتروني للدفع")
+                if user_email:
+                    try:
+                        checkout_url = create_checkout_url(user_email, client_name or "عميل")
+                        st.markdown(f"[🔗 اضغط هنا لإتمام الدفع]({checkout_url})")
+                    except Exception as e:
+                        st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
+                else:
+                    st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
                 user_email = st.text_input("بريدك الإلكتروني للدفع")
                 if user_email:
                     checkout_url = create_checkout_url(user_email, client_name or "عميل")
