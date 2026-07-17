@@ -218,7 +218,7 @@ def main():
             st.session_state.show_payment = True
 
         # عرض نموذج الدفع إذا تم تفعيله
-        with with st.expander("💳 إتمام الدفع", expanded=True):
+        with st.expander("💳 إتمام الدفع", expanded=True):
                 st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
                 with st.form("payment_form"):
                     user_email = st.text_input("✉️ البريد الإلكتروني")
@@ -261,7 +261,7 @@ st.session_state.show_payment = True
                     st.warning("يرجى إدخال بريدك الإلكتروني")
                 st.session_state.is_premium = True
                 st.rerun()
-        with with st.expander("💎 خطط الاشتراك"):
+        with st.expander("💎 خطط الاشتراك"):
             st.write("**مجاني**: 5 تحويلات")
             st.write("**شهري**: 9.99$ - تحويلات غير محدودة")
             st.write("**سنوي**: 99.99$ - خصم 20%")
@@ -271,7 +271,7 @@ st.session_state.show_payment = True
             st.session_state.show_payment = True
         
         if st.session_state.get("show_payment", False):
-            with with with st.expander("💳 إتمام الدفع", expanded=True):
+            with with st.expander("💳 إتمام الدفع", expanded=True):
                 st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
                 with st.form("payment_form"):
                     user_email = st.text_input("✉️ البريد الإلكتروني")
