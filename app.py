@@ -213,15 +213,24 @@ def main():
             if st.session_state.free_uses <= 0:
                 st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
             if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
+                # إظهار نموذج الدفع فقط عند الضغط على الزر
+                st.session_state.show_payment = True
+
+        if st.session_state.get("show_payment", False):
+            with st.form("payment_form"):
                 st.info("💳 سيتم تحويلك إلى صفحة دفع آمنة من Lemon Squeezy")
                 user_email = st.text_input("✉️ بريدك الإلكتروني للدفع")
-                if user_email:
+                submitted = st.form_submit_button("إتمام الدفع")
+                if submitted and user_email:
                     try:
                         checkout_url = create_checkout_url(user_email, client_name or "عميل")
                         st.markdown(f"[🔗 اضغط هنا لإتمام الدفع]({checkout_url})")
+                        st.success("✅ تم إنشاء رابط الدفع بنجاح! اضغط على الرابط أعلاه.")
+                        # إخفاء النموذج بعد نجاح الدفع
+                        st.session_state.show_payment = False
                     except Exception as e:
                         st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
-                else:
+                elif submitted and not user_email:
                     st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
                 user_email = st.text_input("بريدك الإلكتروني للدفع")
                 if user_email:
