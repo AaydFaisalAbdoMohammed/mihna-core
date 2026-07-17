@@ -15,9 +15,25 @@ from lemonsqueezy import LemonSqueezy
 import config
 
 def create_checkout_url(user_email: str, user_name: str) -> str:
-    """إنشاء رابط دفع فريد للمستخدم باستخدام Lemon Squeezy API مباشرة."""
+    """إنشاء رابط دفع فريد للمستخدم باستخدام Lemon Squeezy API."""
     import requests
     import json
+    import config
+    
+    # التحقق من صحة المفاتيح
+    if not config.LEMONSQUEEZY_API_KEY or config.LEMONSQUEEZY_API_KEY == "your_api_key_here":
+        raise Exception("⚠️ مفتاح Lemon Squeezy API غير مضبوط (تحقق من ملف .env أو st.secrets)")
+    
+    if not config.LEMONSQUEEZY_STORE_ID or config.LEMONSQUEEZY_STORE_ID == "your_store_id_here":
+        raise Exception("⚠️ معرف المتجر (Store ID) غير مضبوط")
+    
+    if not config.MONTHLY_VARIANT_ID or config.MONTHLY_VARIANT_ID == "your_variant_id_here":
+        raise Exception("⚠️ معرف الخطة الشهرية (Variant ID) غير مضبوط")
+    
+    # طباعة جزء من المفتاح للتأكد من قراءته (للتشخيص)
+    print(f"🔑 API Key: {config.LEMONSQUEEZY_API_KEY[:10]}...")
+    print(f"🏪 Store ID: {config.LEMONSQUEEZY_STORE_ID}")
+    print(f"📦 Variant ID: {config.MONTHLY_VARIANT_ID}")
     
     url = "https://api.lemonsqueezy.com/v1/checkouts"
     
@@ -27,7 +43,6 @@ def create_checkout_url(user_email: str, user_name: str) -> str:
         "Authorization": f"Bearer {config.LEMONSQUEEZY_API_KEY}"
     }
     
-    # بيانات الطلب وفقاً لوثائق Lemon Squeezy API
     payload = {
         "data": {
             "type": "checkouts",
@@ -44,13 +59,13 @@ def create_checkout_url(user_email: str, user_name: str) -> str:
                 "store": {
                     "data": {
                         "type": "stores",
-                        "id": config.LEMONSQUEEZY_STORE_ID
+                        "id": str(config.LEMONSQUEEZY_STORE_ID)
                     }
                 },
                 "variant": {
                     "data": {
                         "type": "variants",
-                        "id": config.MONTHLY_VARIANT_ID
+                        "id": str(config.MONTHLY_VARIANT_ID)
                     }
                 }
             }
@@ -61,15 +76,15 @@ def create_checkout_url(user_email: str, user_name: str) -> str:
     
     if response.status_code == 201 or response.status_code == 200:
         data = response.json()
-        # استخراج رابط الدفع من الاستجابة
         checkout_url = data.get("data", {}).get("attributes", {}).get("url")
         if checkout_url:
             return checkout_url
         else:
             raise Exception("لم يتم العثور على رابط الدفع في الاستجابة")
     else:
-        error_msg = response.text
-        raise Exception(f"فشل إنشاء رابط الدفع: {error_msg}")
+        error_detail = response.json().get("errors", [{"detail": response.text}])
+        error_msg = error_detail[0].get("detail", response.text)
+        raise Exception(f"فشل الطلب (HTTP {response.status_code}): {error_msg}")
 
 def verify_webhook_signature(payload: dict, signature: str) -> bool:
     """التحقق من أن الطلب قادم من Lemon Squeezy."""
