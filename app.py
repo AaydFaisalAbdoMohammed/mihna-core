@@ -204,7 +204,7 @@ def main():
         if telegram_token and telegram_chat_id:
             st.success("✅ سيتم إرسال الإشعارات إلى هاتفك فوراً!")
         st.divider()
-        st.subheader("📊 رصيدك المجاني
+        st.subheader("📊 رصيدك المجاني")
         # نموذج الدفع عبر Lemon Squeezy
         if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
             st.session_state.show_payment = True
