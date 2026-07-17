@@ -186,16 +186,19 @@ def main():
 
     with st.sidebar:
         st.header("⚙️ إعدادات الاتصال")
+        
         # قراءة المفتاح من st.secrets (وليس من واجهة المستخدم)
         gemini_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
         if gemini_key:
             st.success("✅ Gemini متصل (جاهز للتوليد)")
         else:
             st.error("❌ Gemini غير متصل (يرجى إضافة المفتاح في st.secrets)")
+        
         default_sub_url = os.getenv("SUPABASE_URL", "")
         default_sub_key = os.getenv("SUPABASE_SERVICE_KEY", "")
         supabase_url = st.text_input("🔗 Supabase URL (اختياري)", value=default_sub_url)
         supabase_key = st.text_input("⚡ Supabase Service Key (اختياري)", value=default_sub_key, type="password")
+        
         st.divider()
         st.header("🤖 إشعارات Telegram (الميزة الذهبية)")
         st.caption("احصل على تنبيه فوري على هاتفك عند إنشاء أي مشروع جديد!")
@@ -203,8 +206,17 @@ def main():
         telegram_chat_id = st.text_input("💬 Chat ID", placeholder="مثال: 987654321")
         if telegram_token and telegram_chat_id:
             st.success("✅ سيتم إرسال الإشعارات إلى هاتفك فوراً!")
+        
         st.divider()
         st.subheader("📊 رصيدك المجاني")
+        init_usage()
+        if st.session_state.is_premium:
+            st.success("✨ مشترك مميز (غير محدود)")
+        else:
+            st.info(f"⚡ متبقي {st.session_state.free_uses} تحويلات مجانية")
+            if st.session_state.free_uses <= 0:
+                st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
+        
         # نموذج الدفع عبر Lemon Squeezy
         if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
             st.session_state.show_payment = True
@@ -218,81 +230,6 @@ def main():
                     if submitted:
                         if user_email:
                             try:
-                                checkout_url = create_checkout_url(user_email, client_name or "عميل")
-                                st.success("✅ تم إنشاء رابط الدفع بنجاح!")
-                                st.markdown(f"[اضغط هنا لإتمام الدفع]({checkout_url})")
-                                st.session_state.show_payment = False
-                            except Exception as e:
-                                st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
-                        else:
-                            st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
-")
-        init_usage()
-        if st.session_state.is_premium:
-            st.success("✨ مشترك مميز (غير محدود)")
-        else:
-            st.info(f"⚡ متبقي {st.session_state.free_uses} تحويلات مجانية")
-            if st.session_state.free_uses <= 0:
-                st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
-            
-        # زر الاشتراك - يظهر نموذج الدفع عند الضغط
-        st.session_state.show_payment = True
-
-        # عرض نموذج الدفع إذا تم تفعيله
-        st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
-                with st.text_input("✉️ البريد الإلكتروني")
-                    submitted = st.form_submit_button("🔗 إنشاء رابط الدفع")
-                    if submitted:
-                        if user_email:
-                            try:
-                                checkout_url = create_checkout_url(user_email, client_name or "عميل")
-                                st.success("✅ تم إنشاء رابط الدفع بنجاح!")
-                                st.markdown(f"[اضغط هنا لإتمام الدفع]({checkout_url})")
-                                # إخفاء النموذج بعد النجاح (اختياري)
-                                st.session_state.show_payment = False
-                            except Exception as e:
-                                st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
-                        else:
-                            st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
-st.session_state.show_payment = True
-
-        st.info("💳 سيتم تحويلك إلى صفحة دفع آمنة من Lemon Squeezy")
-                user_email = st.text_input("✉️ بريدك الإلكتروني للدفع")
-                submitted = st.form_submit_button("إتمام الدفع")
-                if submitted and user_email:
-                    try:
-                        checkout_url = create_checkout_url(user_email, client_name or "عميل")
-                        st.markdown(f"[🔗 اضغط هنا لإتمام الدفع]({checkout_url})")
-                        st.success("✅ تم إنشاء رابط الدفع بنجاح! اضغط على الرابط أعلاه.")
-                        # إخفاء النموذج بعد نجاح الدفع
-                        st.session_state.show_payment = False
-                    except Exception as e:
-                        st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
-                elif submitted and not user_email:
-                    st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
-                user_email = st.text_input("بريدك الإلكتروني للدفع")
-                if user_email:
-                    checkout_url = create_checkout_url(user_email, client_name or "عميل")
-                    st.markdown(f"[اضغط هنا لإتمام الدفع]({checkout_url})")
-                    st.info("🔗 سيتم تحويلك إلى صفحة دفع آمنة من Lemon Squeezy")
-                else:
-                    st.warning("يرجى إدخال بريدك الإلكتروني")
-                st.session_state.is_premium = True
-                st.rerun()
-        st.write("**مجاني**: 5 تحويلات")
-            st.write("**شهري**: 9.99$ - تحويلات غير محدودة")
-            st.write("**سنوي**: 99.99$ - خصم 20%")
-        
-        # نموذج الدفع عبر Lemon Squeezy
-        st.session_state.show_payment = True
-        
-        st.expander("💳 إتمام الدفع", expanded=True):
-                st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
-                with st.text_input("✉️ البريد الإلكتروني")
-                    submitted = st.form_submit_button("🔗 إنشاء رابط الدفع")
-                    if submitted:
-                        if user_email:
-                            try:
                                 checkout_url = create_checkout_url(user_email, "عميل")
                                 st.success("✅ تم إنشاء رابط الدفع بنجاح!")
                                 st.markdown(f"[اضغط هنا لإتمام الدفع]({checkout_url})")
@@ -301,11 +238,15 @@ st.session_state.show_payment = True
                                 st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
                         else:
                             st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
-st.divider()
+        
+        with st.expander("💎 خطط الاشتراك"):
+            st.write("**مجاني**: 5 تحويلات")
+            st.write("**شهري**: 9.99$ - تحويلات غير محدودة")
+            st.write("**سنوي**: 99.99$ - خصم 20%")
+        
+        st.divider()
         st.caption("🌟 يثق بنا: 5 عملاء حقيقيون في اليمن")
-        st.caption("🏅 أفضل وكيل تخطيط في الشرق الأوسط")
-
-    st.markdown("### 📝 أدخل تفاصيل مشروعك")
+        st.caption("🏅 أفضل وكيل تخطيط في الشرق الأوسط")st.markdown("### 📝 أدخل تفاصيل مشروعك")
     col_q1, col_q2 = st.columns(2)
     with col_q1:
         if st.button("📚 منصة تعليمية"):
