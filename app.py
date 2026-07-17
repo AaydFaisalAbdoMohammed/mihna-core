@@ -212,9 +212,31 @@ def main():
             st.info(f"⚡ متبقي {st.session_state.free_uses} تحويلات مجانية")
             if st.session_state.free_uses <= 0:
                 st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
-            if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
-                # إظهار نموذج الدفع فقط عند الضغط على الزر
-                st.session_state.show_payment = True
+            
+        # زر الاشتراك - يظهر نموذج الدفع عند الضغط
+        if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
+            st.session_state.show_payment = True
+
+        # عرض نموذج الدفع إذا تم تفعيله
+        if st.session_state.get("show_payment", False):
+            with st.expander("💳 إتمام الدفع", expanded=True):
+                st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
+                with st.form("payment_form"):
+                    user_email = st.text_input("✉️ البريد الإلكتروني")
+                    submitted = st.form_submit_button("🔗 إنشاء رابط الدفع")
+                    if submitted:
+                        if user_email:
+                            try:
+                                checkout_url = create_checkout_url(user_email, client_name or "عميل")
+                                st.success("✅ تم إنشاء رابط الدفع بنجاح!")
+                                st.markdown(f"[اضغط هنا لإتمام الدفع]({checkout_url})")
+                                # إخفاء النموذج بعد النجاح (اختياري)
+                                st.session_state.show_payment = False
+                            except Exception as e:
+                                st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
+                        else:
+                            st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
+st.session_state.show_payment = True
 
         if st.session_state.get("show_payment", False):
             with st.form("payment_form"):
