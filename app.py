@@ -7,6 +7,35 @@ import re
 import uuid
 import requests  # <--- المكتبة الجديدة
 from datetime import datetime
+
+# ============================================================
+# 7. دوال الدفع عبر Lemon Squeezy (تكامل حقيقي)
+# ============================================================
+from lemonsqueezy import LemonSqueezy
+import config
+
+def create_checkout_url(user_email: str, user_name: str) -> str:
+    """إنشاء رابط دفع فريد للمستخدم."""
+    client = LemonSqueezy(api_key=config.LEMONSQUEEZY_API_KEY)
+    
+    checkout = client.create_checkout(
+        store_id=config.LEMONSQUEEZY_STORE_ID,
+        variant_id=config.MONTHLY_VARIANT_ID,
+        checkout_data={
+            "email": user_email,
+            "name": user_name,
+            "custom": {"user_id": str(st.session_state.user_id)}  # لربط الدفع بالمستخدم
+        }
+    )
+    return checkout.attributes.url
+
+def verify_webhook_signature(payload: dict, signature: str) -> bool:
+    """التحقق من أن الطلب قادم من Lemon Squeezy."""
+    import hmac, hashlib
+    secret = config.LEMONSQUEEZY_WEBHOOK_SECRET
+    expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
+
 import streamlit as st
 import google.generativeai as genai
 
@@ -183,7 +212,14 @@ def main():
             st.info(f"⚡ متبقي {st.session_state.free_uses} تحويلات مجانية")
             if st.session_state.free_uses <= 0:
                 st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
-            if st.button("💎 الترقية للاشتراك الشهري (محاكاة)"):
+            if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
+                user_email = st.text_input("بريدك الإلكتروني للدفع")
+                if user_email:
+                    checkout_url = create_checkout_url(user_email, client_name or "عميل")
+                    st.markdown(f"[اضغط هنا لإتمام الدفع]({checkout_url})")
+                    st.info("🔗 سيتم تحويلك إلى صفحة دفع آمنة من Lemon Squeezy")
+                else:
+                    st.warning("يرجى إدخال بريدك الإلكتروني")
                 st.session_state.is_premium = True
                 st.rerun()
         with st.expander("💎 خطط الاشتراك"):
