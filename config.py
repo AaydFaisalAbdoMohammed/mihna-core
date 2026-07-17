@@ -1,31 +1,23 @@
 import os
-from dotenv import load_dotenv
-
-# تحميل المتغيرات من ملف .env (إذا كان موجوداً)
-load_dotenv()
+import streamlit as st
 
 def get_secret(key: str, default=None):
-    """
-    محاولة قراءة المفتاح من:
-    1. st.secrets (إذا كان متاحاً)
-    2. os.getenv (من متغيرات البيئة أو ملف .env)
-    3. default (قيمة افتراضية)
-    """
+    # محاولة القراءة من st.secrets (بيئة النشر)
     try:
-        import streamlit as st
-        if hasattr(st, 'secrets') and key in st.secrets:
+        if key in st.secrets:
             return st.secrets[key]
     except Exception:
         pass
+    # الرجوع إلى متغيرات البيئة (بيئة التطوير)
     return os.getenv(key, default)
 
 LEMONSQUEEZY_API_KEY = get_secret("LEMONSQUEEZY_API_KEY")
 LEMONSQUEEZY_STORE_ID = get_secret("LEMONSQUEEZY_STORE_ID")
 LEMONSQUEEZY_WEBHOOK_SECRET = get_secret("LEMONSQUEEZY_WEBHOOK_SECRET")
-MONTHLY_VARIANT_ID = get_secret("MONTHLY_VARIANT_ID", "YOUR_VARIANT_ID")
+MONTHLY_VARIANT_ID = get_secret("MONTHLY_VARIANT_ID")
 
-# اختياري: طباعة رسالة تأكيد دون عرض المفاتيح (للتأكد من القراءة)
+# رسائل تأكيد للتصحيح
 if LEMONSQUEEZY_API_KEY:
-    print("✅ تم تحميل مفاتيح Lemon Squeezy بنجاح")
+    print(f"✅ Config loaded: API Key starts with {LEMONSQUEEZY_API_KEY[:8]}...")
 else:
-    print("⚠️ مفاتيح Lemon Squeezy غير موجودة (تأكد من ملف .env أو متغيرات البيئة)")
+    print("❌ Config failed: LEMONSQUEEZY_API_KEY is missing!")
