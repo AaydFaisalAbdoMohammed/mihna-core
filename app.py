@@ -204,7 +204,29 @@ def main():
         if telegram_token and telegram_chat_id:
             st.success("✅ سيتم إرسال الإشعارات إلى هاتفك فوراً!")
         st.divider()
-        st.subheader("📊 رصيدك المجاني")
+        st.subheader("📊 رصيدك المجاني
+        # نموذج الدفع عبر Lemon Squeezy
+        if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
+            st.session_state.show_payment = True
+        
+        if st.session_state.get("show_payment", False):
+            with st.expander("💳 إتمام الدفع", expanded=True):
+                st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
+                with st.form("payment_form"):
+                    user_email = st.text_input("✉️ البريد الإلكتروني")
+                    submitted = st.form_submit_button("🔗 إنشاء رابط الدفع")
+                    if submitted:
+                        if user_email:
+                            try:
+                                checkout_url = create_checkout_url(user_email, client_name or "عميل")
+                                st.success("✅ تم إنشاء رابط الدفع بنجاح!")
+                                st.markdown(f"[اضغط هنا لإتمام الدفع]({checkout_url})")
+                                st.session_state.show_payment = False
+                            except Exception as e:
+                                st.error(f"❌ فشل إنشاء رابط الدفع: {e}")
+                        else:
+                            st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
+")
         init_usage()
         if st.session_state.is_premium:
             st.success("✨ مشترك مميز (غير محدود)")
@@ -214,14 +236,11 @@ def main():
                 st.warning("🚫 انتهت استخداماتك! اشترك للمتابعة.")
             
         # زر الاشتراك - يظهر نموذج الدفع عند الضغط
-        if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
-            st.session_state.show_payment = True
+        st.session_state.show_payment = True
 
         # عرض نموذج الدفع إذا تم تفعيله
-        with st.expander("💳 إتمام الدفع", expanded=True):
-                st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
-                with st.form("payment_form"):
-                    user_email = st.text_input("✉️ البريد الإلكتروني")
+        st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
+                with st.text_input("✉️ البريد الإلكتروني")
                     submitted = st.form_submit_button("🔗 إنشاء رابط الدفع")
                     if submitted:
                         if user_email:
@@ -237,8 +256,7 @@ def main():
                             st.warning("⚠️ يرجى إدخال بريدك الإلكتروني")
 st.session_state.show_payment = True
 
-        st.form("payment_form"):
-                st.info("💳 سيتم تحويلك إلى صفحة دفع آمنة من Lemon Squeezy")
+        st.info("💳 سيتم تحويلك إلى صفحة دفع آمنة من Lemon Squeezy")
                 user_email = st.text_input("✉️ بريدك الإلكتروني للدفع")
                 submitted = st.form_submit_button("إتمام الدفع")
                 if submitted and user_email:
@@ -261,20 +279,16 @@ st.session_state.show_payment = True
                     st.warning("يرجى إدخال بريدك الإلكتروني")
                 st.session_state.is_premium = True
                 st.rerun()
-        with st.expander("💎 خطط الاشتراك"):
-            st.write("**مجاني**: 5 تحويلات")
+        st.write("**مجاني**: 5 تحويلات")
             st.write("**شهري**: 9.99$ - تحويلات غير محدودة")
             st.write("**سنوي**: 99.99$ - خصم 20%")
         
         # نموذج الدفع عبر Lemon Squeezy
-        if st.button("💎 اشترك الآن (9.99$ شهرياً)"):
-            st.session_state.show_payment = True
+        st.session_state.show_payment = True
         
-        if st.session_state.get("show_payment", False):
-            with with st.expander("💳 إتمام الدفع", expanded=True):
+        st.expander("💳 إتمام الدفع", expanded=True):
                 st.markdown("**أدخل بريدك الإلكتروني لاستلام رابط الدفع**")
-                with st.form("payment_form"):
-                    user_email = st.text_input("✉️ البريد الإلكتروني")
+                with st.text_input("✉️ البريد الإلكتروني")
                     submitted = st.form_submit_button("🔗 إنشاء رابط الدفع")
                     if submitted:
                         if user_email:
