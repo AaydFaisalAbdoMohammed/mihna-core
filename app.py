@@ -246,7 +246,8 @@ def main():
         
         st.divider()
         st.caption("🌟 يثق بنا: 5 عملاء حقيقيون في اليمن")
-        st.caption("🏅 أفضل وكيل تخطيط في الشرق الأوسط")st.markdown("### 📝 أدخل تفاصيل مشروعك")
+        st.caption("🏅 أفضل وكيل تخطيط في الشرق الأوسط")
+        st.markdown("### 📝 أدخل تفاصيل مشروعك")
     col_q1, col_q2 = st.columns(2)
     with col_q1:
         if st.button("📚 منصة تعليمية"):
