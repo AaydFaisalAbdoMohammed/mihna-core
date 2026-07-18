@@ -93,6 +93,94 @@ def verify_webhook_signature(payload: dict, signature: str) -> bool:
     expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
+
+# ============================================================
+# RAG: البحث عن خطط مشابهة
+# ============================================================
+def search_similar_plans(idea: str, top_k: int = 3) -> list:
+    import json, os
+    from difflib import SequenceMatcher
+    db_path = 'data/plans/seed_plans.json'
+    if not os.path.exists(db_path):
+        return []
+    with open(db_path, 'r', encoding='utf-8') as f:
+        plans = json.load(f)
+    scored = []
+    for plan in plans:
+        summary = plan.get('project_summary', '')
+        score = SequenceMatcher(None, idea.lower(), summary.lower()).ratio()
+        scored.append((score, plan))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [plan for score, plan in scored[:top_k]]
+
+# ============================================================
+# HITL: عرض المهام مع إمكانية التعديل
+# ============================================================
+def display_tasks_with_hitl(tasks):
+    
+# ============================================================
+# RAG: البحث عن خطط مشابهة في الذاكرة المحلية
+# ============================================================
+def search_similar_plans(idea: str, top_k: int = 3) -> list:
+    import json, os
+    from difflib import SequenceMatcher
+    db_path = 'data/plans/seed_plans.json'
+    if not os.path.exists(db_path):
+        return []
+    with open(db_path, 'r', encoding='utf-8') as f:
+        plans = json.load(f)
+    scored = []
+    for plan in plans:
+        summary = plan.get('project_summary', '')
+        score = SequenceMatcher(None, idea.lower(), summary.lower()).ratio()
+        scored.append((score, plan))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [plan for score, plan in scored[:top_k]]
+
+# ============================================================
+# HITL: عرض المهام مع إمكانية التعديل والاعتماد
+# ============================================================
+def display_tasks_with_hitl(tasks):
+    import streamlit as st
+    modified_tasks = []
+    st.markdown("### ✏️ مراجعة المهام (يمكنك تعديلها)")
+    for idx, task in enumerate(tasks, 1):
+        with st.container(border=True):
+            st.markdown(f"**المهمة {idx}**")
+            new_title = st.text_input(f"عنوان المهمة {idx}", value=task.get('title', ''))
+            new_desc = st.text_area(f"وصف المهمة {idx}", value=task.get('description', ''))
+            new_days = st.number_input(f"عدد الأيام {idx}", min_value=1, value=task.get('estimated_days', 2))
+            new_priority = st.selectbox(f"الأولوية {idx}", ['High', 'Medium', 'Low'], index=['High', 'Medium', 'Low'].index(task.get('priority', 'Medium')))
+            modified_tasks.append({
+                'title': new_title,
+                'description': new_desc,
+                'estimated_days': new_days,
+                'priority': new_priority
+            })
+    if st.button("✅ اعتماد الخطة النهائية"):
+        return modified_tasks
+    return None
+
+import streamlit as st
+    modified_tasks = []
+    st.markdown("### ✏️ مراجعة المهام (يمكنك تعديلها)")
+    for idx, task in enumerate(tasks, 1):
+        with st.container(border=True):
+            st.markdown(f"**المهمة {idx}**")
+            new_title = st.text_input(f"عنوان المهمة {idx}", value=task.get('title', ''))
+            new_desc = st.text_area(f"وصف المهمة {idx}", value=task.get('description', ''))
+            new_days = st.number_input(f"عدد الأيام {idx}", min_value=1, value=task.get('estimated_days', 2))
+            new_priority = st.selectbox(f"الأولوية {idx}", ['High', 'Medium', 'Low'], index=['High', 'Medium', 'Low'].index(task.get('priority', 'Medium')))
+            modified_tasks.append({
+                'title': new_title,
+                'description': new_desc,
+                'estimated_days': new_days,
+                'priority': new_priority
+            })
+    if st.button("✅ اعتماد الخطة النهائية"):
+        return modified_tasks
+    return None
+
 import streamlit as st
 import google.generativeai as genai
 
@@ -392,6 +480,17 @@ def main():
                 st.divider()
                 st.markdown(f"**📌 ملخص المشروع**: {plan_json['project_summary']}")
                 st.markdown(f"**🛠️ التقنيات المقترحة**: {', '.join(plan_json['suggested_tech_stack'])}")
+                
+                # HITL: عرض المهام للتعديل قبل الاعتماد
+                if tasks and len(tasks) > 0:
+                    st.info("🔄 يمكنك الآن مراجعة المهام وتعديلها قبل حفظ الخطة.")
+                    edited_tasks = display_tasks_with_hitl(tasks)
+                    if edited_tasks:
+                        plan_json['generated_tasks'] = edited_tasks
+                        st.success("✅ تم اعتماد الخطة المعدلة!")
+                    else:
+                        st.warning("⏳ لم يتم اعتماد الخطة بعد (يمكنك متابعة التعديل).")
+
                 st.markdown("### 📋 المهام المقترحة")
                 for idx, task in enumerate(plan_json['generated_tasks'], 1):
                     emoji = "🔴" if task['priority'] == "High" else "🟡" if task['priority'] == "Medium" else "🟢"
