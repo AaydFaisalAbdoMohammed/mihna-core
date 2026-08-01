@@ -91,8 +91,8 @@ TRANSLATIONS = {
         "export_json": "📦 تصدير JSON المشفر",
         "export_excel": "📊 تصدير جدول Excel",
         "export_pdf": "📄 تصدير تقرير PDF",
-        "theme_toggle": "🌓 مظهر الواجهة",
-        "lang_toggle": "🌐 اللغة (Language)"
+        "theme_toggle": "مظهر الواجهة",
+        "lang_toggle": "اللغة"
     },
     "en": {
         "title": "🔥 PHOENIX PRO ENTERPRISE",
@@ -141,8 +141,8 @@ TRANSLATIONS = {
         "export_json": "📦 Export Signed JSON",
         "export_excel": "📊 Export Excel Sheet",
         "export_pdf": "📄 Export PDF Report",
-        "theme_toggle": "🌓 Theme Mode",
-        "lang_toggle": "🌐 Language"
+        "theme_toggle": "Theme Mode",
+        "lang_toggle": "Language"
     }
 }
 
@@ -340,7 +340,7 @@ def init_session():
     if "theme" not in st.session_state: st.session_state.theme = "dark"
 
 # =====================================================================
-# 7. DYNAMIC ADVANCED CSS INJECTION
+# 7. ADVANCED HIGH-PERFORMANCE CSS INJECTION (FIXES & OPTIMIZATIONS)
 # =====================================================================
 def inject_custom_css():
     lang = st.session_state.lang
@@ -349,7 +349,6 @@ def inject_custom_css():
     direction = "rtl" if lang == "ar" else "ltr"
     align_text = "right" if lang == "ar" else "left"
     
-    # Theme color palettes
     if theme == "dark":
         bg_main = "#0b0f19"
         bg_sidebar = "#0f172a"
@@ -358,58 +357,93 @@ def inject_custom_css():
         text_color = "#f1f5f9"
         border_color = "#2e3a59"
         label_color = "#f8fafc"
+        btn_bg = "linear-gradient(135deg, #1e293b 0%, #334155 100%)"
+        btn_text = "#ffffff"
+        btn_border = "#475569"
     else:
         bg_main = "#f8fafc"
-        bg_sidebar = "#e2e8f0"
+        bg_sidebar = "#f1f5f9"
         bg_card = "#ffffff"
-        bg_input = "#f1f5f9"
+        bg_input = "#ffffff"
         text_color = "#0f172a"
         border_color = "#cbd5e1"
         label_color = "#1e293b"
+        btn_bg = "linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)"
+        btn_text = "#0f172a"
+        btn_border = "#94a3b8"
 
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap');
 
-        /* 🔴 1. FIX MATERIAL ICONS (الإصلاح الجذري لتشوه الأيقونات والسهم) */
-        button[data-testid="data-testid"] span,
-        [data-testid="stSidebarCollapseButton"] span,
+        /* 🔴 1. FIX MATERIAL ICONS EXCLUSIVELY (استثناء الأيقونات من خط القاهرة لمنع التشوه) */
+        [data-testid="stSidebarCollapseButton"] *,
+        [data-testid="stIcon"] *,
         [data-baseweb="icon"] *,
-        .material-icons, 
+        .material-icons,
         [class*="material-symbols"],
-        span[class*="css-"],
-        i {{
-            font-family: 'Material Icons', 'Material Symbols Outlined', 'Material Symbols Rounded' !important;
+        span[class*="css-"] i {{
+            font-family: 'Material Icons', 'Material Symbols Outlined' !important;
+            direction: ltr !important;
         }}
 
-        /* 🔵 2. APPLY CAIRO FONT FOR TEXT ONLY */
-        html, body, p, div, span:not([class*="material"]), label, input, textarea, button {{
+        /* 🔵 2. BASE TYPOGRAPHY & LAYOUT CONTROL */
+        html, body, [data-testid="stAppViewContainer"] {{
             font-family: 'Cairo', 'Inter', sans-serif !important;
             direction: {direction};
             text-align: {align_text};
-        }}
-
-        /* 🟣 3. APP CONTAINERS & SIDEBAR STYLING */
-        .stApp {{
             background-color: {bg_main} !important;
             color: {text_color} !important;
+            overflow-x: hidden !important;
         }}
 
+        /* 🟣 3. SIDEBAR FIXES (منع تداخل النصوص رأسياً في الهواتف) */
         [data-testid="stSidebar"] {{
             background-color: {bg_sidebar} !important;
             border-{ 'left' if lang == 'ar' else 'right' }: 1px solid {border_color} !important;
+            width: 320px !important;
+            min-width: 300px !important;
         }}
 
-        [data-testid="stSidebar"] * {{
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{
+            gap: 0.8rem !important;
+            overflow-x: hidden !important;
+        }}
+
+        [data-testid="stSidebar"] h1, 
+        [data-testid="stSidebar"] h2, 
+        [data-testid="stSidebar"] h3, 
+        [data-testid="stSidebar"] span, 
+        [data-testid="stSidebar"] p {{
             color: {text_color} !important;
+            word-break: break-word !important;
+            white-space: normal !important;
         }}
 
-        /* 🟢 4. FORM LABELS & INPUT FIELDS */
+        /* 🟢 4. HIGH-CONTRAST SIDEBAR BUTTONS (إصلاح الأزرار الباهتة) */
+        [data-testid="stSidebar"] .stButton > button {{
+            background: {btn_bg} !important;
+            color: {btn_text} !important;
+            border: 1px solid {btn_border} !important;
+            border-radius: 10px !important;
+            font-weight: 700 !important;
+            padding: 0.5rem 1rem !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            transition: all 0.25s ease-in-out !important;
+        }}
+
+        [data-testid="stSidebar"] .stButton > button:hover {{
+            border-color: #3b82f6 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 18px rgba(59, 130, 246, 0.3) !important;
+        }}
+
+        /* 🟡 5. INPUT FIELDS & LABELS */
         div[data-baseweb="field"] > label, .stTextInput > label, .stTextArea > label {{
             color: {label_color} !important;
-            font-size: 1.02rem !important;
+            font-size: 0.98rem !important;
             font-weight: 700 !important;
-            margin-bottom: 6px !important;
+            margin-bottom: 4px !important;
         }}
 
         .stTextInput input, .stTextArea textarea {{
@@ -425,7 +459,7 @@ def inject_custom_css():
             box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important;
         }}
 
-        /* 🟡 5. CARDS & CONTAINERS */
+        /* 🧡 6. CUSTOM CARDS & LAYOUT COMPONENTS */
         .plan-box {{
             background-color: {bg_card};
             border: 1px solid #3b82f6;
@@ -583,17 +617,18 @@ def main():
     
     # ----------------- SIDEBAR COMMAND -----------------
     with st.sidebar:
-        st.title("⚙️ PHOENIX COMMAND")
+        st.markdown("<h2 style='text-align:center;'>⚙️ PHOENIX COMMAND</h2>", unsafe_allow_html=True)
         
         # 🌐 LANGUAGE & THEME TOGGLES
-        st.subheader("🌐 " + t["lang_toggle"] + " & " + t["theme_toggle"])
         c_lang, c_theme = st.columns(2)
         with c_lang:
-            if st.button("العربية" if st.session_state.lang == "en" else "English", use_container_width=True):
+            lang_label = "🌐 English" if st.session_state.lang == "ar" else "🌐 العربية"
+            if st.button(lang_label, use_container_width=True):
                 st.session_state.lang = "en" if st.session_state.lang == "ar" else "ar"
                 st.rerun()
         with c_theme:
-            if st.button("☀️ Light" if st.session_state.theme == "dark" else "🌙 Dark", use_container_width=True):
+            theme_label = "☀️ Light" if st.session_state.theme == "dark" else "🌙 Dark"
+            if st.button(theme_label, use_container_width=True):
                 st.session_state.theme = "light" if st.session_state.theme == "dark" else "dark"
                 st.rerun()
 
