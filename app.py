@@ -1458,46 +1458,46 @@ def render_login_page():
 
 if __name__ == "__main__":
     main()
-EOF
+#EOF
 
-echo "✅ تم إنشاء app.py (النسخة النهائية المدمجة)"
+#echo "✅ تم إنشاء app.py (النسخة النهائية المدمجة)"
 
 # ============================================================
 # 3. تثبيت المكتبات
 # ============================================================
-echo "📦 تثبيت المكتبات المطلوبة..."
-pip install --upgrade pip
-pip install -r requirements.txt
+#echo "📦 تثبيت المكتبات المطلوبة..."
+#pip install --upgrade pip
+#pip install -r requirements.txt
 
 # ============================================================
 # 4. النشر على Cloud Run
 # ============================================================
-echo "🚀 النشر على Cloud Run..."
+#echo "🚀 النشر على Cloud Run..."
 
-gcloud run deploy mihna-agent \
-  --source . \
-  --platform managed \
-  --region asia-south1 \
-  --allow-unauthenticated \
-  --port 8501 \
-  --memory 2Gi \
-  --cpu 2 \
-  --timeout 300s \
-  --add-cloudsql-instances project-d699d925-921c-4e54-8c4:asia-south1:mihna-agent \
-  --set-env-vars "\
-DB_USER=mihna_app_user,\
-DB_PASSWORD=101519Ayad@,\
-DB_NAME=mihna_agent,\
-CLOUD_SQL_CONNECTION_NAME=project-d699d925-921c-4e54-8c4:asia-south1:mihna-agent,\
-GEMINI_API_KEY=AIzaSy_Active_Key,\
-LEMONSQUEEZY_API_KEY=sk_test_12345,\
-LEMONSQUEEZY_STORE_SLUG=mihna,\
-TELEGRAM_BOT_TOKEN=123456:ABC,\
-JWT_SECRET=$(openssl rand -hex 32),\
-FINGERPRINT_SALT=$(openssl rand -hex 16),\
-HMAC_KEY=$(openssl rand -hex 32)" \
-  --project project-d699d925-921c-4e54-8c4 \
-  --quiet
+#gcloud run deploy mihna-agent \
+#  --source . \
+#  --platform managed \
+#  --region asia-south1 \
+#  --allow-unauthenticated \
+#  --port 8501 \
+#  --memory 2Gi \
+#  --cpu 2 \
+#  --timeout 300s \
+#  --add-cloudsql-instances project-d699d925-921c-4e54-8c4:asia-south1:mihna-agent \
+#  --set-env-vars "\
+#DB_USER=mihna_app_user,\
+#DB_PASSWORD=101519Ayad@,\
+#DB_NAME=mihna_agent,\
+#CLOUD_SQL_CONNECTION_NAME=project-d699d925-921c-4e54-8c4:asia-south1:mihna-agent,\
+#GEMINI_API_KEY=AIzaSy_Active_Key,\
+#LEMONSQUEEZY_API_KEY=sk_test_12345,\
+#LEMONSQUEEZY_STORE_SLUG=mihna,\
+#TELEGRAM_BOT_TOKEN=123456:ABC,\
+#JWT_SECRET=$(openssl rand -hex 32),\
+#FINGERPRINT_SALT=$(openssl rand -hex 16),\
+#HMAC_KEY=$(openssl rand -hex 32)" \
+#  --project project-d699d925-921c-4e54-8c4 \
+#  --quiet
 
 #echo ""
 #echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -1515,4 +1515,4 @@ HMAC_KEY=$(openssl rand -hex 32)" \
 #echo "  ✅ مستحيل التقليد!"
 #echo ""
 #echo "🚀 رابط الخدمة:"
-gcloud run services describe mihna-agent --region asia-south1 --project project-d699d925-921c-4e54-8c4 --format='value(status.url)'
+#gcloud run services describe mihna-agent --region asia-south1 --project project-d699d925-921c-4e54-8c4 --format='value(status.url)'
