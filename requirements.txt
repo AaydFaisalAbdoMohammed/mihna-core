@@ -9,3 +9,13 @@ python-dotenv
 google-cloud-storage
 reportlab
 pyautogen
+bcrypt
+PyJWT
+Pillow
+qrcode
+pandas
+plotly
+mysql-connector-python>=8.0.0
+supabase>=2.0.0
+xlsxwriter
+numpy
