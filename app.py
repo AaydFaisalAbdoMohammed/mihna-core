@@ -81,6 +81,63 @@ import base64
 from datetime import datetime, timedelta
 import streamlit as st
 import google.generativeai as genai
+# ============================================================
+# اتصال قاعدة البيانات - نسخة احترافية مع تشخيص الأخطاء
+# ============================================================
+import os
+import pymysql
+import pymysql.cursors
+import streamlit as st
+
+def get_db_connection():
+    """
+    اتصال بقاعدة البيانات مع دعم:
+    - Unix Socket (Cloud Run)
+    - TCP/IP مع SSL اختياري (محلي)
+    """
+    try:
+        # قراءة متغيرات البيئة
+        db_user = os.getenv("DB_USER", "root")
+        db_password = os.getenv("DB_PASSWORD", "")
+        db_name = os.getenv("DB_NAME", "mihna_agent")
+        cloud_sql_instance = os.getenv("CLOUD_SQL_CONNECTION_NAME")
+        db_host = os.getenv("DB_HOST", "127.0.0.1")
+        db_port = int(os.getenv("DB_PORT", 3306))
+        db_ssl_enabled = os.getenv("DB_SSL_ENABLED", "false").lower() == "true"
+
+        # إعدادات الاتصال الأساسية
+        connection_args = {
+            "user": db_user,
+            "password": db_password,
+            "database": db_name,
+            "charset": "utf8mb4",
+            "cursorclass": pymysql.cursors.DictCursor,
+            "connect_timeout": 10
+        }
+
+        # اختيار طريقة الاتصال
+        if cloud_sql_instance and os.path.exists(f"/cloudsql/{cloud_sql_instance}"):
+            # استخدام Unix Socket في Cloud Run
+            connection_args["unix_socket"] = f"/cloudsql/{cloud_sql_instance}"
+            print("✅ الاتصال عبر Unix Socket")
+        else:
+            # الاتصال عبر TCP/IP (محلي أو خارج Cloud Run)
+            connection_args["host"] = db_host
+            connection_args["port"] = db_port
+            if db_ssl_enabled:
+                connection_args["ssl"] = {"ca": "/etc/ssl/certs/ca-certificates.crt"}
+                print("✅ الاتصال عبر TCP/IP مع SSL")
+            else:
+                print("✅ الاتصال عبر TCP/IP بدون SSL")
+
+        conn = pymysql.connect(**connection_args)
+        return conn
+
+    except Exception as e:
+        # عرض رسالة خطأ مفصلة للمستخدم
+        st.error(f"❌ فشل الاتصال بقاعدة البيانات:\n{str(e)}")
+        print(f"❌ فشل الاتصال بقاعدة البيانات: {e}")
+        return None
 
 # ============================================================
 # 0. معالجة الوحدات الاختيارية (لتجنب الأخطاء)
@@ -409,7 +466,55 @@ def get_shared_project(share_id: str) -> dict:
         return None
     finally:
         conn.close()
-
+        
+def init_database():
+    """إنشاء الجداول المطلوبة إذا لم تكن موجودة."""
+    conn = get_db_connection()
+    if not conn:
+        st.error("❌ لا يمكن تهيئة قاعدة البيانات – فشل الاتصال.")
+        return
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    email VARCHAR(100) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    fingerprint VARCHAR(64),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS projects (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    client_name VARCHAR(100),
+                    summary TEXT,
+                    budget_range VARCHAR(50),
+                    tech_stack JSON,
+                    digital_signature VARCHAR(64),
+                    user_id INT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tasks (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    project_id INT,
+                    title VARCHAR(200),
+                    description TEXT,
+                    estimated_days INT,
+                    priority VARCHAR(20),
+                    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+                )
+            """)
+            conn.commit()
+            st.success("✅ تم تهيئة قاعدة البيانات بنجاح!")
+    except Exception as e:
+        st.error(f"❌ فشل تهيئة قاعدة البيانات: {e}")
+    finally:
+        conn.close()
 # ============================================================
 # 3. نظام المصادقة المتقدم
 # ============================================================
@@ -1144,6 +1249,13 @@ def render_enterprise_sidebar():
 
 def main():
     # تهيئة قاعدة البيانات
+    def main():
+    init_auth()
+    init_database()   # <-- أضف هذا السطر
+    if not st.session_state.authenticated:
+        render_login_page()
+        return
+    # باقي الكود...
     init_database()
     
     init_auth()
