@@ -4,7 +4,7 @@
 """
 ===============================================================================
 © 2026 PHOENIX PRO HYBRID ENTERPRISE ARCHITECTURE. ALL RIGHTS RESERVED.
-دمج المحرك الأمني والهندسي (OOP) مع نظام التسجيل والتوليد النصي الفوري
+دمج المحرك الأمني والهندسي مع نظام الاشتراكات والإشعارات الفورية (Telegram + Email)
 ===============================================================================
 """
 
@@ -19,6 +19,9 @@ import secrets
 import logging
 import requests
 import datetime
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from io import BytesIO
 
 import streamlit as st
@@ -29,14 +32,7 @@ import google.generativeai as genai
 
 # ----------------- Optional Heavy Dependencies -----------------
 try:
-    import pymysql
-    import pymysql.cursors
-    MYSQL_AVAILABLE = True
-except ImportError:
-    MYSQL_AVAILABLE = False
-
-try:
-    from reportlab.lib.pagesizes import A4, letter
+    from reportlab.lib.pagesizes import letter
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
@@ -65,27 +61,79 @@ class VaultSecurity:
         return hashlib.sha256(password.encode()).hexdigest()
 
 # =====================================================================
-# 2. NOTIFICATION & BILLING ENGINE
+# 2. NOTIFICATION & COMMERCE ENGINE (Telegram + SMTP Email)
 # =====================================================================
 class CommercialEngine:
     @staticmethod
-    def send_telegram(plan: dict) -> bool:
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-        chat_id = os.getenv("TELEGRAM_CHAT_ID", "597154321")
-        if not bot_token: return False
+    def send_telegram(plan: dict, bot_token: str, chat_id: str) -> bool:
+        if not bot_token or not chat_id:
+            return False
         
-        msg = f"🚀 *مشروع جديد PHOENIX PRO*\n\n👤 *العميل:* {plan.get('client')}\n💰 *الميزانية:* {plan.get('budget_str')}\n📅 *المدة:* {plan.get('timeline')}\n🔑 *التوقيع:* `{plan.get('signature', 'N/A')}`"
+        msg = (
+            f"🚀 *مشروع جديد PHOENIX PRO*\n\n"
+            f"👤 *العميل:* {plan.get('client')}\n"
+            f"💰 *الميزانية:* {plan.get('budget_str')}\n"
+            f"📅 *المدة:* {plan.get('timeline')}\n"
+            f"🔑 *التوقيع:* `{plan.get('signature', 'N/A')}`\n"
+            f"⏱️ *التاريخ:* {plan.get('timestamp')}"
+        )
         try:
-            requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", 
-                          json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}, timeout=4)
-            return True
+            res = requests.post(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage", 
+                json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}, 
+                timeout=5
+            )
+            return res.status_code == 200
         except Exception:
             return False
 
     @staticmethod
-    def get_checkout_url(email: str) -> str:
+    def send_email(plan: dict, recipient_email: str, smtp_user: str, smtp_pass: str, smtp_host="smtp.gmail.com", smtp_port=587) -> bool:
+        if not smtp_user or not smtp_pass or not recipient_email:
+            return False
+
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = f"🔥 [PHOENIX PRO] الخطة الهندسية المعمارية - {plan.get('client')}"
+            msg["From"] = smtp_user
+            msg["To"] = recipient_email
+
+            tasks_html = "".join([
+                f"<li><b>{t.get('title')}</b> - المدة: {t.get('days')} أيام | التكلفة: ${t.get('cost')}</li>"
+                for t in plan.get("tasks", [])
+            ])
+
+            html_body = f"""
+            <div dir="rtl" style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #f1f5f9; padding: 20px; border-radius: 10px;">
+                <h2 style="color: #3b82f6;">🚀 PHOENIX PRO - الخطة الهندسية المعمارية</h2>
+                <p><b>🏛️ العميل:</b> {plan.get('client')}</p>
+                <p><b>💰 الميزانية:</b> {plan.get('budget_str')}</p>
+                <p><b>📅 المدة الزمنية:</b> {plan.get('timeline')}</p>
+                <p><b>🔑 التوقيع الرقمي (HMAC):</b> <code>{plan.get('signature')}</code></p>
+                <hr style="border: 1px solid #334155;">
+                <h3>📝 الملخص التنفيذي:</h3>
+                <p style="line-height: 1.6;">{plan.get('executive_summary')}</p>
+                <hr style="border: 1px solid #334155;">
+                <h3>🎯 مهام التنفيذ:</h3>
+                <ul>{tasks_html}</ul>
+            </div>
+            """
+            msg.attach(MIMEText(html_body, "html"))
+
+            server = smtplib.SMTP(smtp_host, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, recipient_email, msg.as_string())
+            server.quit()
+            return True
+        except Exception as e:
+            st.warning(f"تعذر إرسال البريد الإلكتروني: {str(e)}")
+            return False
+
+    @staticmethod
+    def get_checkout_url(email: str, plan_type: str = "monthly") -> str:
         store_slug = os.getenv("LEMONSQUEEZY_STORE_SLUG", "mihna")
-        return f"https://{store_slug}.lemonsqueezy.com/buy?checkout[email]={email.strip()}"
+        return f"https://{store_slug}.lemonsqueezy.com/buy?checkout[email]={email.strip()}&plan={plan_type}"
 
 # =====================================================================
 # 3. AI ENGINE
@@ -168,16 +216,16 @@ class ExportEngine:
 # =====================================================================
 def init_session():
     if "users_db" not in st.session_state:
-        # حساب افتراضي للتجربة
         st.session_state.users_db = {
             "eng.alhiadri2020@gmail.com": {
                 "name": "AYAD FAISAL ABDO MOHAMMED",
-                "password": VaultSecurity.hash_password("123456")
+                "password": VaultSecurity.hash_password("123456"),
+                "credits": 5,
+                "plan_status": "Free Trial (5 Credits)"
             }
         }
     if "authenticated" not in st.session_state: st.session_state.authenticated = False
     if "current_user" not in st.session_state: st.session_state.current_user = None
-    if "remaining_credits" not in st.session_state: st.session_state.remaining_credits = 5
     if "plans_history" not in st.session_state: st.session_state.plans_history = []
     if "selected_plan" not in st.session_state: st.session_state.selected_plan = None
 
@@ -188,7 +236,6 @@ def render_auth_page():
     st.markdown("""
     <style>
         .stApp { background-color: #0b0f19; color: #f1f5f9; }
-        .auth-card { background-color: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; }
         .auth-title { font-size: 2rem; font-weight: bold; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
@@ -215,7 +262,7 @@ def render_auth_page():
                     st.error("البريد الإلكتروني أو كلمة المرور غير صحيحة.")
                     
         with tab_signup:
-            st.subheader("حساب جديد")
+            st.subheader("حساب جديد (يتضمن 5 محاولات مجانية)")
             new_name = st.text_input("الاسم الكامل", key="signup_name")
             new_email = st.text_input("البريد الإلكتروني", key="signup_email")
             new_pass = st.text_input("كلمة المرور", type="password", key="signup_pass")
@@ -231,9 +278,11 @@ def render_auth_page():
                 else:
                     st.session_state.users_db[new_email] = {
                         "name": new_name,
-                        "password": VaultSecurity.hash_password(new_pass)
+                        "password": VaultSecurity.hash_password(new_pass),
+                        "credits": 5,
+                        "plan_status": "Free Trial (5 Credits)"
                     }
-                    st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.")
+                    st.success("تم إنشاء الحساب بنجاح! حصلت على 5 محاولات مجانية. يمكنك تسجيل الدخول الآن.")
 
 # =====================================================================
 # 7. MAIN APPLICATION UI
@@ -252,18 +301,22 @@ def main():
     <style>
         .stApp { background-color: #0b0f19; color: #f1f5f9; }
         .hero-header { font-size: 2.2rem; font-weight: 800; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .pay-btn { display: block; background: #2563eb; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+        .pay-btn { display: block; background: #2563eb; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 5px; }
         .plan-box { background-color: #1e293b; border: 1px solid #3b82f6; border-radius: 10px; padding: 20px; margin-top: 20px; }
         .task-card { background-color: #0f172a; padding: 12px; border-radius: 6px; border-right: 4px solid #3b82f6; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
     
-    # Sidebar
+    # ----------------- SIDEBAR -----------------
     with st.sidebar:
         st.title("⚙️ PHOENIX COMMAND")
         st.caption(f"👤 المستخدم: {user.get('name')}")
         st.caption(f"📧 البريد: {user.get('email')}")
-        st.markdown(f"**⚡ التحويلات المتبقية:** `{st.session_state.remaining_credits}`")
+        
+        # عرض الرصيد والاشتراك
+        user_credits = user.get("credits", 0)
+        st.markdown(f"**⚡ التحويلات المتبقية:** `{user_credits}` / 5")
+        st.caption(f"اشتراكك الحالي: {user.get('plan_status', 'Free')}")
         
         if st.button("🚪 تسجيل الخروج", use_container_width=True):
             st.session_state.authenticated = False
@@ -271,21 +324,59 @@ def main():
             st.rerun()
             
         st.divider()
-        api_key = st.text_input("🔑 مفتاح Gemini API", type="password", value=os.getenv("GEMINI_API_KEY", ""))
+        # مخفي بشكل آمن
+        api_key = st.text_input("🔑 مفتاح Gemini API (مخفي)", type="password", value=os.getenv("GEMINI_API_KEY", ""))
         
         st.divider()
-        st.subheader("💳 الاشتراك والتفعيل")
-        pay_email = st.text_input("البريد الإلكتروني للدفوعات", value=user.get('email'))
-        st.markdown(f'<a href="{CommercialEngine.get_checkout_url(pay_email)}" target="_blank" class="pay-btn">💳 الشراء عبر Lemon Squeezy</a>', unsafe_allow_html=True)
+        # ----------------- TELEGRAM NOTIFICATIONS -----------------
+        st.subheader("📲 إشعارات Telegram")
+        tg_bot_token = st.text_input("Telegram Bot Token", type="password", value=os.getenv("TELEGRAM_BOT_TOKEN", ""))
+        tg_chat_id = st.text_input("Telegram Chat ID", value=os.getenv("TELEGRAM_CHAT_ID", "597154321"))
+        if st.button("🔔 اختبار إشعار التلجرام", use_container_width=True):
+            test_plan = {"client": "مشروع تجريبي", "budget_str": "$1,000", "timeline": "أسبوع", "signature": "TEST-123456", "timestamp": "الآن"}
+            if CommercialEngine.send_telegram(test_plan, tg_bot_token, tg_chat_id):
+                st.success("تم إرسال إشعار التلجرام بنجاح! 🚀")
+            else:
+                st.error("فشل إرسال الإشعار. تحقق من البوت وتعرف Chat ID.")
+
+        st.divider()
+        # ----------------- EMAIL NOTIFICATIONS -----------------
+        st.subheader("📧 إشعارات البريد (SMTP)")
+        smtp_user = st.text_input("بريد المرسل (SMTP)", value=os.getenv("SMTP_USER", ""))
+        smtp_pass = st.text_input("كلمة مرور التطبيقات", type="password", value=os.getenv("SMTP_PASS", ""))
         
-        act_code = st.text_input("رمز التفعيل", type="password")
+        st.divider()
+        # ----------------- SUBSCRIPTION & BILLING -----------------
+        st.subheader("💳 خطط الاشتراك والتفعيل")
+        pay_email = st.text_input("البريد الإلكتروني للدفوعات", value=user.get('email'))
+        
+        col_m, col_y = st.columns(2)
+        with col_m:
+            st.markdown(f'<a href="{CommercialEngine.get_checkout_url(pay_email, "monthly")}" target="_blank" class="pay-btn">🗓️ شهري ($29)</a>', unsafe_allow_html=True)
+        with col_y:
+            st.markdown(f'<a href="{CommercialEngine.get_checkout_url(pay_email, "yearly")}" target="_blank" class="pay-btn">⭐ سنوي ($290)</a>', unsafe_allow_html=True)
+        
+        act_code = st.text_input("رمز التفعيل / الكوبون", type="password")
         if st.button("تفعيل الكود", use_container_width=True):
-            if act_code == "PRO2026":
-                st.session_state.remaining_credits = 999
+            if act_code in ["MONTHLY2026", "MONTHLY"]:
+                user["credits"] += 30
+                user["plan_status"] = "الاشتراك الشهري (مُفعل)"
+                st.success("تم تفعيل الاشتراك الشهري (+30 محاولة)!")
+                st.rerun()
+            elif act_code in ["ANNUAL2026", "YEARLY"]:
+                user["credits"] += 500
+                user["plan_status"] = "الاشتراك السنوي (مُفعل)"
+                st.success("تم تفعيل الاشتراك السنوي (+500 محاولة)!")
+                st.rerun()
+            elif act_code == "PRO2026":
+                user["credits"] = 9999
+                user["plan_status"] = "باقة المطورين غير المحدودة"
                 st.success("تم تفعيل الباقة المفتوحة!")
                 st.rerun()
+            else:
+                st.error("رمز التفعيل غير صحيح.")
 
-    # Main Dashboard
+    # ----------------- MAIN DASHBOARD -----------------
     st.markdown('<div class="hero-header">🔥 PHOENIX PRO ENTERPRISE HYBRID</div>', unsafe_allow_html=True)
     
     t1, t2, t3 = st.tabs(["🚀 توليد المعمارية", "📊 التحليلات والأرشيف", "📦 التصدير والتوثيق"])
@@ -303,24 +394,35 @@ def main():
         
         if st.button("⚡ بدء التوليد والتوقيع المشفر", use_container_width=True, type="primary"):
             if not api_key:
-                st.error("يرجى إدخال مفتاح API أولاً من القائمة الجانبية.")
-            elif st.session_state.remaining_credits <= 0:
-                st.error("استنفذت رصيدك المجاني. يرجى التفعيل من الجانب.")
+                st.error("يرجى إدخال مفتاح Gemini API أولاً من القائمة الجانبية.")
+            elif user.get("credits", 0) <= 0:
+                st.error("❌ استنفذت رصيدك المجاني (5/5). يرجى الاشتراك في إحدى الباقات (الشهرية أو السنوية) للبدء من جديد!")
             else:
-                with st.spinner("جاري التحليل المعماري وإرسال التنبيهات..."):
+                with st.spinner("جاري التحليل المعماري، الخصم من الرصيد، وإرسال الإشعارات..."):
                     req_payload = {"client": client, "budget": budget, "timeline": timeline, "tech": tech, "desc": desc}
                     try:
                         plan = PhoenixAI.generate_architecture(api_key, req_payload)
                         st.session_state.plans_history.append(plan)
                         st.session_state.selected_plan = plan
-                        st.session_state.remaining_credits -= 1
-                        CommercialEngine.send_telegram(plan)
-                        st.success("✅ تم بناء وتوقيع المعمارية بنجاح!")
+                        
+                        # خصم محاولة من رصيد المستخدم
+                        user["credits"] -= 1
+                        
+                        # إرسال إشعار تلجرام
+                        if tg_bot_token and tg_chat_id:
+                            CommercialEngine.send_telegram(plan, tg_bot_token, tg_chat_id)
+                        
+                        # إرسال إشعار بالبريد
+                        if smtp_user and smtp_pass:
+                            CommercialEngine.send_email(plan, user.get("email"), smtp_user, smtp_pass)
+
+                        st.success(f"✅ تم بناء وتوقيع المعمارية بنجاح! الرصيد المتبقي لديك: {user['credits']} محاولات.")
+                        st.rerun()
                     except Exception as err:
                         st.error(str(err))
 
         # -------------------------------------------------------------
-        # الميزة الجديدة: عرض الخطة الهندسية نصياً تحت الزر مباشرة
+        # عرض الخطة الهندسية نصياً تحت الزر مباشرة
         # -------------------------------------------------------------
         if st.session_state.selected_plan:
             plan = st.session_state.selected_plan
