@@ -376,15 +376,19 @@ def inject_custom_css():
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap');
 
-        /* 🔴 1. FIX MATERIAL ICONS EXCLUSIVELY (استثناء الأيقونات من خط القاهرة لمنع التشوه) */
+        /* 🔴 1. FIX SIDEBAR COLLAPSE BUTTON & MATERIAL ICONS (إصلاح زر الإغلاق والأيقونات) */
+        [data-testid="stSidebarCollapseButton"],
         [data-testid="stSidebarCollapseButton"] *,
+        [data-testid="stSidebarHeader"] *,
+        [data-testid="stIcon"],
         [data-testid="stIcon"] *,
-        [data-baseweb="icon"] *,
-        .material-icons,
-        [class*="material-symbols"],
-        span[class*="css-"] i {{
+        [data-baseweb="icon"],
+        [data-baseweb="icon"] * {{
             font-family: 'Material Icons', 'Material Symbols Outlined' !important;
             direction: ltr !important;
+            white-space: nowrap !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
         }}
 
         /* 🔵 2. BASE TYPOGRAPHY & LAYOUT CONTROL */
@@ -397,10 +401,10 @@ def inject_custom_css():
             overflow-x: hidden !important;
         }}
 
-        /* 🟣 3. SIDEBAR FIXES (منع تداخل النصوص رأسياً في الهواتف) */
+        /* 🟣 3. SIDEBAR FIXES & TEXT WRAPPING (تنسيق القائمة الجانبية بشكل آمن) */
         [data-testid="stSidebar"] {{
             background-color: {bg_sidebar} !important;
-            border-{ 'left' if lang == 'ar' else 'right' }: 1px solid {border_color} !important;
+            border-{'left' if lang == 'ar' else 'right'}: 1px solid {border_color} !important;
             width: 320px !important;
             min-width: 300px !important;
         }}
@@ -410,17 +414,18 @@ def inject_custom_css():
             overflow-x: hidden !important;
         }}
 
+        /* إبقاء التفاف النصوص آمن حصرياً لفقرات وشعارات الشريط الجانبي دون لمس الأيقونات */
         [data-testid="stSidebar"] h1, 
         [data-testid="stSidebar"] h2, 
         [data-testid="stSidebar"] h3, 
-        [data-testid="stSidebar"] span, 
-        [data-testid="stSidebar"] p {{
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] .stMarkdown span {{
             color: {text_color} !important;
             word-break: break-word !important;
             white-space: normal !important;
         }}
 
-        /* 🟢 4. HIGH-CONTRAST SIDEBAR BUTTONS (إصلاح الأزرار الباهتة) */
+        /* 🟢 4. HIGH-CONTRAST SIDEBAR BUTTONS */
         [data-testid="stSidebar"] .stButton > button {{
             background: {btn_bg} !important;
             color: {btn_text} !important;
@@ -473,7 +478,7 @@ def inject_custom_css():
             background-color: {bg_input};
             padding: 14px;
             border-radius: 8px;
-            border-{ 'right' if lang == 'ar' else 'left' }: 4px solid #3b82f6;
+            border-{'right' if lang == 'ar' else 'left'}: 4px solid #3b82f6;
             margin-bottom: 10px;
         }}
 
