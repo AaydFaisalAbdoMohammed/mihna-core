@@ -1,0 +1,179 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+وحدة الاتصال بقاعدة البيانات - تدعم Cloud SQL ووضع المحاكاة المحلية
+"""
+
+import os
+import json
+import mysql.connector
+from mysql.connector import Error
+import streamlit as st
+
+# ============================================================
+# بيانات الاتصال (تُقرأ من متغيرات البيئة)
+# ============================================================
+CLOUD_SQL_CONNECTION_NAME = os.getenv("CLOUD_SQL_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:us-central1:mihna-agent")
+DB_USER = os.getenv("DB_USER", "mihna_app_user")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "101519Ayad@")
+DB_NAME = os.getenv("DB_NAME", "mihna_agent")
+DB_HOST = os.getenv("DB_HOST", "8.231.102.92")
+DB_PORT = int(os.getenv("DB_PORT", 3306))
+
+# ============================================================
+# دوال الاتصال (تدعم Socket و TCP/IP)
+# ============================================================
+def get_db_connection():
+    """إنشاء اتصال بقاعدة البيانات (Socket أو TCP/IP)."""
+    try:
+        # محاولة الاتصال عبر Socket (لـ Cloud Run)
+        conn = mysql.connector.connect(
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            unix_socket=f"/cloudsql/{CLOUD_SQL_CONNECTION_NAME}",
+            connect_timeout=10,
+            use_pure=True,
+            auth_plugin='mysql_native_password'
+        )
+        if conn.is_connected():
+            return conn
+        return None
+    except Error as e:
+        # إذا فشل Socket، جرب TCP/IP (للبيئات الأخرى)
+        try:
+            conn = mysql.connector.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                port=DB_PORT,
+                connect_timeout=10,
+                use_pure=True
+            )
+            if conn.is_connected():
+                return conn
+            return None
+        except Error as e2:
+            st.error(f"❌ فشل الاتصال بقاعدة البيانات: {e2}")
+            return None
+    except Exception as e:
+        st.error(f"❌ خطأ غير متوقع: {e}")
+        return None
+
+def save_to_cloudsql(project_data, user_id=None):
+    """حفظ المشروع في قاعدة البيانات."""
+    if user_id is None:
+        user_id = st.session_state.get("user_id")
+    if user_id is None:
+        st.error("⚠️ يجب تسجيل الدخول أولاً")
+        return False
+    
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        if not cursor.fetchone():
+            conn.close()
+            st.error("⚠️ المستخدم غير موجود")
+            return False
+        
+        cursor.execute("""
+            INSERT INTO projects (user_id, client_name, summary, tech_stack, budget_range, status)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            user_id,
+            project_data.get('client_name', 'عميل غير معروف')[:255],
+            project_data.get('project_summary', 'لا يوجد ملخص')[:5000],
+            json.dumps(project_data.get('suggested_tech_stack', [])),
+            project_data.get('estimated_budget_range', 'غير محدد')[:100],
+            'pending'
+        ))
+        project_id = cursor.lastrowid
+        
+        for task in project_data.get('generated_tasks', []):
+            cursor.execute("""
+                INSERT INTO tasks (project_id, title, description, estimated_days, priority, status)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                project_id,
+                task.get('title', 'مهمة بدون عنوان')[:255],
+                task.get('description', 'لا يوجد وصف')[:1000],
+                task.get('estimated_days', 2),
+                task.get('priority', 'Medium'),
+                'open'
+            ))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Error as e:
+        conn.rollback()
+        st.error(f"❌ خطأ في حفظ المشروع: {e}")
+        conn.close()
+        return False
+
+def get_similar_projects(idea, top_k=2):
+    """البحث عن مشاريع مشابهة (RAG)."""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, client_name, summary, tech_stack, budget_range
+            FROM projects
+            WHERE summary LIKE %s
+            LIMIT %s
+        """, (f"%{idea[:50]}%", top_k))
+        results = cursor.fetchall()
+        conn.close()
+        return results
+    except Error as e:
+        conn.close()
+        return []
+
+def get_all_projects(user_id=None):
+    """استرجاع جميع مشاريع المستخدم."""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        cursor = conn.cursor(dictionary=True)
+        if user_id:
+            cursor.execute("""
+                SELECT id, client_name, summary, tech_stack, budget_range, status, created_at
+                FROM projects
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+            """, (user_id,))
+        else:
+            cursor.execute("""
+                SELECT id, client_name, summary, tech_stack, budget_range, status, created_at
+                FROM projects
+                ORDER BY created_at DESC
+            """)
+        results = cursor.fetchall()
+        conn.close()
+        return results
+    except Error as e:
+        conn.close()
+        return []
+
+def save_shared_link(share_id, project_id, expires_at):
+    """حفظ رابط المشاركة."""
+    return True  # محاكاة حالياً
+
+def get_shared_project(share_id):
+    """استرجاع مشروع من رابط مشاركة."""
+    return None  # محاكاة حالياً
+
+def log_user_event(user_id, event_type, event_data):
+    """تسجيل حدث مستخدم."""
+    return True  # محاكاة حالياً
+
+print("✅ تم تحميل cloudsql_utils.py")
