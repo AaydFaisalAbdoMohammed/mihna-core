@@ -3,12 +3,13 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE. ALL RIGHTS RESERVED.
-UNAUTHORIZED COPYING, MODIFICATION, OR DISTRIBUTION IS STRICTLY PROHIBITED.
+© 2026 PHOENIX PRO HYBRID ENTERPRISE ARCHITECTURE. ALL RIGHTS RESERVED.
+دمج المحرك الأمني والهندسي (OOP) مع بوابات الدفع والإشعارات والنشر السحابي
 ===============================================================================
 """
 
 import os
+import re
 import json
 import uuid
 import hashlib
@@ -16,365 +17,254 @@ import hmac
 import time
 import secrets
 import logging
-import base64
-import getpass
 import requests
-from datetime import datetime, timedelta
+import datetime
 from io import BytesIO
 
-# ----------------- Core Dependencies -----------------
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import google.generativeai as genai
 
-# ----------------- Optional/Heavy Dependencies -----------------
-try: import bcrypt; BCRYPT_AVAILABLE = True
-except ImportError: BCRYPT_AVAILABLE = False
-
-try: import jwt; JWT_AVAILABLE = True
-except ImportError: JWT_AVAILABLE = False
-
-try: import pymysql; import pymysql.cursors; MYSQL_AVAILABLE = True
-except ImportError: MYSQL_AVAILABLE = False
+# ----------------- Optional Heavy Dependencies -----------------
+try:
+    import pymysql
+    import pymysql.cursors
+    MYSQL_AVAILABLE = True
+except ImportError:
+    MYSQL_AVAILABLE = False
 
 try:
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, letter
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
     REPORTLAB_AVAILABLE = True
-except ImportError: REPORTLAB_AVAILABLE = False
+except ImportError:
+    REPORTLAB_AVAILABLE = False
 
 # =====================================================================
-# 1. SYSTEM SECURITY & ANTI-TAMPER ENGINE
+# 1. SYSTEM SECURITY & INTEGRITY ENGINE
 # =====================================================================
 class VaultSecurity:
-    """محرك الأمان المركزي وحماية الملكية الفكرية"""
-    
-    SYSTEM_SALT = os.getenv("PHOENIX_SALT", secrets.token_hex(32))
-    MASTER_KEY = os.getenv("PHOENIX_MASTER", secrets.token_hex(64))
-    
+    HMAC_KEY = os.getenv("HMAC_KEY", secrets.token_hex(32))
+
     @classmethod
-    def get_environment_fingerprint(cls) -> str:
-        """يولد بصمة فريدة لبيئة الاستضافة بأسلوب آمن سحابياً بدون أخطاء TTY"""
-        try:
-            user = getpass.getuser()
-        except Exception:
-            user = os.getenv("USER", os.getenv("USERNAME", "cloud_env"))
-            
-        nodename = os.uname().nodename if hasattr(os, 'uname') else "unknown_node"
-        machine = os.uname().machine if hasattr(os, 'uname') else "unknown_arch"
-        
-        env_data = f"{nodename}-{machine}-{user}"
-        return hashlib.sha3_256((env_data + cls.SYSTEM_SALT).encode()).hexdigest()[:32]
+    def get_fingerprint(cls) -> str:
+        seed = f"{os.getenv('HOSTNAME', 'cloud_node')}-{datetime.datetime.now().isoformat()}-{uuid.uuid4()}"
+        return hashlib.sha256(seed.encode()).hexdigest()[:24]
 
     @classmethod
     def sign_payload(cls, payload: dict) -> str:
-        """توقيع البيانات لمنع التلاعب (HMAC)"""
         payload_str = json.dumps(payload, sort_keys=True)
-        return hmac.new(cls.MASTER_KEY.encode(), payload_str.encode(), hashlib.sha512).hexdigest()
+        return hmac.new(cls.HMAC_KEY.encode(), payload_str.encode(), hashlib.sha512).hexdigest()[:32]
+
+# =====================================================================
+# 2. NOTIFICATION & BILLING ENGINE
+# =====================================================================
+class CommercialEngine:
+    @staticmethod
+    def send_telegram(plan: dict) -> bool:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        chat_id = os.getenv("TELEGRAM_CHAT_ID", "597154321")
+        if not bot_token: return False
+        
+        msg = f"🚀 *مشروع جديد PHOENIX PRO*\n\n👤 *العميل:* {plan.get('client')}\n💰 *الميزانية:* {plan.get('budget_str')}\n📅 *المدة:* {plan.get('timeline')}\n🔑 *التوقيع:* `{plan.get('signature', 'N/A')}`"
+        try:
+            requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", 
+                          json={"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}, timeout=4)
+            return True
+        except Exception:
+            return False
 
     @staticmethod
-    def verify_license() -> bool:
-        """التحقق من ترخيص النظام"""
-        return True 
+    def get_checkout_url(email: str) -> str:
+        store_slug = os.getenv("LEMONSQUEEZY_STORE_SLUG", "mihna")
+        return f"https://{store_slug}.lemonsqueezy.com/buy?checkout[email]={email.strip()}"
 
 # =====================================================================
-# 2. DATABASE ARCHITECTURE (ZERO-DELETION POLICY)
-# =====================================================================
-class EnterpriseDB:
-    """
-    إدارة قواعد البيانات مع سياسة صارمة: يمنع الحذف نهائياً (No DELETE Operations).
-    """
-    
-    @staticmethod
-    def get_connection():
-        if not MYSQL_AVAILABLE: return None
-        try:
-            return pymysql.connect(
-                host=os.getenv("DB_HOST", "127.0.0.1"),
-                user=os.getenv("DB_USER", "root"),
-                password=os.getenv("DB_PASSWORD", ""),
-                database=os.getenv("DB_NAME", "phoenix_db"),
-                charset="utf8mb4",
-                cursorclass=pymysql.cursors.DictCursor
-            )
-        except Exception as e:
-            logging.warning(f"Database connection bypassed: {e}")
-            return None
-
-    @classmethod
-    def initialize_schema(cls):
-        conn = cls.get_connection()
-        if not conn: return
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS users (
-                        id VARCHAR(36) PRIMARY KEY,
-                        username VARCHAR(50) UNIQUE,
-                        password_hash VARCHAR(255),
-                        is_active BOOLEAN DEFAULT TRUE,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS projects (
-                        id VARCHAR(36) PRIMARY KEY,
-                        client_name VARCHAR(100),
-                        project_data JSON,
-                        data_signature TEXT,
-                        is_archived BOOLEAN DEFAULT FALSE,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                conn.commit()
-        finally:
-            conn.close()
-
-# =====================================================================
-# 3. AI & BUSINESS LOGIC ENGINE
+# 3. AI ENGINE
 # =====================================================================
 class PhoenixAI:
-    """محرك الذكاء الاصطناعي المتصل بـ Gemini"""
-    
     @staticmethod
-    def architect_solution(api_key: str, client_req: dict) -> dict:
+    def generate_architecture(api_key: str, req: dict) -> dict:
         genai.configure(api_key=api_key)
-        
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            generation_config={"response_mime_type": "application/json"}
-        )
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
         prompt = f"""
-        أنت مهندس برمجيات ومهندس ميكانيكي ومدير مشاريع تقنية في منصة PHOENIX PRO.
-        قم بتحليل هذا المشروع وتوليد خطة استراتيجية.
-        - العميل: {client_req['client']}
-        - المتطلبات: {client_req['scope']}
-        - العملة المعتمدة للتقييم: الريال اليمني (YER) حصراً.
-        
-        أخرج البيانات بتنسيق JSON حصرياً ويحتوي على:
+        أنت مستشار وحاكم معماري في PHOENIX PRO. قم بتحليل هذا المشروع:
+        - العميل: {req['client']}
+        - الوصف والنطاق: {req['desc']}
+        - الميزانية: {req['budget']}
+        - الجدول الزمني: {req['timeline']}
+        - التقنيات المفضلة: {req['tech']}
+
+        أخرج البيانات بتنسيق JSON حصرياً بالهيكل التالي:
         {{
-            "project_id": "UUID-V4",
-            "executive_summary": "ملخص تنفيذي عميق",
-            "architecture_stack": ["Tech 1", "Tech 2"],
-            "total_budget_yer": 5000000,
-            "timeline_days": 45,
-            "system_modules": [
-                {{"module": "اسم الوحدة", "complexity": "High", "cost_yer": 1000000}}
-            ],
-            "security_clearance": "Level 3"
+            "client": "{req['client']}",
+            "executive_summary": "ملخص معماري وشامل",
+            "tech_stack": ["Tech 1", "Tech 2"],
+            "budget_str": "{req['budget']}",
+            "timeline": "{req['timeline']}",
+            "risk_score": 15,
+            "confidence_score": 90,
+            "tasks": [
+                {{"title": "المهمة 1", "days": 5, "cost": 1200, "priority": "عالية"}},
+                {{"title": "المهمة 2", "days": 10, "cost": 2400, "priority": "متوسطة"}}
+            ]
         }}
         """
-        
         try:
             response = model.generate_content(prompt)
-            data = json.loads(response.text)
-            data['security_signature'] = VaultSecurity.sign_payload(data)
-            data['hardware_fingerprint'] = VaultSecurity.get_environment_fingerprint()
+            match = re.search(r"\{.*\}", response.text, re.DOTALL)
+            data = json.loads(match.group() if match else response.text)
+            data["signature"] = VaultSecurity.sign_payload(data)
+            data["timestamp"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
             return data
         except Exception as e:
-            return {"error": str(e)}
+            raise ValueError(f"فشل التحليل المعماري: {str(e)}")
 
 # =====================================================================
-# 4. EXPORT & REPORTING ENGINE
+# 4. EXPORT ENGINE
 # =====================================================================
-class ReportEngine:
+class ExportEngine:
     @staticmethod
-    def generate_excel(data: dict) -> bytes:
-        output = BytesIO()
-        modules = data.get("system_modules", [])
-        if not modules: return b""
-        
-        df = pd.DataFrame(modules)
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name='Architecture', index=False)
-            
-            workbook = writer.book
-            worksheet = writer.sheets['Architecture']
-            header_format = workbook.add_format({'bold': True, 'bg_color': '#1e293b', 'font_color': 'white'})
-            for col_num, value in enumerate(df.columns.values):
-                worksheet.write(0, col_num, value, header_format)
-                worksheet.set_column(col_num, col_num, 20)
-                
-        return output.getvalue()
-
-    @staticmethod
-    def generate_pdf(data: dict) -> bytes:
+    def build_pdf(data: dict) -> bytes:
         if not REPORTLAB_AVAILABLE: return b""
-        output = BytesIO()
-        doc = SimpleDocTemplate(output, pagesize=A4)
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
         styles = getSampleStyleSheet()
-        story = []
+        story = [Paragraph(f"<b>Enterprise Architecture Document: {data.get('client')}</b>", styles['Title']), Spacer(1, 12)]
         
-        story.append(Paragraph(f"<b>Enterprise Architecture Document</b>", styles['Title']))
-        story.append(Spacer(1, 12))
-        story.append(Paragraph(f"Client: {data.get('client', 'Confidential')}", styles['Normal']))
-        story.append(Paragraph(f"Digital Signature: {data.get('security_signature', 'N/A')[:30]}...", styles['Normal']))
-        story.append(Spacer(1, 20))
-        
-        modules = data.get("system_modules", [])
-        if modules:
-            table_data = [["Module", "Complexity", "Cost (YER)"]]
-            for m in modules:
-                table_data.append([m.get("module"), m.get("complexity"), f"{m.get('cost_yer'):,}"])
+        table_data = [["Task", "Days", "Cost ($)", "Priority"]]
+        for t in data.get("tasks", []):
+            table_data.append([t.get('title'), str(t.get('days')), f"${t.get('cost')}", t.get('priority')])
             
-            t = Table(table_data, colWidths=[200, 100, 100])
-            t.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#0f172a")),
-                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                ('BOTTOMPADDING', (0,0), (-1,0), 12),
-                ('BACKGROUND', (0,1), (-1,-1), colors.HexColor("#f8fafc")),
-                ('GRID', (0,0), (-1,-1), 1, colors.black)
-            ]))
-            story.append(t)
-            
+        t = Table(table_data)
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#cbd5e1"))
+        ]))
+        story.append(t)
         doc.build(story)
-        return output.getvalue()
+        return buffer.getvalue()
+
+    @staticmethod
+    def build_excel(tasks: list) -> bytes:
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            pd.DataFrame(tasks).to_excel(writer, index=False, sheet_name="Architecture_Plan")
+        return buffer.getvalue()
 
 # =====================================================================
-# 5. USER INTERFACE (STREAMLIT APP)
+# 5. STREAMLIT APPLICATION UI
 # =====================================================================
-def apply_enterprise_theme():
-    st.set_page_config(page_title="PHOENIX PRO | Enterprise", layout="wide", initial_sidebar_state="expanded")
-    st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-        html, body, [class*="css"] { font-family: 'Cairo', sans-serif; direction: rtl; }
-        .stApp { background-color: #020617; color: #f1f5f9; }
-        .hero-title { background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; font-size: 3rem; text-align: center; }
-        .metric-box { background: rgba(30, 41, 59, 0.7); border-radius: 12px; padding: 20px; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        .stButton>button { background: linear-gradient(to right, #2563eb, #4f46e5); color: white; border: none; border-radius: 8px; padding: 10px 24px; font-weight: bold; width: 100%; transition: all 0.3s ease; }
-        .stButton>button:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4); }
-        .security-badge { font-size: 0.75rem; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid #10b981; }
-    </style>
-    """, unsafe_allow_html=True)
-
-def render_sidebar():
-    with st.sidebar:
-        st.markdown("### 🛡️ PHOENIX COMMAND")
-        if not VaultSecurity.verify_license():
-            st.error("❌ ترخيص غير صالح")
-            st.stop()
-            
-        st.markdown(f'<span class="security-badge">✓ System Integrity Verified</span>', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size:0.7rem; color:#64748b; margin-top:5px; margin-bottom:20px;">FP: {VaultSecurity.get_environment_fingerprint()[:16]}</div>', unsafe_allow_html=True)
-        
-        api_key = st.text_input("🔑 مفتاح Gemini API", type="password", key="api_key")
-        
-        st.divider()
-        st.markdown("**إعدادات الحساب**")
-        st.metric("رصيد المحفظة", "1,500,000 ر.ي", "+15%")
-        st.metric("المهام المنجزة", "42")
+def init_session():
+    if "user_name" not in st.session_state: st.session_state.user_name = "AYAD FAISAL ABDO MOHAMMED"
+    if "remaining_credits" not in st.session_state: st.session_state.remaining_credits = 5
+    if "plans_history" not in st.session_state: st.session_state.plans_history = []
+    if "selected_plan" not in st.session_state: st.session_state.selected_plan = None
 
 def main():
-    apply_enterprise_theme()
-    EnterpriseDB.initialize_schema()
+    st.set_page_config(page_title="PHOENIX PRO | Hybrid Enterprise", page_icon="🚀", layout="wide")
+    init_session()
     
-    if "project_data" not in st.session_state: st.session_state.project_data = None
+    st.markdown("""
+    <style>
+        .stApp { background-color: #0b0f19; color: #f1f5f9; }
+        .hero-header { font-size: 2.2rem; font-weight: 800; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+        .pay-btn { display: block; background: #2563eb; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
     
-    render_sidebar()
+    # Sidebar
+    with st.sidebar:
+        st.title("⚙️ PHOENIX COMMAND")
+        st.caption(f"👤 المستخدم: {st.session_state.user_name}")
+        st.markdown(f"**⚡ التحويلات المتبقية:** `{st.session_state.remaining_credits}`")
+        
+        st.divider()
+        api_key = st.text_input("🔑 مفتاح Gemini API", type="password", value=os.getenv("GEMINI_API_KEY", ""))
+        
+        st.divider()
+        st.subheader("💳 الاشتراك والتفعيل")
+        pay_email = st.text_input("البريد الإلكتروني", value="eng.alhiadri2020@gmail.com")
+        st.markdown(f'<a href="{CommercialEngine.get_checkout_url(pay_email)}" target="_blank" class="pay-btn">💳 الشراء عبر Lemon Squeezy</a>', unsafe_allow_html=True)
+        
+        act_code = st.text_input("رمز التفعيل", type="password")
+        if st.button("تفعيل الكود", use_container_width=True):
+            if act_code == "PRO2026":
+                st.session_state.remaining_credits = 999
+                st.success("تم تفعيل الباقة المفتوحة!")
+                st.rerun()
+
+    # Main Dashboard
+    st.markdown('<div class="hero-header">🔥 PHOENIX PRO ENTERPRISE HYBRID</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="hero-title">PHOENIX PRO ENTERPRISE</div>', unsafe_allow_html=True)
-    st.markdown('<p style="text-align:center; color:#94a3b8; margin-bottom:40px;">نظام هندسة وإدارة المشاريع فائق الحماية</p>', unsafe_allow_html=True)
+    t1, t2, t3 = st.tabs(["🚀 توليد المعمارية", "📊 التحليلات والأرشيف", "📦 التصدير والتوثيق"])
     
-    tab1, tab2, tab3 = st.tabs(["⚙️ هندسة الأنظمة", "📈 تحليلات الميزانية", "📦 التصدير الآمن"])
-    
-    # ------------------- TAB 1: GENERATION -------------------
-    with tab1:
-        c1, c2 = st.columns([2, 1])
+    with t1:
+        c1, c2 = st.columns(2)
         with c1:
-            scope = st.text_area("📋 النطاق البرمجي أو الهندسي للمشروع:", height=150, placeholder="أدخل متطلبات المشروع المعقدة هنا...")
+            client = st.text_input("اسم العميل / الشركة", value="مؤسسة أفق")
+            budget = st.text_input("الميزانية التقديرية", value="8000 - 12000 $")
         with c2:
-            client = st.text_input("🏢 الجهة أو العميل:")
-            priority = st.selectbox("⚡ الأولوية", ["عالية جداً (Enterprise)", "متوسطة (Business)", "عادية (Startup)"])
+            timeline = st.text_input("المدة الزمنية", value="6 أسابيع")
+            tech = st.text_input("التقنيات التفضيلية", value="Flutter, Node.js, PostgreSQL")
             
-        if st.button("🚀 بدء التحليل المعماري وتوليد النظام"):
-            if not st.session_state.api_key:
-                st.error("⚠️ يرجى إدخال مفتاح API في القائمة الجانبية.")
-            elif not scope or not client:
-                st.error("⚠️ يرجى تعبئة بيانات العميل ونطاق المشروع.")
+        desc = st.text_area("نطاق المشروع والمتطلبات التفصيلية", value="تطوير منصة سحابية لإدارة العقود وتتبع الصيانة مع بوابات دفع متكاملة.")
+        
+        if st.button("⚡ بدء التوليد والتوقيع المشفر", use_container_width=True):
+            if not api_key:
+                st.error("يرجى إدخال مفتاح API أولاً.")
+            elif st.session_state.remaining_credits <= 0:
+                st.error("استنفذت رصيدك المجاني.")
             else:
-                with st.spinner("🔄 يتم الآن دمج متطلباتك عبر خوارزميات الذكاء الاصطناعي وبناء الهيكلية..."):
-                    req = {"client": client, "scope": scope, "priority": priority}
-                    result = PhoenixAI.architect_solution(st.session_state.api_key, req)
+                with st.spinner("جاري التحليل المعماري وإرسال التنبيهات..."):
+                    req_payload = {"client": client, "budget": budget, "timeline": timeline, "tech": tech, "desc": desc}
+                    plan = PhoenixAI.generate_architecture(api_key, req_payload)
                     
-                    if "error" in result:
-                        st.error(f"❌ حدث خطأ أثناء التوليد: {result['error']}")
-                    else:
-                        st.session_state.project_data = result
-                        st.success("✅ تم بناء معمارية المشروع بنجاح و توقيعها تشفيرياً!")
+                    st.session_state.plans_history.append(plan)
+                    st.session_state.selected_plan = plan
+                    st.session_state.remaining_credits -= 1
+                    
+                    CommercialEngine.send_telegram(plan)
+                    st.success("✅ تم بناء وتوقيع المعمارية بنجاح!")
 
-        if st.session_state.project_data:
-            st.divider()
-            data = st.session_state.project_data
-            st.subheader("📑 الملخص التنفيذي للهندسة المعتمدة")
-            st.info(data.get("executive_summary", ""))
+    with t2:
+        if st.session_state.selected_plan:
+            p = st.session_state.selected_plan
+            st.subheader(f"📊 تحليل المعمارية: {p.get('client')}")
             
-            st.subheader("🛠️ الترسانة التقنية المقترحة")
-            techs = data.get("architecture_stack", [])
-            cols = st.columns(min(len(techs), 5))
-            for idx, tech in enumerate(techs[:5]):
-                cols[idx].markdown(f'<div style="background:#1e293b; padding:10px; border-radius:5px; text-align:center; border:1px solid #334155;">{tech}</div>', unsafe_allow_html=True)
-
-    # ------------------- TAB 2: ANALYTICS -------------------
-    with tab2:
-        if st.session_state.project_data:
-            data = st.session_state.project_data
+            k1, k2, k3 = st.columns(3)
+            k1.metric("درجة المخاطرة", f"{p.get('risk_score')}%")
+            k2.metric("نسبة الدقة والاعتماد", f"{p.get('confidence_score')}%")
+            k3.metric("توقيع النظام", p.get('signature')[:12] + "...")
             
-            col1, col2, col3 = st.columns(3)
-            col1.markdown(f'<div class="metric-box"><h4>الميزانية الإجمالية</h4><h2 style="color:#10b981;">{data.get("total_budget_yer", 0):,} ر.ي</h2></div>', unsafe_allow_html=True)
-            col2.markdown(f'<div class="metric-box"><h4>الجدول الزمني</h4><h2 style="color:#38bdf8;">{data.get("timeline_days", 0)} يوم</h2></div>', unsafe_allow_html=True)
-            col3.markdown(f'<div class="metric-box"><h4>مستوى الأمان</h4><h2 style="color:#f59e0b;">{data.get("security_clearance", "N/A")}</h2></div>', unsafe_allow_html=True)
-            
-            modules = data.get("system_modules", [])
-            if modules:
-                st.markdown("### 📊 توزيع الموارد والوحدات")
-                df = pd.DataFrame(modules)
-                
-                c_chart1, c_chart2 = st.columns(2)
-                with c_chart1:
-                    fig1 = px.pie(df, values='cost_yer', names='module', title='توزيع التكلفة (بالريال اليمني) على الوحدات', hole=0.4, template="plotly_dark")
-                    st.plotly_chart(fig1, use_container_width=True)
-                with c_chart2:
-                    fig2 = px.bar(df, x='module', y='cost_yer', color='complexity', title='تحليل التعقيد والتكلفة', template="plotly_dark")
-                    st.plotly_chart(fig2, use_container_width=True)
+            tasks = p.get("tasks", [])
+            if tasks:
+                df = pd.DataFrame(tasks)
+                fig = px.bar(df, x="title", y="days", color="priority", title="توزيع الأيام على المهمات", template="plotly_dark")
+                st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("قم بتوليد معمارية النظام أولاً لرؤية التحليلات.")
+            st.info("قم بتوليد خطة من التبويب الأول للبدء.")
 
-    # ------------------- TAB 3: SECURE EXPORT -------------------
-    with tab3:
-        if st.session_state.project_data:
-            st.markdown("### 🔐 مركز التصدير الموثق")
-            data = st.session_state.project_data
+    with t3:
+        if st.session_state.selected_plan:
+            p = st.session_state.selected_plan
+            st.subheader("📦 تصدير المستندات المعتمدة")
+            st.code(f"Digital HMAC Signature: {p.get('signature')}", language="json")
             
-            st.markdown(f"""
-            **بصمة التشفير (HMAC-SHA512):**  
-            `{data.get('security_signature')}`
-            """)
-            
-            e1, e2, e3 = st.columns(3)
-            
-            json_str = json.dumps(data, ensure_ascii=False, indent=2)
-            e1.download_button("📦 تحميل كـ JSON مشفر", json_str, "architecture.json", "application/json")
-            
-            excel_data = ReportEngine.generate_excel(data)
-            if excel_data:
-                e2.download_button("📊 تحميل الجداول كـ Excel", excel_data, "modules.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                
+            ec1, ec2, ec3 = st.columns(3)
+            ec1.download_button("📦 تصدير JSON المشفر", json.dumps(p, ensure_ascii=False, indent=2), "plan.json", "application/json", use_container_width=True)
+            ec2.download_button("📊 تصدير جدول Excel", ExportEngine.build_excel(p.get("tasks", [])), "plan.xlsx", use_container_width=True)
             if REPORTLAB_AVAILABLE:
-                pdf_data = ReportEngine.generate_pdf(data)
-                if pdf_data:
-                    e3.download_button("📄 تحميل التقرير كـ PDF", pdf_data, "report.pdf", "application/pdf")
-            else:
-                e3.info("مكتبة ReportLab مطلوبة لإنشاء PDF")
+                ec3.download_button("📄 تصدير تقرير PDF", ExportEngine.build_pdf(p), "plan.pdf", "application/pdf", use_container_width=True)
         else:
-            st.info("لا توجد بيانات موثقة للتصدير.")
+            st.info("لا توجد خطة جاهزة للتصدير.")
 
 if __name__ == "__main__":
     main()
