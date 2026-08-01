@@ -1249,9 +1249,8 @@ def render_enterprise_sidebar():
 
 def main():
     # تهيئة قاعدة البيانات
-    def main():
     init_auth()
-    init_database()   # <-- أضف هذا السطر
+    #init_database()   # <-- أضف هذا السطر
     if not st.session_state.authenticated:
         render_login_page()
         return
