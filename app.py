@@ -17,6 +17,7 @@ import time
 import secrets
 import logging
 import base64
+import getpass
 import requests
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -57,8 +58,16 @@ class VaultSecurity:
     
     @classmethod
     def get_environment_fingerprint(cls) -> str:
-        """يولد بصمة فريدة لبيئة الاستضافة لمنع نقل الكود لبيئة غير مصرحة"""
-        env_data = f"{os.uname().nodename}-{os.uname().machine}-{os.getlogin() if hasattr(os, 'getlogin') else 'unknown'}"
+        """يولد بصمة فريدة لبيئة الاستضافة بأسلوب آمن سحابياً بدون أخطاء TTY"""
+        try:
+            user = getpass.getuser()
+        except Exception:
+            user = os.getenv("USER", os.getenv("USERNAME", "cloud_env"))
+            
+        nodename = os.uname().nodename if hasattr(os, 'uname') else "unknown_node"
+        machine = os.uname().machine if hasattr(os, 'uname') else "unknown_arch"
+        
+        env_data = f"{nodename}-{machine}-{user}"
         return hashlib.sha3_256((env_data + cls.SYSTEM_SALT).encode()).hexdigest()[:32]
 
     @classmethod
@@ -69,8 +78,7 @@ class VaultSecurity:
 
     @staticmethod
     def verify_license() -> bool:
-        """التحقق الوهمي من ترخيص النظام - يمكن ربطه بخادم خارجي مستقبلاً"""
-        # محاكاة اتصال بخادم التراخيص
+        """التحقق من ترخيص النظام"""
         return True 
 
 # =====================================================================
@@ -79,7 +87,6 @@ class VaultSecurity:
 class EnterpriseDB:
     """
     إدارة قواعد البيانات مع سياسة صارمة: يمنع الحذف نهائياً (No DELETE Operations).
-    يتم استخدام Soft-Deletes عبر حقل `is_archived`.
     """
     
     @staticmethod
@@ -104,7 +111,6 @@ class EnterpriseDB:
         if not conn: return
         try:
             with conn.cursor() as cursor:
-                # جداول النظام - تلاحظ عدم وجود أي صلاحيات للحذف
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         id VARCHAR(36) PRIMARY KEY,
@@ -138,7 +144,6 @@ class PhoenixAI:
     def architect_solution(api_key: str, client_req: dict) -> dict:
         genai.configure(api_key=api_key)
         
-        # استخدام نماذج متقدمة وتوجيه صارم للعملة
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             generation_config={"response_mime_type": "application/json"}
@@ -168,7 +173,6 @@ class PhoenixAI:
         try:
             response = model.generate_content(prompt)
             data = json.loads(response.text)
-            # إضافة التوقيع الأمني لحماية البيانات المولدة
             data['security_signature'] = VaultSecurity.sign_payload(data)
             data['hardware_fingerprint'] = VaultSecurity.get_environment_fingerprint()
             return data
@@ -189,7 +193,6 @@ class ReportEngine:
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df.to_excel(writer, sheet_name='Architecture', index=False)
             
-            # تنسيق احترافي
             workbook = writer.book
             worksheet = writer.sheets['Architecture']
             header_format = workbook.add_format({'bold': True, 'bg_color': '#1e293b', 'font_color': 'white'})
@@ -213,7 +216,6 @@ class ReportEngine:
         story.append(Paragraph(f"Digital Signature: {data.get('security_signature', 'N/A')[:30]}...", styles['Normal']))
         story.append(Spacer(1, 20))
         
-        # Table
         modules = data.get("system_modules", [])
         if modules:
             table_data = [["Module", "Complexity", "Cost (YER)"]]
@@ -358,16 +360,13 @@ def main():
             
             e1, e2, e3 = st.columns(3)
             
-            # 1. JSON (Raw Data)
             json_str = json.dumps(data, ensure_ascii=False, indent=2)
             e1.download_button("📦 تحميل كـ JSON مشفر", json_str, "architecture.json", "application/json")
             
-            # 2. EXCEL
             excel_data = ReportEngine.generate_excel(data)
             if excel_data:
                 e2.download_button("📊 تحميل الجداول كـ Excel", excel_data, "modules.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 
-            # 3. PDF
             if REPORTLAB_AVAILABLE:
                 pdf_data = ReportEngine.generate_pdf(data)
                 if pdf_data:
