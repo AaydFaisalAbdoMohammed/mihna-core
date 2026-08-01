@@ -4,7 +4,7 @@
 """
 ===============================================================================
 © 2026 PHOENIX PRO HYBRID ENTERPRISE ARCHITECTURE. ALL RIGHTS RESERVED.
-دمج المحرك الأمني والهندسي (OOP) مع بوابات الدفع والإشعارات والنشر السحابي
+دمج المحرك الأمني والهندسي (OOP) مع نظام التسجيل والتوليد النصي الفوري
 ===============================================================================
 """
 
@@ -60,6 +60,10 @@ class VaultSecurity:
         payload_str = json.dumps(payload, sort_keys=True)
         return hmac.new(cls.HMAC_KEY.encode(), payload_str.encode(), hashlib.sha512).hexdigest()[:32]
 
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return hashlib.sha256(password.encode()).hexdigest()
+
 # =====================================================================
 # 2. NOTIFICATION & BILLING ENGINE
 # =====================================================================
@@ -103,15 +107,15 @@ class PhoenixAI:
         أخرج البيانات بتنسيق JSON حصرياً بالهيكل التالي:
         {{
             "client": "{req['client']}",
-            "executive_summary": "ملخص معماري وشامل",
+            "executive_summary": "اكتب ملخص معماري وشامل ومفصل جداً للمشروع هنا...",
             "tech_stack": ["Tech 1", "Tech 2"],
             "budget_str": "{req['budget']}",
             "timeline": "{req['timeline']}",
             "risk_score": 15,
             "confidence_score": 90,
             "tasks": [
-                {{"title": "المهمة 1", "days": 5, "cost": 1200, "priority": "عالية"}},
-                {{"title": "المهمة 2", "days": 10, "cost": 2400, "priority": "متوسطة"}}
+                {{"title": "المهمة 1: تحليل وتصميم المعمارية", "days": 5, "cost": 1200, "priority": "عالية"}},
+                {{"title": "المهمة 2: تطوير واجهات البرمجة والمحرك", "days": 10, "cost": 2400, "priority": "متوسطة"}}
             ]
         }}
         """
@@ -160,38 +164,118 @@ class ExportEngine:
         return buffer.getvalue()
 
 # =====================================================================
-# 5. STREAMLIT APPLICATION UI
+# 5. INITIALIZATION & SESSION MANAGEMENT
 # =====================================================================
 def init_session():
-    if "user_name" not in st.session_state: st.session_state.user_name = "AYAD FAISAL ABDO MOHAMMED"
+    if "users_db" not in st.session_state:
+        # حساب افتراضي للتجربة
+        st.session_state.users_db = {
+            "eng.alhiadri2020@gmail.com": {
+                "name": "AYAD FAISAL ABDO MOHAMMED",
+                "password": VaultSecurity.hash_password("123456")
+            }
+        }
+    if "authenticated" not in st.session_state: st.session_state.authenticated = False
+    if "current_user" not in st.session_state: st.session_state.current_user = None
     if "remaining_credits" not in st.session_state: st.session_state.remaining_credits = 5
     if "plans_history" not in st.session_state: st.session_state.plans_history = []
     if "selected_plan" not in st.session_state: st.session_state.selected_plan = None
 
+# =====================================================================
+# 6. AUTHENTICATION PAGES (LOGIN / SIGNUP)
+# =====================================================================
+def render_auth_page():
+    st.markdown("""
+    <style>
+        .stApp { background-color: #0b0f19; color: #f1f5f9; }
+        .auth-card { background-color: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155; }
+        .auth-title { font-size: 2rem; font-weight: bold; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 20px; }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<div class="auth-title">🔥 PHOENIX PRO ENTERPRISE</div>', unsafe_allow_html=True)
+        tab_login, tab_signup = st.tabs(["🔑 تسجيل الدخول", "📝 إنشاء حساب جديد"])
+        
+        with tab_login:
+            st.subheader("دخول إلى منصة المعمارية")
+            email = st.text_input("البريد الإلكتروني", key="login_email")
+            password = st.text_input("كلمة المرور", type="password", key="login_pass")
+            
+            if st.button("تسجيل الدخول", use_container_width=True, type="primary"):
+                hashed_pass = VaultSecurity.hash_password(password)
+                if email in st.session_state.users_db and st.session_state.users_db[email]["password"] == hashed_pass:
+                    st.session_state.authenticated = True
+                    st.session_state.current_user = st.session_state.users_db[email]
+                    st.session_state.current_user["email"] = email
+                    st.success("تم تسجيل الدخول بنجاح!")
+                    st.rerun()
+                else:
+                    st.error("البريد الإلكتروني أو كلمة المرور غير صحيحة.")
+                    
+        with tab_signup:
+            st.subheader("حساب جديد")
+            new_name = st.text_input("الاسم الكامل", key="signup_name")
+            new_email = st.text_input("البريد الإلكتروني", key="signup_email")
+            new_pass = st.text_input("كلمة المرور", type="password", key="signup_pass")
+            confirm_pass = st.text_input("تأكيد كلمة المرور", type="password", key="signup_confirm")
+            
+            if st.button("إنشاء الحساب", use_container_width=True):
+                if not new_name or not new_email or not new_pass:
+                    st.error("يرجى ملء جميع الحقول المطلوبة.")
+                elif new_pass != confirm_pass:
+                    st.error("كلمتا المرور غير متطابقتين.")
+                elif new_email in st.session_state.users_db:
+                    st.error("البريد الإلكتروني مسجل بالفعل.")
+                else:
+                    st.session_state.users_db[new_email] = {
+                        "name": new_name,
+                        "password": VaultSecurity.hash_password(new_pass)
+                    }
+                    st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.")
+
+# =====================================================================
+# 7. MAIN APPLICATION UI
+# =====================================================================
 def main():
-    st.set_page_config(page_title="PHOENIX PRO | Hybrid Enterprise", page_icon="🚀", layout="wide")
+    st.set_page_config(page_title="PHOENIX PRO | Enterprise Hybrid", page_icon="🚀", layout="wide")
     init_session()
+    
+    if not st.session_state.authenticated:
+        render_auth_page()
+        return
+
+    user = st.session_state.current_user
     
     st.markdown("""
     <style>
         .stApp { background-color: #0b0f19; color: #f1f5f9; }
         .hero-header { font-size: 2.2rem; font-weight: 800; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
         .pay-btn { display: block; background: #2563eb; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; }
+        .plan-box { background-color: #1e293b; border: 1px solid #3b82f6; border-radius: 10px; padding: 20px; margin-top: 20px; }
+        .task-card { background-color: #0f172a; padding: 12px; border-radius: 6px; border-right: 4px solid #3b82f6; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
     
     # Sidebar
     with st.sidebar:
         st.title("⚙️ PHOENIX COMMAND")
-        st.caption(f"👤 المستخدم: {st.session_state.user_name}")
+        st.caption(f"👤 المستخدم: {user.get('name')}")
+        st.caption(f"📧 البريد: {user.get('email')}")
         st.markdown(f"**⚡ التحويلات المتبقية:** `{st.session_state.remaining_credits}`")
         
+        if st.button("🚪 تسجيل الخروج", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.current_user = None
+            st.rerun()
+            
         st.divider()
         api_key = st.text_input("🔑 مفتاح Gemini API", type="password", value=os.getenv("GEMINI_API_KEY", ""))
         
         st.divider()
         st.subheader("💳 الاشتراك والتفعيل")
-        pay_email = st.text_input("البريد الإلكتروني", value="eng.alhiadri2020@gmail.com")
+        pay_email = st.text_input("البريد الإلكتروني للدفوعات", value=user.get('email'))
         st.markdown(f'<a href="{CommercialEngine.get_checkout_url(pay_email)}" target="_blank" class="pay-btn">💳 الشراء عبر Lemon Squeezy</a>', unsafe_allow_html=True)
         
         act_code = st.text_input("رمز التفعيل", type="password")
@@ -217,22 +301,57 @@ def main():
             
         desc = st.text_area("نطاق المشروع والمتطلبات التفصيلية", value="تطوير منصة سحابية لإدارة العقود وتتبع الصيانة مع بوابات دفع متكاملة.")
         
-        if st.button("⚡ بدء التوليد والتوقيع المشفر", use_container_width=True):
+        if st.button("⚡ بدء التوليد والتوقيع المشفر", use_container_width=True, type="primary"):
             if not api_key:
-                st.error("يرجى إدخال مفتاح API أولاً.")
+                st.error("يرجى إدخال مفتاح API أولاً من القائمة الجانبية.")
             elif st.session_state.remaining_credits <= 0:
-                st.error("استنفذت رصيدك المجاني.")
+                st.error("استنفذت رصيدك المجاني. يرجى التفعيل من الجانب.")
             else:
                 with st.spinner("جاري التحليل المعماري وإرسال التنبيهات..."):
                     req_payload = {"client": client, "budget": budget, "timeline": timeline, "tech": tech, "desc": desc}
-                    plan = PhoenixAI.generate_architecture(api_key, req_payload)
-                    
-                    st.session_state.plans_history.append(plan)
-                    st.session_state.selected_plan = plan
-                    st.session_state.remaining_credits -= 1
-                    
-                    CommercialEngine.send_telegram(plan)
-                    st.success("✅ تم بناء وتوقيع المعمارية بنجاح!")
+                    try:
+                        plan = PhoenixAI.generate_architecture(api_key, req_payload)
+                        st.session_state.plans_history.append(plan)
+                        st.session_state.selected_plan = plan
+                        st.session_state.remaining_credits -= 1
+                        CommercialEngine.send_telegram(plan)
+                        st.success("✅ تم بناء وتوقيع المعمارية بنجاح!")
+                    except Exception as err:
+                        st.error(str(err))
+
+        # -------------------------------------------------------------
+        # الميزة الجديدة: عرض الخطة الهندسية نصياً تحت الزر مباشرة
+        # -------------------------------------------------------------
+        if st.session_state.selected_plan:
+            plan = st.session_state.selected_plan
+            st.markdown("---")
+            st.markdown("### 📋 الخطة الهندسية المعمارية المنشأة")
+            
+            with st.container():
+                st.markdown(f"""
+                <div class="plan-box">
+                    <h4>🏛️ العميل: {plan.get('client')}</h4>
+                    <p><b>📅 التاريخ والوقت:</b> {plan.get('timestamp')}</p>
+                    <p><b>🔑 التوقيع الرقمي (HMAC):</b> <code>{plan.get('signature')}</code></p>
+                    <hr style="border-color:#334155;">
+                    <h5>📝 الملخص التنفيذي المعماري:</h5>
+                    <p style="line-height:1.7;">{plan.get('executive_summary')}</p>
+                    <hr style="border-color:#334155;">
+                    <h5>🛠️ التقنيات المستخدمة (Tech Stack):</h5>
+                    <p><code>{"  |  ".join(plan.get('tech_stack', []))}</code></p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown("#### 🎯 مهام التنفيذ والجدول الزمني:")
+                for idx, task in enumerate(plan.get("tasks", []), 1):
+                    st.markdown(f"""
+                    <div class="task-card">
+                        <b>{idx}. {task.get('title')}</b><br/>
+                        ⏱️ الأيام التقديرية: <code>{task.get('days')} أيام</code> | 
+                        💰 التكلفة: <code>${task.get('cost')}</code> | 
+                        🔴 الأولوية: <code>{task.get('priority')}</code>
+                    </div>
+                    """, unsafe_allow_html=True)
 
     with t2:
         if st.session_state.selected_plan:
