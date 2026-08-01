@@ -285,6 +285,55 @@ def render_auth_page():
                     st.success("تم إنشاء الحساب بنجاح! حصلت على 5 محاولات مجانية. يمكنك تسجيل الدخول الآن.")
 
 # =====================================================================
+# HELPER: CREATING PRO SEMICIRCLE GAUGE CHARTS
+# =====================================================================
+def create_semicircle_gauge(value: float, max_val: float, title: str, prefix: str = "", suffix: str = "", color_scheme: str = "blue"):
+    """
+    تنشئ رسم بياني نصف دائري تفاعلي ومبهر باستخدام Plotly Gauge
+    """
+    colors_map = {
+        "blue": {"line": "#3b82f6", "gradient": ["#1e1b4b", "#1d4ed8", "#60a5fa"]},
+        "green": {"line": "#10b981", "gradient": ["#064e3b", "#047857", "#34d399"]},
+        "purple": {"line": "#8b5cf6", "gradient": ["#311042", "#6d28d9", "#c084fc"]},
+        "amber": {"line": "#f59e0b", "gradient": ["#451a03", "#b45309", "#fbbf24"]}
+    }
+    
+    scheme = colors_map.get(color_scheme, colors_map["blue"])
+    
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=value,
+        number={'prefix': prefix, 'suffix': suffix, 'font': {'size': 28, 'color': "#f8fafc", 'family': "Arial, sans-serif"}},
+        title={'text': f"<b>{title}</b>", 'font': {'size': 16, 'color': "#94a3b8"}},
+        gauge={
+            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#334155", 'tickmode': "array", 'tickvals': [0, max_val/2, max_val]},
+            'bar': {'color': scheme["line"], 'thickness': 0.25},
+            'bgcolor': "#0f172a",
+            'borderwidth': 2,
+            'bordercolor': "#1e293b",
+            'steps': [
+                {'range': [0, max_val * 0.5], 'color': scheme["gradient"][0]},
+                {'range': [max_val * 0.5, max_val * 0.85], 'color': scheme["gradient"][1]},
+                {'range': [max_val * 0.85, max_val], 'color': scheme["gradient"][2]}
+            ],
+            'threshold': {
+                'line': {'color': "#ef4444", 'width': 3},
+                'thickness': 0.8,
+                'value': max_val * 0.95
+            }
+        }
+    ))
+    
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={'color': "#f1f5f9"},
+        height=220,
+        margin=dict(l=20, r=20, t=40, b=10)
+    )
+    return fig
+
+# =====================================================================
 # 7. MAIN APPLICATION UI
 # =====================================================================
 def main():
@@ -304,6 +353,7 @@ def main():
         .pay-btn { display: block; background: #2563eb; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 5px; }
         .plan-box { background-color: #1e293b; border: 1px solid #3b82f6; border-radius: 10px; padding: 20px; margin-top: 20px; }
         .task-card { background-color: #0f172a; padding: 12px; border-radius: 6px; border-right: 4px solid #3b82f6; margin-bottom: 10px; }
+        .gauge-card { background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 12px; border: 1px solid #334155; padding: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); }
     </style>
     """, unsafe_allow_html=True)
     
@@ -465,15 +515,64 @@ def main():
                 </div>
             """, unsafe_allow_html=True)
             
-            # مؤشرات أداء رئيسية (KPI Metrics) بشكل احترافي
-            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-            col_m1.metric("🚨 درجة المخاطرة", f"{p.get('risk_score', 15)}%", delta="-2% تحسن آمن", delta_color="inverse")
-            col_m2.metric("🎯 نسبة الدقة والاعتماد", f"{p.get('confidence_score', 90)}%", delta="+5% موثوقية")
-            
             tasks = p.get("tasks", [])
             total_days = sum([t.get('days', 0) for t in tasks])
             total_cost = sum([t.get('cost', 0) for t in tasks])
+            confidence = p.get('confidence_score', 92)
             
+            # ---------------------------------------------------------
+            # 🌟 القسم الجديد: المؤشرات النصف دائرية الاحترافية (SEMICIRCLE GAUGES)
+            # ---------------------------------------------------------
+            st.markdown("### 🎛️ مؤشرات الأداء الحيوية (Executive Gauges)")
+            
+            # تقدير الحدود القصوى للرسومات بشكل ديناميكي
+            max_cost_target = max(total_cost * 1.25, 10000)
+            max_days_target = max(total_days * 1.3, 30)
+
+            g_col1, g_col2, g_col3 = st.columns(3)
+            
+            with g_col1:
+                st.markdown('<div class="gauge-card">', unsafe_allow_html=True)
+                fig_cost = create_semicircle_gauge(
+                    value=total_cost, 
+                    max_val=max_cost_target, 
+                    title="💰 التكلفة الكلية التقديرية", 
+                    prefix="$", 
+                    color_scheme="green"
+                )
+                st.plotly_chart(fig_cost, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+            with g_col2:
+                st.markdown('<div class="gauge-card">', unsafe_allow_html=True)
+                fig_days = create_semicircle_gauge(
+                    value=total_days, 
+                    max_val=max_days_target, 
+                    title="⏱️ إجمالي فترة التنفيذ", 
+                    suffix=" أيام", 
+                    color_scheme="purple"
+                )
+                st.plotly_chart(fig_days, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            with g_col3:
+                st.markdown('<div class="gauge-card">', unsafe_allow_html=True)
+                fig_conf = create_semicircle_gauge(
+                    value=confidence, 
+                    max_val=100, 
+                    title="🎯 موثوقية المعمارية", 
+                    suffix="%", 
+                    color_scheme="blue"
+                )
+                st.plotly_chart(fig_conf, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            st.divider()
+
+            # مؤشرات أداء رئيسية (KPI Metrics)
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            col_m1.metric("🚨 درجة المخاطرة", f"{p.get('risk_score', 15)}%", delta="-2% تحسن آمن", delta_color="inverse")
+            col_m2.metric("🎯 نسبة الدقة والاعتماد", f"{confidence}%", delta="+5% موثوقية")
             col_m3.metric("⏱️ إجمالي الأيام", f"{total_days} أيام")
             col_m4.metric("💰 التكلفة الكلية", f"${total_cost:,}")
             
