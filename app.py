@@ -235,6 +235,8 @@ def init_session():
 def render_auth_page():
     st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        * { font-family: 'Cairo', sans-serif !important; }
         .stApp { background-color: #0b0f19; color: #f1f5f9; }
         .auth-title { font-size: 2rem; font-weight: bold; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 20px; }
     </style>
@@ -288,9 +290,6 @@ def render_auth_page():
 # HELPER: CREATING PRO SEMICIRCLE GAUGE CHARTS
 # =====================================================================
 def create_semicircle_gauge(value: float, max_val: float, title: str, prefix: str = "", suffix: str = "", color_scheme: str = "blue"):
-    """
-    تنشئ رسم بياني نصف دائري تفاعلي ومبهر باستخدام Plotly Gauge
-    """
     colors_map = {
         "blue": {"line": "#3b82f6", "gradient": ["#1e1b4b", "#1d4ed8", "#60a5fa"]},
         "green": {"line": "#10b981", "gradient": ["#064e3b", "#047857", "#34d399"]},
@@ -303,7 +302,7 @@ def create_semicircle_gauge(value: float, max_val: float, title: str, prefix: st
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=value,
-        number={'prefix': prefix, 'suffix': suffix, 'font': {'size': 28, 'color': "#f8fafc", 'family': "Arial, sans-serif"}},
+        number={'prefix': prefix, 'suffix': suffix, 'font': {'size': 28, 'color': "#f8fafc", 'family': "Cairo, sans-serif"}},
         title={'text': f"<b>{title}</b>", 'font': {'size': 16, 'color': "#94a3b8"}},
         gauge={
             'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#334155", 'tickmode': "array", 'tickvals': [0, max_val/2, max_val]},
@@ -327,7 +326,7 @@ def create_semicircle_gauge(value: float, max_val: float, title: str, prefix: st
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font={'color': "#f1f5f9"},
+        font={'color': "#f1f5f9", 'family': "Cairo, sans-serif"},
         height=220,
         margin=dict(l=20, r=20, t=40, b=10)
     )
@@ -346,14 +345,90 @@ def main():
 
     user = st.session_state.current_user
     
+    # -------------------------------------------------------------
+    # 🌟 ADVANCED CYBERPUNK FORM & TEXTAREA STYLING (CSS ENHANCEMENTS)
+    # -------------------------------------------------------------
     st.markdown("""
     <style>
-        .stApp { background-color: #0b0f19; color: #f1f5f9; }
-        .hero-header { font-size: 2.2rem; font-weight: 800; background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-        .pay-btn { display: block; background: #2563eb; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 5px; }
-        .plan-box { background-color: #1e293b; border: 1px solid #3b82f6; border-radius: 10px; padding: 20px; margin-top: 20px; }
-        .task-card { background-color: #0f172a; padding: 12px; border-radius: 6px; border-right: 4px solid #3b82f6; margin-bottom: 10px; }
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+
+        /* تطبيق الخط العربي العصري الشامل */
+        html, body, [class*="css"], .stMarkdown, p, div, span, label, input, textarea {
+            font-family: 'Cairo', sans-serif !important;
+        }
+
+        .stApp { 
+            background-color: #0b0f19; 
+            color: #f1f5f9; 
+        }
+
+        .hero-header { 
+            font-size: 2.3rem; 
+            font-weight: 800; 
+            background: linear-gradient(90deg, #60a5fa, #a78bfa, #f472b6); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            text-align: center; 
+            padding: 10px 0;
+            text-shadow: 0 0 25px rgba(96, 165, 250, 0.3);
+        }
+
+        /* 🚀 إصلاح وتجميل نصوص العناوين والإرشادات فوق عناصر الإدخال */
+        div[data-baseweb="field"] > label, 
+        .stTextInput > label, 
+        .stTextArea > label {
+            color: #f8fafc !important;
+            font-size: 1.05rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.3px;
+            margin-bottom: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        /* 💎 تصميم حقول الإدخال النصية والمربعات الشفافة */
+        .stTextInput input, .stTextArea textarea {
+            background-color: #131b2e !important;
+            color: #ffffff !important;
+            border: 1.5px solid #2e3a59 !important;
+            border-radius: 10px !important;
+            font-size: 0.98rem !important;
+            font-weight: 500 !important;
+            padding: 12px 15px !important;
+            transition: all 0.3s ease-in-out !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4) !important;
+        }
+
+        /* ✨ تأثير الحقل النشط والمضيء عند الضغط والكتابة */
+        .stTextInput input:focus, .stTextArea textarea:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5), inset 0 2px 4px rgba(0,0,0,0.2) !important;
+            background-color: #1a243d !important;
+        }
+
+        /* 🔲 بطاقات التصميم والمهام */
+        .pay-btn { display: block; background: linear-gradient(90deg, #2563eb, #4f46e5); color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 5px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .plan-box { background-color: #1e293b; border: 1px solid #3b82f6; border-radius: 12px; padding: 22px; margin-top: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+        .task-card { background-color: #0f172a; padding: 14px; border-radius: 8px; border-right: 4px solid #3b82f6; margin-bottom: 12px; }
         .gauge-card { background: linear-gradient(145deg, #1e293b, #0f172a); border-radius: 12px; border: 1px solid #334155; padding: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); }
+
+        /* 🔘 تحسين أزرار العمليات والتوليد */
+        .stButton>button {
+            border-radius: 10px !important;
+            font-weight: 700 !important;
+            font-size: 1.05rem !important;
+            transition: all 0.3s ease !important;
+        }
+        .stButton>button[kind="primary"] {
+            background: linear-gradient(90deg, #ef4444, #f43f5e) !important;
+            border: none !important;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4) !important;
+        }
+        .stButton>button[kind="primary"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(239, 68, 68, 0.6) !important;
+        }
     </style>
     """, unsafe_allow_html=True)
     
@@ -434,13 +509,20 @@ def main():
     with t1:
         c1, c2 = st.columns(2)
         with c1:
-            client = st.text_input("اسم العميل / الشركة", value="مؤسسة أفق")
-            budget = st.text_input("الميزانية التقديرية", value="8000 - 12000 $")
+            client = st.text_input("🏢 اسم العميل / الشركة", value="مؤسسة أفق")
+            budget = st.text_input("💰 الميزانية التقديرية", value="8000 - 12000 $")
         with c2:
-            timeline = st.text_input("المدة الزمنية", value="6 أسابيع")
-            tech = st.text_input("التقنيات التفضيلية", value="Flutter, Node.js, PostgreSQL")
+            timeline = st.text_input("⏱️ المدة الزمنية", value="6 أسابيع")
+            tech = st.text_input("🛠️ التقنيات التفضيلية", value="Flutter, Node.js, PostgreSQL")
             
-        desc = st.text_area("نطاق المشروع والمتطلبات التفصيلية", value="تطوير منصة سحابية لإدارة العقود وتتبع الصيانة مع بوابات دفع متكاملة.")
+        # 🌟 قسم نطاق المشروع مع التنسيق المحسن والواضح جلياً
+        desc = st.text_area(
+            "📌 نطاق المشروع والمتطلبات التفصيلية", 
+            value="تطوير منصة سحابية متكاملة لإدارة العقود وتتبع عمليات الصيانة مع بوابات دفع إلكترونية متعددة ولوحة تحليلات تفاعلية.",
+            height=140
+        )
+        
+        st.markdown("<br/>", unsafe_allow_html=True)
         
         if st.button("⚡ بدء التوليد والتوقيع المشفر", use_container_width=True, type="primary"):
             if not api_key:
@@ -521,11 +603,10 @@ def main():
             confidence = p.get('confidence_score', 92)
             
             # ---------------------------------------------------------
-            # 🌟 القسم الجديد: المؤشرات النصف دائرية الاحترافية (SEMICIRCLE GAUGES)
+            # المؤشرات النصف دائرية الاحترافية (SEMICIRCLE GAUGES)
             # ---------------------------------------------------------
             st.markdown("### 🎛️ مؤشرات الأداء الحيوية (Executive Gauges)")
             
-            # تقدير الحدود القصوى للرسومات بشكل ديناميكي
             max_cost_target = max(total_cost * 1.25, 10000)
             max_days_target = max(total_days * 1.3, 30)
 
@@ -581,7 +662,6 @@ def main():
             if tasks:
                 df = pd.DataFrame(tasks)
                 
-                # تنظيم تخطيط الرسوم البيانية بجانب بعضها
                 g_col1, g_col2 = st.columns(2)
                 
                 with g_col1:
@@ -592,7 +672,7 @@ def main():
                         labels={"days": "المدة بالأيام", "cost": "التكلفة ($)"},
                         color_discrete_map={"عالية": "#ef4444", "متوسطة": "#f59e0b", "منخفضة": "#10b981"}
                     )
-                    fig_scatter.update_layout(paper_bgcolor="#0b0f19", plot_bgcolor="#0b0f19", font=dict(color="#f1f5f9"))
+                    fig_scatter.update_layout(paper_bgcolor="#0b0f19", plot_bgcolor="#0b0f19", font=dict(color="#f1f5f9", family="Cairo"))
                     st.plotly_chart(fig_scatter, use_container_width=True)
                 
                 with g_col2:
@@ -602,10 +682,9 @@ def main():
                         template="plotly_dark", labels={"days": "عدد الأيام", "title": "المهمة الهندسية"},
                         color_discrete_map={"عالية": "#ef4444", "متوسطة": "#f59e0b", "منخفضة": "#10b981"}
                     )
-                    fig_bar.update_layout(paper_bgcolor="#0b0f19", plot_bgcolor="#0b0f19", font=dict(color="#f1f5f9"), yaxis={'categoryorder':'total ascending'})
+                    fig_bar.update_layout(paper_bgcolor="#0b0f19", plot_bgcolor="#0b0f19", font=dict(color="#f1f5f9", family="Cairo"), yaxis={'categoryorder':'total ascending'})
                     st.plotly_chart(fig_bar, use_container_width=True)
                 
-                # رسم رادار إضافي لتقييم كفاءة النظام المعماري
                 st.markdown("#### 🛡️ تقييم مؤشرات الأداء الكلي للمعمارية (Radar Matrix)")
                 categories = ['الأمان والتشفير', 'قابلية التوسع', 'سرعة الأداء', 'مرونة التكامل', 'كفاءة التكلفة', 'جودة الكود']
                 scores = [95, 88, 92, 85, 90, 94]
@@ -619,7 +698,7 @@ def main():
                 fig_radar.update_layout(
                     polar=dict(radialaxis=dict(visible=True, range=[0, 100], color="#94a3b8"), bgcolor="#0b0f19"),
                     paper_bgcolor="#0b0f19",
-                    font=dict(color="#f1f5f9"),
+                    font=dict(color="#f1f5f9", family="Cairo"),
                     showlegend=False,
                     margin=dict(l=40, r=40, t=20, b=20)
                 )
