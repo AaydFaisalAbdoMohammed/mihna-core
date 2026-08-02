@@ -4,7 +4,7 @@
 """
 ===============================================================================
 © 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE v7.0 - ULTIMATE SaaS PLATFORM
-دمج متكامل: المحرك الأمني + قاعدة البيانات + تعديل HITL + الإشعارات والتحليلات
+تحديث UI/UX: تحسين الواجهات الزجاجية، إصلاح القائمة الجانبية وإضافة تأكيد كلمة المرور
 ===============================================================================
 """
 
@@ -64,6 +64,7 @@ TRANSLATIONS = {
         "signup_tab": "📝 حساب جديد",
         "email": "البريد الإلكتروني",
         "password": "كلمة المرور",
+        "confirm_password": "تأكيد كلمة المرور",
         "full_name": "الاسم الكامل / المنظمة",
         "login_btn": "تسجيل الدخول",
         "signup_btn": "إنشاء الحساب",
@@ -104,6 +105,7 @@ TRANSLATIONS = {
         "signup_tab": "📝 Sign Up",
         "email": "Email Address",
         "password": "Password",
+        "confirm_password": "Confirm Password",
         "full_name": "Full Name / Organization",
         "login_btn": "Sign In",
         "signup_btn": "Create Account",
@@ -434,7 +436,7 @@ class ExportEngine:
         return buffer.getvalue()
 
 # =====================================================================
-# 8. SESSION MANAGEMENT & CSS FIXES ENGINE
+# 8. SESSION MANAGEMENT & CSS FIXES ENGINE (GLASSMORPHISM ADVANCED)
 # =====================================================================
 def init_session():
     if "users_db" not in st.session_state:
@@ -459,15 +461,36 @@ def inject_custom_css():
     align_text = "right" if lang == "ar" else "left"
 
     if theme == "dark":
-        bg_main, bg_sidebar, bg_card, bg_input, text_color, border_color = "#0b0f19", "#0f172a", "#1e293b", "#131b2e", "#f1f5f9", "#2e3a59"
+        bg_main, bg_sidebar = "#0b0f19", "#0f172a"
+        text_color = "#f8fafc"
+        label_color = "#cbd5e1"
+        input_bg = "rgba(30, 41, 59, 0.65)"
+        input_border = "rgba(255, 255, 255, 0.18)"
+        input_focus_border = "#3b82f6"
     else:
-        bg_main, bg_sidebar, bg_card, bg_input, text_color, border_color = "#f8fafc", "#f1f5f9", "#ffffff", "#ffffff", "#0f172a", "#cbd5e1"
+        bg_main, bg_sidebar = "#f8fafc", "#ffffff"
+        text_color = "#0f172a"
+        label_color = "#334155"
+        input_bg = "rgba(255, 255, 255, 0.85)"
+        input_border = "rgba(15, 23, 42, 0.15)"
+        input_focus_border = "#2563eb"
 
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap');
 
-        /* 🔴 1. CRITICAL SIDEBAR & COLLAPSE ICON FIX (إصلاح تباعد وإخفاء القائمة الجانبية) */
+        /* 🔴 1. FIX SIDEBAR OVERLAY & MOBILE OVERFLOW */
+        [data-testid="stSidebar"] {{
+            background-color: {bg_sidebar} !important;
+            z-index: 99999 !important;
+            white-space: normal !important;
+        }}
+        
+        [data-testid="stSidebar"] * {{
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+        }}
+
         [data-testid="stSidebarCollapseButton"],
         [data-testid="stSidebarCollapseButton"] *,
         [data-testid="stSidebarHeader"] *,
@@ -477,7 +500,7 @@ def inject_custom_css():
             direction: ltr !important;
         }}
 
-        /* 🔵 2. BASE TYPOGRAPHY & LAYOUT */
+        /* 🔵 2. BASE LAYOUT & TYPOGRAPHY */
         html, body, [data-testid="stAppViewContainer"] {{
             font-family: 'Cairo', 'Inter', sans-serif !important;
             direction: {direction};
@@ -486,22 +509,36 @@ def inject_custom_css():
             color: {text_color} !important;
         }}
 
-        /* 🟣 3. CLEAN & FLEXIBLE SIDEBAR OVERRIDES */
-        [data-testid="stSidebar"] {{
-            background-color: {bg_sidebar} !important;
-            border-{'left' if lang == 'ar' else 'right'}: 1px solid {border_color} !important;
+        /* 🟢 3. HIGH-CONTRAST GLASSMORPHISM INPUT FIELDS & LABELS */
+        .stTextInput label, .stSelectbox label, .stTextArea label, .stNumberInput label {{
+            color: {label_color} !important;
+            font-size: 0.95rem !important;
+            font-weight: 700 !important;
+            margin-bottom: 6px !important;
         }}
 
-        [data-testid="stSidebar"] h1, 
-        [data-testid="stSidebar"] h2, 
-        [data-testid="stSidebar"] h3, 
-        [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] span {{
+        div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {{
+            background: {input_bg} !important;
+            border: 1px solid {input_border} !important;
+            border-radius: 12px !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+            transition: all 0.25s ease-in-out !important;
+        }}
+
+        div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
+            border-color: {input_focus_border} !important;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important;
+        }}
+
+        input, textarea {{
             color: {text_color} !important;
-            word-wrap: break-word !important;
+            font-size: 1rem !important;
+            font-weight: 600 !important;
         }}
 
-        /* 🟢 4. HERO HEADER & MODERN METRIC CARDS */
+        /* 🟣 4. MODERN HERO HEADER & CARDS */
         .hero-header {{
             font-size: 2.2rem;
             font-weight: 800;
@@ -515,11 +552,11 @@ def inject_custom_css():
 
         .stat-card {{
             background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
             padding: 16px;
             text-align: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
             backdrop-filter: blur(10px);
             margin-bottom: 12px;
         }}
@@ -537,20 +574,13 @@ def inject_custom_css():
         }}
 
         .plan-box {{
-            background-color: {bg_card};
-            border: 1px solid #3b82f6;
-            border-radius: 12px;
+            background: {input_bg};
+            border: 1px solid {input_focus_border};
+            border-radius: 14px;
             padding: 20px;
             margin-top: 15px;
+            backdrop-filter: blur(12px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }}
-
-        .task-card {{
-            background-color: {bg_input};
-            padding: 14px;
-            border-radius: 8px;
-            border-{'right' if lang == 'ar' else 'left'}: 4px solid #3b82f6;
-            margin-bottom: 10px;
         }}
 
         .pay-btn {{
@@ -559,7 +589,7 @@ def inject_custom_css():
             color: white !important;
             text-align: center;
             padding: 10px;
-            border-radius: 8px;
+            border-radius: 10px;
             text-decoration: none;
             font-weight: bold;
             margin-bottom: 5px;
@@ -634,9 +664,13 @@ def render_auth_page():
             new_name = st.text_input(t["full_name"], key="signup_name")
             new_email = st.text_input(t["email"], key="signup_email")
             new_pass = st.text_input(t["password"], type="password", key="signup_pass")
+            confirm_pass = st.text_input(t["confirm_password"], type="password", key="signup_confirm_pass")
+            
             if st.button(t["signup_btn"], use_container_width=True):
                 if new_email in st.session_state.users_db:
                     st.error("البريد الإلكتروني مسجل بالفعل.")
+                elif new_pass != confirm_pass:
+                    st.error("كلمتا المرور غير متطابقتين.")
                 elif new_name and new_email and new_pass:
                     st.session_state.users_db[new_email] = {
                         "name": new_name,
@@ -713,7 +747,7 @@ def main():
             if act_code in ["PRO2026", "PHOENIX"]:
                 user["credits"] = 9999
                 user["plan_status"] = "Unlimited Developer"
-                st.success("تم تفعيل الاشتراك الخارق اللازم بنجاح!")
+                st.success("تم تفعيل الاشتراك الخارق بنجاح!")
                 st.rerun()
             elif act_code in ["MONTHLY2026", "MONTHLY"]:
                 user["credits"] += 30
@@ -773,10 +807,10 @@ def main():
                 <h4>🏛️ {plan.get('client')}</h4>
                 <p><b>📅 Date:</b> {plan.get('timestamp')}</p>
                 <p><b>🔑 Digital Signature (HMAC):</b> <code>{plan.get('signature')}</code></p>
-                <hr style="border-color:#334155;">
+                <hr style="border-color:rgba(255, 255, 255, 0.15);">
                 <h5>📝 Executive Summary:</h5>
                 <p style="line-height:1.7;">{plan.get('executive_summary')}</p>
-                <hr style="border-color:#334155;">
+                <hr style="border-color:rgba(255, 255, 255, 0.15);">
                 <h5>🛠️ Tech Stack:</h5>
                 <p><code>{"  |  ".join(plan.get('tech_stack', []))}</code></p>
             </div>
@@ -791,7 +825,6 @@ def main():
             p = st.session_state.selected_plan
             metrics = AnalyticsEngine.compute_metrics(p)
 
-            # 1. Top Modern Metric Cards
             col_m1, col_m2 = st.columns(2)
             with col_m1:
                 st.markdown(f"""
@@ -808,7 +841,6 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-            # 2. Semi-Circle Gauges Section
             col_g1, col_g2 = st.columns(2)
             with col_g1:
                 risk_color = "#ef4444" if metrics['risk_score'] > 60 else "#f59e0b" if metrics['risk_score'] > 30 else "#10b981"
@@ -821,7 +853,6 @@ def main():
 
             st.divider()
 
-            # 3. Interactive Charts (Scatter, Donut & Bar)
             df_tasks = pd.DataFrame(p.get("tasks", []))
             if not df_tasks.empty:
                 g_col1, g_col2 = st.columns(2)
