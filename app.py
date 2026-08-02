@@ -5,6 +5,7 @@
 ===============================================================================
 © 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE v8.5 - ULTIMATE SaaS PLATFORM
 إصلاح شامل وحاسم: التباين المرتفع الفائق لحقول الإدخال والـ Tabs والوضع الليلي
+مع دمج نظام Cloud SQL / MySQL المتقدم لإدارة الحسابات والمشاريع
 ===============================================================================
 """
 
@@ -170,11 +171,15 @@ class VaultSecurity:
         return hashlib.sha256(password.encode()).hexdigest() == hashed
 
 # =====================================================================
-# 3. DATABASE MANAGEMENT ENGINE
+# 3. CLOUD SQL & DATABASE ENGINE (ENTERPRISE UTILS)
 # =====================================================================
-class DatabaseManager:
+class CloudSQLUtils:
     @staticmethod
     def get_db_connection():
+        """
+        إنشاء اتصال بقاعدة بيانات MySQL عبر Cloud SQL Unix Socket
+        باستخدام المتغيرات المحددة في البيئة (Environment Variables).
+        """
         if not PYMYSQL_AVAILABLE:
             return None
         try:
@@ -184,59 +189,128 @@ class DatabaseManager:
             db_name = os.environ.get('DB_NAME')
 
             if conn_name and db_user and db_pass and db_name:
-                return pymysql.connect(
+                connection = pymysql.connect(
                     unix_socket=f"/cloudsql/{conn_name}",
                     user=db_user,
                     password=db_pass,
                     database=db_name,
-                    cursorclass=pymysql.cursors.DictCursor
+                    cursorclass=pymysql.cursors.DictCursor,
+                    autocommit=True
                 )
+                return connection
         except Exception as e:
-            logging.error(f"CloudSQL Connection Fail: {e}")
+            logging.error(f"Database connection error: {e}")
         return None
 
     @classmethod
-    def save_project(cls, user_id: str, plan_data: dict) -> bool:
+    def get_user_by_email(cls, email: str) -> dict:
         conn = cls.get_db_connection()
         if conn:
             try:
-                cursor = conn.cursor()
-                cursor.execute(
-                    """INSERT INTO projects (user_id, client_name, summary, budget_range, tech_stack, signature, created_at)
-                       VALUES (%s, %s, %s, %s, %s, %s, NOW())""",
-                    (
-                        user_id,
-                        plan_data.get('client'),
-                        plan_data.get('executive_summary'),
-                        plan_data.get('budget_str'),
-                        json.dumps(plan_data.get('tech_stack', [])),
-                        plan_data.get('signature')
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+                    user = cursor.fetchone()
+                conn.close()
+                return user
+            except Exception as e:
+                logging.error(f"CloudSQL Get User Error: {e}")
+        return st.session_state.get("users_db", {}).get(email)
+
+    @classmethod
+    def register_user(cls, name: str, email: str, hashed_pass: str, credits: int = 5, plan_status: str = "Free Trial (5 Credits)") -> bool:
+        conn = cls.get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """INSERT INTO users (name, email, password, credits, plan_status, created_at)
+                           VALUES (%s, %s, %s, %s, %s, NOW())""",
+                        (name, email, hashed_pass, credits, plan_status)
                     )
-                )
-                conn.commit()
                 conn.close()
                 return True
             except Exception as e:
-                logging.error(f"DB Save Error: {e}")
+                logging.error(f"CloudSQL Register Error: {e}")
         
-        if "local_db_projects" not in st.session_state:
-            st.session_state.local_db_projects = []
-        st.session_state.local_db_projects.append(plan_data)
+        # Fallback إلى الجلسة المحلية
+        if "users_db" not in st.session_state:
+            st.session_state.users_db = {}
+        st.session_state.users_db[email] = {
+            "name": name,
+            "password": hashed_pass,
+            "credits": credits,
+            "plan_status": plan_status
+        }
         return True
 
     @classmethod
-    def fetch_user_projects(cls, user_id: str) -> list:
+    def update_user_credits(cls, email: str, new_credits: int, new_status: str = None) -> bool:
         conn = cls.get_db_connection()
         if conn:
             try:
-                cursor = conn.cursor(pymysql.cursors.DictCursor)
-                cursor.execute("SELECT * FROM projects WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
-                rows = cursor.fetchall()
+                with conn.cursor() as cursor:
+                    if new_status:
+                        cursor.execute("UPDATE users SET credits = %s, plan_status = %s WHERE email = %s", (new_credits, new_status, email))
+                    else:
+                        cursor.execute("UPDATE users SET credits = %s WHERE email = %s", (new_credits, email))
+                conn.close()
+                return True
+            except Exception as e:
+                logging.error(f"CloudSQL Update Credits Error: {e}")
+        
+        if email in st.session_state.get("users_db", {}):
+            st.session_state.users_db[email]["credits"] = new_credits
+            if new_status:
+                st.session_state.users_db[email]["plan_status"] = new_status
+        return True
+
+    @classmethod
+    def save_to_cloudsql(cls, plan_json: dict, user_id: str) -> bool:
+        """حفظ خطة مشروع جديدة مباشرة في Cloud SQL"""
+        conn = cls.get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """INSERT INTO projects (user_id, client_name, summary, budget_range, tech_stack, payload, signature, created_at)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())""",
+                        (
+                            user_id,
+                            plan_json.get('client'),
+                            plan_json.get('executive_summary'),
+                            plan_json.get('budget_str'),
+                            json.dumps(plan_json.get('tech_stack', [])),
+                            json.dumps(plan_json, ensure_ascii=False),
+                            plan_json.get('signature')
+                        )
+                    )
+                conn.close()
+                return True
+            except Exception as e:
+                logging.error(f"Save to CloudSQL Error: {e}")
+
+        if "local_db_projects" not in st.session_state:
+            st.session_state.local_db_projects = []
+        st.session_state.local_db_projects.append(plan_json)
+        return True
+
+    @classmethod
+    def get_all_projects(cls, user_id: str) -> list:
+        """استرجاع جميع المشاريع الخاصة بالمستخدم من Cloud SQL"""
+        conn = cls.get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute("SELECT id, client_name, summary, budget_range, created_at, signature FROM projects WHERE user_id = %s ORDER BY created_at DESC", (user_id,))
+                    rows = cursor.fetchall()
                 conn.close()
                 return rows
             except Exception as e:
-                logging.error(f"DB Fetch Error: {e}")
+                logging.error(f"Fetch Projects Error: {e}")
         return st.session_state.get("local_db_projects", [])
+
+# توافق مع الكود السابق عبر الإحالة إلى الفئة الجديدة
+DatabaseManager = CloudSQLUtils
 
 # =====================================================================
 # 4. COMMERCE & NOTIFICATION ENGINE
@@ -706,7 +780,8 @@ def render_auth_page():
             email = st.text_input(t["email"], key="login_email")
             password = st.text_input(t["password"], type="password", key="login_pass")
             if st.button(t["login_btn"], use_container_width=True, type="primary"):
-                user_record = st.session_state.users_db.get(email)
+                # محاولة الاستعلام عبر CloudSQL أولاً
+                user_record = CloudSQLUtils.get_user_by_email(email)
                 if user_record and VaultSecurity.verify_password(password, user_record["password"]):
                     st.session_state.authenticated = True
                     st.session_state.current_user = user_record
@@ -722,17 +797,14 @@ def render_auth_page():
             confirm_pass = st.text_input(t["confirm_password"], type="password", key="signup_confirm_pass")
             
             if st.button(t["signup_btn"], use_container_width=True):
-                if new_email in st.session_state.users_db:
+                existing_user = CloudSQLUtils.get_user_by_email(new_email)
+                if existing_user:
                     st.error("البريد الإلكتروني مسجل بالفعل.")
                 elif new_pass != confirm_pass:
                     st.error("كلمتا المرور غير متطابقتين.")
                 elif new_name and new_email and new_pass:
-                    st.session_state.users_db[new_email] = {
-                        "name": new_name,
-                        "password": VaultSecurity.hash_password(new_pass),
-                        "credits": 5,
-                        "plan_status": "Free Trial (5 Credits)"
-                    }
+                    hashed = VaultSecurity.hash_password(new_pass)
+                    CloudSQLUtils.register_user(new_name, new_email, hashed, credits=5, plan_status="Free Trial (5 Credits)")
                     st.success("تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.")
 
 # =====================================================================
@@ -802,11 +874,14 @@ def main():
             if act_code in ["PRO2026", "PHOENIX"]:
                 user["credits"] = 9999
                 user["plan_status"] = "Unlimited Developer"
+                CloudSQLUtils.update_user_credits(user.get("email"), 9999, "Unlimited Developer")
                 st.success("تم تفعيل الاشتراك الخارق بنجاح!")
                 st.rerun()
             elif act_code in ["MONTHLY2026", "MONTHLY"]:
-                user["credits"] += 30
+                new_c = user.get("credits", 0) + 30
+                user["credits"] = new_c
                 user["plan_status"] = "Monthly Pro"
+                CloudSQLUtils.update_user_credits(user.get("email"), new_c, "Monthly Pro")
                 st.success("تم تفعيل الاشتراك الشهري (+30 محاولة)!")
                 st.rerun()
             else:
@@ -841,9 +916,12 @@ def main():
                         req_payload = {"client": client, "budget": budget, "timeline": timeline, "tech": tech, "desc": desc}
                         plan = PhoenixAI.generate_architecture(api_key, req_payload, lang=st.session_state.lang)
 
-                        DatabaseManager.save_project(user.get("email"), plan)
+                        # حفظ الخطة في CloudSQL وتحديث المحاولات
+                        CloudSQLUtils.save_to_cloudsql(plan, user.get("email"))
                         st.session_state.selected_plan = plan
+                        
                         user["credits"] -= 1
+                        CloudSQLUtils.update_user_credits(user.get("email"), user["credits"])
 
                         if tg_bot_token and tg_chat_id: CommercialEngine.send_telegram(plan, tg_bot_token, tg_chat_id)
                         if smtp_user and smtp_pass: CommercialEngine.send_email(plan, user.get("email"), smtp_user, smtp_pass)
@@ -952,10 +1030,10 @@ def main():
         else:
             st.info("💡 يرجى توليد أو اختيار مشروع أولاً.")
 
-    # 🗄️ TAB 3: PROJECTS DASHBOARD & ARCHIVE
+    # 🗄️ TAB 3: PROJECTS DASHBOARD & ARCHIVE (مع الربط المباشر بـ Cloud SQL)
     with tab3:
         st.subheader(t["tab_dashboard"])
-        projects = DatabaseManager.fetch_user_projects(user.get("email"))
+        projects = CloudSQLUtils.get_all_projects(user.get("email"))
         if projects:
             st.dataframe(pd.DataFrame(projects), use_container_width=True)
         else:
