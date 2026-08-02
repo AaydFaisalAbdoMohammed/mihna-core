@@ -4,7 +4,7 @@
 """
 ===============================================================================
 © 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE v8.0 - ULTIMATE SaaS PLATFORM
-تحديث UI/UX النهائي: إصلاح شامل ونهائي لتسرب نصوص القائمة الجانبية على الموبايل
+إصلاح شامل: علاج أخطاء selectbox + تحسين تباين حقول الإدخال الزجاجية (Glassmorphism)
 ===============================================================================
 """
 
@@ -362,7 +362,7 @@ class AnalyticsEngine:
         total_cost = sum(t.get('cost', 0) for t in tasks)
         total_tasks = len(tasks)
         
-        high_priority = sum(1 for t in tasks if t.get('priority') == 'High')
+        high_priority = sum(1 for t in tasks if str(t.get('priority', '')).lower() in ['high', 'عالية'])
         high_ratio = high_priority / total_tasks if total_tasks else 0
         long_tasks = sum(1 for t in tasks if t.get('days', 0) > 5)
         long_ratio = long_tasks / total_tasks if total_tasks else 0
@@ -436,7 +436,7 @@ class ExportEngine:
         return buffer.getvalue()
 
 # =====================================================================
-# 8. SESSION MANAGEMENT & CSS FIXES ENGINE (FIXED OVERFLOW & SIDEBAR)
+# 8. SESSION MANAGEMENT & GLASSMORPHISM CSS ENGINE
 # =====================================================================
 def init_session():
     if "users_db" not in st.session_state:
@@ -463,23 +463,25 @@ def inject_custom_css():
     if theme == "dark":
         bg_main, bg_sidebar = "#0b0f19", "#0f172a"
         text_color = "#f8fafc"
-        label_color = "#cbd5e1"
-        input_bg = "rgba(30, 41, 59, 0.65)"
-        input_border = "rgba(255, 255, 255, 0.18)"
-        input_focus_border = "#3b82f6"
+        label_color = "#e2e8f0"
+        input_bg = "rgba(15, 23, 42, 0.85)"
+        input_text = "#ffffff"
+        input_border = "rgba(59, 130, 246, 0.4)"
+        input_focus_border = "#60a5fa"
     else:
         bg_main, bg_sidebar = "#f8fafc", "#ffffff"
         text_color = "#0f172a"
-        label_color = "#334155"
-        input_bg = "rgba(255, 255, 255, 0.85)"
-        input_border = "rgba(15, 23, 42, 0.15)"
+        label_color = "#1e293b"
+        input_bg = "rgba(255, 255, 255, 0.95)"
+        input_text = "#0f172a"
+        input_border = "rgba(37, 99, 235, 0.3)"
         input_focus_border = "#2563eb"
 
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap');
 
-        /* 🔴 1. ABSOLUTE CRITICAL FIX: SIDEBAR TEXT OVERFLOW & MOBILE OVERLAY LEAKS */
+        /* 🔴 1. SIDEBAR TEXT OVERFLOW & OVERLAY FIX */
         section[data-testid="stSidebar"] {{
             background-color: {bg_sidebar} !important;
             z-index: 999999 !important;
@@ -492,18 +494,6 @@ def inject_custom_css():
             writing-mode: horizontal-tb !important;
             word-break: break-word !important;
             overflow-wrap: break-word !important;
-            text-orientation: mixed !important;
-        }}
-
-        /* PREVENT STREAMLIT DRAWER & MOBILE OVERLAY FROM LEAKING CENTER TEXT */
-        div[data-testid="stSidebarCollapseButton"],
-        div[data-testid="stSidebarUserContent"],
-        div[aria-expanded="false"] * {{
-            writing-mode: horizontal-tb !important;
-        }}
-
-        [data-testid="stSidebarContent"] {{
-            overflow-x: hidden !important;
         }}
 
         /* 🔵 2. BASE LAYOUT & TYPOGRAPHY */
@@ -516,33 +506,43 @@ def inject_custom_css():
             overflow-x: hidden !important;
         }}
 
-        /* 🟢 3. HIGH-CONTRAST GLASSMORPHISM INPUT FIELDS & LABELS */
+        /* 🟢 3. ULTRA-HIGH CONTRAST GLASSMORPHISM INPUT FIELDS & TEXT (FIX FOR FADED TEXT) */
         .stTextInput label, .stSelectbox label, .stTextArea label, .stNumberInput label {{
             color: {label_color} !important;
-            font-size: 0.95rem !important;
+            font-size: 0.98rem !important;
             font-weight: 700 !important;
             margin-bottom: 6px !important;
         }}
 
-        div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {{
+        /* GLASS CONTAINERS FOR INPUTS */
+        div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"], div[data-baseweb="textarea"] {{
             background: {input_bg} !important;
-            border: 1px solid {input_border} !important;
+            border: 1.5px solid {input_border} !important;
             border-radius: 12px !important;
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
             transition: all 0.25s ease-in-out !important;
         }}
 
         div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
             border-color: {input_focus_border} !important;
-            box-shadow: 0 0 12px rgba(59, 130, 246, 0.4) !important;
+            box-shadow: 0 0 16px rgba(96, 165, 250, 0.5) !important;
         }}
 
-        input, textarea {{
-            color: {text_color} !important;
-            font-size: 1rem !important;
+        /* FORCE CLEAR HIGH-CONTRAST TEXT INSIDE INPUTS AND TEXTAREAS */
+        input, textarea, div[data-baseweb="select"] * {{
+            color: {input_text} !important;
+            font-size: 1.05rem !important;
             font-weight: 600 !important;
+            -webkit-text-fill-color: {input_text} !important;
+        }}
+
+        /* PLACEHOLDER STYLING */
+        input::placeholder, textarea::placeholder {{
+            color: #94a3b8 !important;
+            -webkit-text-fill-color: #94a3b8 !important;
+            opacity: 0.8 !important;
         }}
 
         /* 🟣 4. MODERN HERO HEADER & CARDS */
@@ -558,13 +558,13 @@ def inject_custom_css():
         }}
 
         .stat-card {{
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+            border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 14px;
             padding: 16px;
             text-align: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
             margin-bottom: 12px;
         }}
         .stat-card .val {{
@@ -582,12 +582,12 @@ def inject_custom_css():
 
         .plan-box {{
             background: {input_bg};
-            border: 1px solid {input_focus_border};
+            border: 1px solid {input_border};
             border-radius: 14px;
             padding: 20px;
             margin-top: 15px;
-            backdrop-filter: blur(12px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
         }}
 
         .pay-btn {{
@@ -602,7 +602,6 @@ def inject_custom_css():
             margin-bottom: 5px;
         }}
 
-        /* MOBILE SPECIFIC RESPONSIVE ADJUSTMENTS */
         @media (max-width: 768px) {{
             .hero-header {{
                 font-size: 1.6rem !important;
@@ -615,7 +614,7 @@ def inject_custom_css():
     """, unsafe_allow_html=True)
 
 # =====================================================================
-# 9. INTERACTIVE HITL TASK EDITOR MODULE
+# 9. INTERACTIVE HITL TASK EDITOR MODULE (FIXED SELECTBOX ERROR)
 # =====================================================================
 def render_hitl_task_editor(plan: dict):
     st.markdown("### ✏️ تعديل ومراجعة المهام المباشرة (HITL Engine)")
@@ -624,18 +623,28 @@ def render_hitl_task_editor(plan: dict):
     tasks = plan.get("tasks", [])
     updated_tasks = []
 
+    p_opts = ["High", "Medium", "Low"]
+
     for idx, task in enumerate(tasks):
         with st.container(border=True):
             col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
             with col1:
-                t_title = st.text_input(f"عنوان المهمة #{idx+1}", value=task.get('title'), key=f"t_title_{idx}")
+                t_title = st.text_input(f"عنوان المهمة #{idx+1}", value=task.get('title', ''), key=f"t_title_{idx}")
             with col2:
-                t_days = st.number_input(f"الأيام", min_value=1, value=task.get('days', 1), key=f"t_days_{idx}")
+                t_days = st.number_input(f"الأيام", min_value=1, value=int(task.get('days', 1)), key=f"t_days_{idx}")
             with col3:
-                t_cost = st.number_input(f"التكلفة ($)", min_value=0, value=task.get('cost', 100), step=50, key=f"t_cost_{idx}")
+                t_cost = st.number_input(f"التكلفة ($)", min_value=0, value=int(task.get('cost', 100)), step=50, key=f"t_cost_{idx}")
             with col4:
-                p_opts = ["High", "Medium", "Low"]
-                t_priority = st.selectbox(f"الأولوية", p_opts, index=p_opts.index(task.get('priority', 'Medium')), key=f"t_prio_{idx}")
+                # 🟢 SAFE INDEX EXTRACTION PREVENTS VALUE ERROR
+                raw_priority = str(task.get('priority', 'Medium')).capitalize()
+                selected_index = p_opts.index(raw_priority) if raw_priority in p_opts else 1
+
+                t_priority = st.selectbox(
+                    f"الأولوية", 
+                    p_opts, 
+                    index=selected_index, 
+                    key=f"t_prio_{idx}"
+                )
 
             updated_tasks.append({
                 "title": t_title,
