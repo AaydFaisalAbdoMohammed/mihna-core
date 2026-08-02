@@ -188,9 +188,12 @@ class VaultSecurity:
 
 
 # =====================================================================
-# 3. DATABASE ENGINE (مع حل احتياطي في الذاكرة)
+# 3. DATABASE ENGINE (ذكي: قاعدة بيانات حقيقية + تخزين مؤقت احتياطي)
 # =====================================================================
 class DatabaseEngine:
+    # متغير لتتبع حالة الاتصال
+    _connection_status = None
+
     @staticmethod
     def get_db_connection():
         """محاولة الاتصال بقاعدة البيانات، وإرجاع None في حال الفشل."""
@@ -222,10 +225,26 @@ class DatabaseEngine:
                 if db_ssl:
                     conn_args["ssl"] = {"ca": "/etc/ssl/certs/ca-certificates.crt"}
 
-            return pymysql.connect(**conn_args)
+            conn = pymysql.connect(**conn_args)
+            DatabaseEngine._connection_status = True
+            return conn
         except Exception as e:
             logging.error(f"DB Connection Error: {e}")
+            DatabaseEngine._connection_status = False
             return None
+
+    @staticmethod
+    def is_connected():
+        """التحقق من حالة الاتصال بقاعدة البيانات."""
+        if DatabaseEngine._connection_status is None:
+            # محاولة اتصال اختباري
+            conn = DatabaseEngine.get_db_connection()
+            if conn:
+                conn.close()
+                DatabaseEngine._connection_status = True
+            else:
+                DatabaseEngine._connection_status = False
+        return DatabaseEngine._connection_status
 
     # --- طرق مساعدة للوصول إلى التخزين المؤقت في الجلسة ---
     @staticmethod
@@ -244,7 +263,6 @@ class DatabaseEngine:
         """تهيئة قاعدة البيانات (إنشاء الجداول) إذا كانت متصلة."""
         conn = DatabaseEngine.get_db_connection()
         if not conn:
-            # في حال عدم وجود قاعدة بيانات، نكتفي بالتخزين المؤقت
             st.warning("⚠️ قاعدة البيانات غير متصلة. سيتم استخدام التخزين المؤقت في الجلسة.")
             return
         try:
@@ -273,41 +291,47 @@ class DatabaseEngine:
                     )
                 """)
                 conn.commit()
+                st.success("✅ قاعدة البيانات متصلة وجاهزة للعمل.")
         except Exception as e:
             logging.error(f"Init DB Error: {e}")
+            st.warning(f"⚠️ فشل تهيئة قاعدة البيانات: {e}. سيتم استخدام التخزين المؤقت.")
         finally:
             conn.close()
 
     @staticmethod
     def get_user_by_email(email):
         # محاولة الاتصال بقاعدة البيانات أولاً
-        conn = DatabaseEngine.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as c:
-                    c.execute("SELECT * FROM users WHERE email = %s", (email,))
-                    user = c.fetchone()
-                conn.close()
-                return user
-            except Exception as e:
-                logging.error(f"DB get_user error: {e}")
+        if DatabaseEngine.is_connected():
+            conn = DatabaseEngine.get_db_connection()
+            if conn:
+                try:
+                    with conn.cursor() as c:
+                        c.execute("SELECT * FROM users WHERE email = %s", (email,))
+                        user = c.fetchone()
+                    conn.close()
+                    if user:
+                        return user
+                except Exception as e:
+                    logging.error(f"DB get_user error: {e}")
         # الاحتياطي: البحث في الجلسة
         fallback = DatabaseEngine._get_fallback_store()
         return fallback["users"].get(email)
 
     @staticmethod
     def register_user(name, email, hashed_pass, credits=5, plan_status="Free"):
-        conn = DatabaseEngine.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as c:
-                    c.execute("INSERT INTO users (name, email, password, credits, plan_status) VALUES (%s,%s,%s,%s,%s)",
-                              (name, email, hashed_pass, credits, plan_status))
-                conn.commit()
-                conn.close()
-                return True
-            except Exception as e:
-                logging.error(f"DB register error: {e}")
+        # محاولة الحفظ في قاعدة البيانات أولاً
+        if DatabaseEngine.is_connected():
+            conn = DatabaseEngine.get_db_connection()
+            if conn:
+                try:
+                    with conn.cursor() as c:
+                        c.execute("INSERT INTO users (name, email, password, credits, plan_status) VALUES (%s,%s,%s,%s,%s)",
+                                  (name, email, hashed_pass, credits, plan_status))
+                    conn.commit()
+                    conn.close()
+                    return True
+                except Exception as e:
+                    logging.error(f"DB register error: {e}")
         # الاحتياطي: الحفظ في الجلسة
         fallback = DatabaseEngine._get_fallback_store()
         if email in fallback["users"]:
@@ -325,19 +349,21 @@ class DatabaseEngine:
 
     @staticmethod
     def update_user_credits(email, credits, status=None):
-        conn = DatabaseEngine.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as c:
-                    if status:
-                        c.execute("UPDATE users SET credits=%s, plan_status=%s WHERE email=%s", (credits, status, email))
-                    else:
-                        c.execute("UPDATE users SET credits=%s WHERE email=%s", (credits, email))
-                conn.commit()
-                conn.close()
-                return True
-            except Exception as e:
-                logging.error(f"DB update credits error: {e}")
+        # محاولة التحديث في قاعدة البيانات أولاً
+        if DatabaseEngine.is_connected():
+            conn = DatabaseEngine.get_db_connection()
+            if conn:
+                try:
+                    with conn.cursor() as c:
+                        if status:
+                            c.execute("UPDATE users SET credits=%s, plan_status=%s WHERE email=%s", (credits, status, email))
+                        else:
+                            c.execute("UPDATE users SET credits=%s WHERE email=%s", (credits, email))
+                    conn.commit()
+                    conn.close()
+                    return True
+                except Exception as e:
+                    logging.error(f"DB update credits error: {e}")
         # الاحتياطي: تحديث في الجلسة
         fallback = DatabaseEngine._get_fallback_store()
         if email in fallback["users"]:
@@ -349,33 +375,35 @@ class DatabaseEngine:
 
     @staticmethod
     def save_project(email, plan_json):
-        conn = DatabaseEngine.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as c:
-                    c.execute("""
-                        INSERT INTO projects (user_id, client_name, summary, budget_range, tech_stack, payload, signature)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """, (
-                        email,
-                        plan_json.get('client'),
-                        plan_json.get('executive_summary'),
-                        plan_json.get('budget_str'),
-                        json.dumps(plan_json.get('tech_stack', [])),
-                        json.dumps(plan_json, ensure_ascii=False),
-                        plan_json.get('signature')
-                    ))
-                    project_id = c.lastrowid
-                    for task in plan_json.get('tasks', []):
+        # محاولة الحفظ في قاعدة البيانات أولاً
+        if DatabaseEngine.is_connected():
+            conn = DatabaseEngine.get_db_connection()
+            if conn:
+                try:
+                    with conn.cursor() as c:
                         c.execute("""
-                            INSERT INTO tasks (project_id, title, description, estimated_days, priority)
-                            VALUES (%s, %s, %s, %s, %s)
-                        """, (project_id, task.get('title'), task.get('description'), task.get('days'), task.get('priority')))
-                conn.commit()
-                conn.close()
-                return True
-            except Exception as e:
-                logging.error(f"DB save project error: {e}")
+                            INSERT INTO projects (user_id, client_name, summary, budget_range, tech_stack, payload, signature)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            email,
+                            plan_json.get('client'),
+                            plan_json.get('executive_summary'),
+                            plan_json.get('budget_str'),
+                            json.dumps(plan_json.get('tech_stack', [])),
+                            json.dumps(plan_json, ensure_ascii=False),
+                            plan_json.get('signature')
+                        ))
+                        project_id = c.lastrowid
+                        for task in plan_json.get('tasks', []):
+                            c.execute("""
+                                INSERT INTO tasks (project_id, title, description, estimated_days, priority)
+                                VALUES (%s, %s, %s, %s, %s)
+                            """, (project_id, task.get('title'), task.get('description'), task.get('days'), task.get('priority')))
+                    conn.commit()
+                    conn.close()
+                    return True
+                except Exception as e:
+                    logging.error(f"DB save project error: {e}")
         # الاحتياطي: حفظ في الجلسة
         fallback = DatabaseEngine._get_fallback_store()
         if email not in fallback["users"]:
@@ -395,17 +423,19 @@ class DatabaseEngine:
 
     @staticmethod
     def get_projects(email):
-        # محاولة الاستعلام من قاعدة البيانات
-        conn = DatabaseEngine.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as c:
-                    c.execute("SELECT id, client_name, summary, budget_range, created_at, signature FROM projects WHERE user_id = %s ORDER BY created_at DESC", (email,))
-                    rows = c.fetchall()
-                conn.close()
-                return rows
-            except Exception as e:
-                logging.error(f"DB get projects error: {e}")
+        # محاولة الاستعلام من قاعدة البيانات أولاً
+        if DatabaseEngine.is_connected():
+            conn = DatabaseEngine.get_db_connection()
+            if conn:
+                try:
+                    with conn.cursor() as c:
+                        c.execute("SELECT id, client_name, summary, budget_range, created_at, signature FROM projects WHERE user_id = %s ORDER BY created_at DESC", (email,))
+                        rows = c.fetchall()
+                    conn.close()
+                    if rows:
+                        return rows
+                except Exception as e:
+                    logging.error(f"DB get projects error: {e}")
         # الاحتياطي: من الجلسة
         fallback = DatabaseEngine._get_fallback_store()
         result = []
@@ -428,7 +458,7 @@ class DatabaseEngine:
 class RAGEngine:
     @staticmethod
     def get_similar_projects(keyword: str, top_k: int = 2) -> list:
-        # محاكاة (يمكن تعديلها لاستخدام DatabaseEngine.get_projects)
+        # محاكاة بسيطة، يمكن توسيعها لاستخدام قاعدة البيانات
         return []
 
 
@@ -440,7 +470,6 @@ class PhoenixAI:
     def generate_architecture(api_key: str, req: dict, lang: str = "ar") -> dict:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.5-flash")
-        # محاكاة RAG
         lang_instruction = "اللغة العربية" if lang == "ar" else "English"
         prompt = f"""
         أنت مهندس معماري في PHOENIX PRO. حلل هذا الطلب:
@@ -710,8 +739,11 @@ def render_auth_page():
 def main():
     st.set_page_config(page_title="PHOENIX PRO", page_icon="🧠", layout="wide")
     init_session()
-    DatabaseEngine.init_db()  # محاولة تهيئة الجداول (في الخلفية)
-
+    
+    # محاولة تهيئة قاعدة البيانات (مع عرض الحالة)
+    DatabaseEngine.init_db()
+    db_status = "🟢 متصلة" if DatabaseEngine.is_connected() else "🔴 غير متصلة"
+    
     if not st.session_state.authenticated:
         render_auth_page()
         return
@@ -722,6 +754,10 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("<h3 style='text-align:center;'>⚙️ PHOENIX</h3>", unsafe_allow_html=True)
+        
+        # عرض حالة قاعدة البيانات
+        st.caption(f"📡 قاعدة البيانات: **{db_status}**")
+        
         c_l, c_t = st.columns(2)
         with c_l:
             if st.button("🌐 EN" if st.session_state.lang == "ar" else "🌐 AR", use_container_width=True):
@@ -766,7 +802,7 @@ def main():
     st.markdown(f'<div class="hero-header">{t["title"]}</div>', unsafe_allow_html=True)
     tab_gen, tab_an, tab_dash, tab_exp = st.tabs([t["tab_gen"], t["tab_analytics"], t["tab_dashboard"], t["tab_export"]])
 
-    # Tab 1: Generation (باقي الكود كما هو)
+    # Tab 1: Generation
     with tab_gen:
         c1, c2 = st.columns(2)
         with c1:
