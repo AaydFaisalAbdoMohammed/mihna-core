@@ -4,8 +4,6 @@
 """
 ===============================================================================
 © 2026 PHOENIX ENTERPRISE ARCHITECTURE v6.0 - HYBRID SaaS SYSTEM
-دمج المحرك الأمني والهندسي المتقدم، إدارة البيانات السحابية، التحليلات المباشرة،
-ونظام التوقيع الرقمي مع الدعم التفاعلي العنصر البشري (HITL)
 ===============================================================================
 """
 
@@ -157,7 +155,7 @@ class VaultSecurity:
             return False
 
 # =====================================================================
-# 3. DATABASE ENGINE (HYBRID CLOUD SQL + LOCAL SESSION FALLBACK)
+# 3. DATABASE ENGINE
 # =====================================================================
 class DatabaseManager:
     @staticmethod
@@ -206,7 +204,6 @@ class DatabaseManager:
             except Exception as e:
                 logging.error(f"Save DB Error: {e}")
         
-        # Local Fallback
         if "local_db_projects" not in st.session_state:
             st.session_state.local_db_projects = []
         st.session_state.local_db_projects.append(plan_data)
@@ -287,11 +284,6 @@ class CommercialEngine:
             st.warning(f"تعذر إرسال البريد: {str(e)}")
             return False
 
-    @staticmethod
-    def get_checkout_url(email: str, plan_type: str = "monthly") -> str:
-        store_slug = os.getenv("LEMONSQUEEZY_STORE_SLUG", "mihna")
-        return f"https://{store_slug}.lemonsqueezy.com/buy?checkout[email]={email.strip()}&plan={plan_type}"
-
 # =====================================================================
 # 5. AI GENERATION ENGINE
 # =====================================================================
@@ -334,7 +326,7 @@ class PhoenixAI:
             raise ValueError(f"فشل معالجة المحرك الذكي: {str(e)}")
 
 # =====================================================================
-# 6. ANALYTICS & COMPUTATION ENGINE
+# 6. ANALYTICS ENGINE (HIGH-END GRAPHICS)
 # =====================================================================
 class AnalyticsEngine:
     @staticmethod
@@ -365,6 +357,32 @@ class AnalyticsEngine:
             "risk_score": risk_score,
             "confidence_score": confidence_score
         }
+
+    @staticmethod
+    def create_semi_gauge(val: float, title: str, color: str):
+        """توليد رسم بياني نصف دائري فائق الاحترافية"""
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=val,
+            number={'suffix': "%", 'font': {'size': 28, 'color': "#ffffff", 'family': "Cairo"}},
+            title={'text': title, 'font': {'size': 16, 'color': "#cbd5e1", 'family': "Cairo"}},
+            gauge={
+                'axis': {'range': [0, 100], 'visible': False},
+                'bar': {'color': color, 'thickness': 0.35},
+                'bgcolor': "rgba(255, 255, 255, 0.05)",
+                'borderwidth': 0,
+                'steps': [
+                    {'range': [0, 100], 'color': 'rgba(255, 255, 255, 0.03)'}
+                ],
+            }
+        ))
+        fig.update_layout(
+            margin=dict(l=10, r=10, t=30, b=0),
+            height=160,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
 
 # =====================================================================
 # 7. EXPORT ENGINE
@@ -401,7 +419,7 @@ class ExportEngine:
         return buffer.getvalue()
 
 # =====================================================================
-# 8. SESSION & CSS INJECTION ENGINE
+# 8. SESSION & CSS INJECTION ENGINE (RESPONSIVE FIXES)
 # =====================================================================
 def init_session():
     if "users_db" not in st.session_state:
@@ -433,23 +451,64 @@ def inject_custom_css():
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+        
+        /* General Layout Fixes */
         html, body, [data-testid="stAppViewContainer"] {{
             font-family: 'Cairo', sans-serif !important;
             direction: {direction};
             text-align: {align_text};
             background-color: {bg_main} !important;
             color: {text_color} !important;
+            overflow-x: hidden !important;
         }}
+        
+        /* Prevent Sidebar Overlap & Breaking Layout on Mobile */
         [data-testid="stSidebar"] {{
             background-color: {bg_sidebar} !important;
             border-{'left' if lang == 'ar' else 'right'}: 1px solid {border_color} !important;
+            min-width: 280px !important;
+            max-width: 100vw !important;
+            z-index: 100 !important;
         }}
+
+        [data-testid="stSidebar"] * {{
+            word-wrap: break-word !important;
+            white-space: normal !important;
+        }}
+
+        /* Header Style */
         .hero-header {{
-            font-size: 2.2rem; font-weight: 800;
+            font-size: 2rem; font-weight: 800;
             background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             text-align: center; padding: 10px 0;
+            line-height: 1.3;
         }}
+
+        /* Custom Modern Metric Cards */
+        .stat-card {{
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            margin-bottom: 12px;
+        }}
+        .stat-card .val {{
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+        .stat-card .lbl {{
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+        }}
+
         .task-card {{
             background-color: {bg_input}; padding: 14px; border-radius: 8px;
             border-{'right' if lang == 'ar' else 'left'}: 4px solid #3b82f6; margin-bottom: 10px;
@@ -625,12 +684,10 @@ def main():
                         req_payload = {"client": client, "budget": budget, "timeline": timeline, "tech": tech, "desc": desc}
                         plan = PhoenixAI.generate_architecture(api_key, req_payload, lang=st.session_state.lang)
 
-                        # Save to Storage & Session
                         DatabaseManager.save_project(user.get("email"), plan)
                         st.session_state.selected_plan = plan
                         user["credits"] -= 1
 
-                        # Notifications
                         if tg_bot_token and tg_chat_id: CommercialEngine.send_telegram(plan, tg_bot_token, tg_chat_id)
                         if smtp_user and smtp_pass: CommercialEngine.send_email(plan, user.get("email"), smtp_user, smtp_pass)
 
@@ -646,34 +703,85 @@ def main():
             st.code(f"Digital HMAC Signature: {plan.get('signature')}", language="json")
             st.info(f"**الملخص التنفيذي:** {plan.get('executive_summary')}")
 
-            # HITL Editor Component
             render_hitl_task_editor(plan)
 
-    # 📊 TAB 2: INTERACTIVE ANALYTICS
+    # 📊 TAB 2: ADVANCED INTERACTIVE ANALYTICS
     with tab2:
         if st.session_state.selected_plan:
             p = st.session_state.selected_plan
             metrics = AnalyticsEngine.compute_metrics(p)
 
-            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-            col_m1.metric(t["total_cost"], f"${metrics['total_cost']:,}")
-            col_m2.metric(t["total_days"], f"{metrics['total_days']} Days")
-            col_m3.metric(t["risk_score"], f"{metrics['risk_score']}%", delta="-Low Risk" if metrics['risk_score'] < 40 else "High Risk")
-            col_m4.metric(t["accuracy"], f"{metrics['confidence_score']}%")
+            # 1. Top Modern Metric Cards
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                st.markdown(f"""
+                <div class="stat-card">
+                    <div class="lbl">{t['total_cost']}</div>
+                    <div class="val">${metrics['total_cost']:,}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_m2:
+                st.markdown(f"""
+                <div class="stat-card">
+                    <div class="lbl">{t['total_days']}</div>
+                    <div class="val">{metrics['total_days']} {('أيام' if st.session_state.lang == 'ar' else 'Days')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # 2. Semi-Circle Gauges Section
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+                risk_color = "#ef4444" if metrics['risk_score'] > 60 else "#f59e0b" if metrics['risk_score'] > 30 else "#10b981"
+                fig_risk = AnalyticsEngine.create_semi_gauge(metrics['risk_score'], t['risk_score'], risk_color)
+                st.plotly_chart(fig_risk, use_container_width=True)
+
+            with col_g2:
+                fig_conf = AnalyticsEngine.create_semi_gauge(metrics['confidence_score'], t['accuracy'], "#3b82f6")
+                st.plotly_chart(fig_conf, use_container_width=True)
 
             st.divider()
 
+            # 3. Interactive Charts (Donut & Bar)
             df_tasks = pd.DataFrame(p.get("tasks", []))
             if not df_tasks.empty:
                 g_col1, g_col2 = st.columns(2)
                 with g_col1:
-                    fig_pie = px.pie(df_tasks, names="priority", values="cost", title="توزيع التكلفة حسب الأولوية", hole=0.4)
-                    fig_pie.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                    fig_pie = px.pie(
+                        df_tasks, 
+                        names="priority", 
+                        values="cost", 
+                        title="<b>توزيع التكلفة حسب الأولوية</b>", 
+                        hole=0.6,
+                        color_discrete_sequence=px.colors.qualitative.Bold
+                    )
+                    fig_pie.update_traces(textinfo='percent+label', marker=dict(line=dict(color='#0b0f19', width=2)))
+                    fig_pie.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)", 
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(color="#f1f5f9", family="Cairo"),
+                        showlegend=False,
+                        height=280
+                    )
                     st.plotly_chart(fig_pie, use_container_width=True)
 
                 with g_col2:
-                    fig_bar = px.bar(df_tasks, x="days", y="title", color="priority", orientation='h', title="المدد الزمنية للمهام")
-                    fig_bar.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+                    fig_bar = px.bar(
+                        df_tasks, 
+                        x="days", 
+                        y="title", 
+                        color="priority", 
+                        orientation='h', 
+                        title="<b>المدد الزمنية للمهام</b>",
+                        color_discrete_sequence=px.colors.qualitative.Vivid
+                    )
+                    fig_bar.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)", 
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        font=dict(color="#f1f5f9", family="Cairo"),
+                        xaxis=dict(title="الأيام", showgrid=False),
+                        yaxis=dict(title="", showgrid=False),
+                        height=280
+                    )
                     st.plotly_chart(fig_bar, use_container_width=True)
         else:
             st.info("💡 يرجى توليد أو اختيار مشروع أولاً.")
