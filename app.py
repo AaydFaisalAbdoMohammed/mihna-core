@@ -3,8 +3,8 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE v8.0 - ULTIMATE SaaS PLATFORM
-إصلاح شامل: علاج أخطاء selectbox + تحسين تباين حقول الإدخال الزجاجية (Glassmorphism)
+© 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE v8.5 - ULTIMATE SaaS PLATFORM
+إصلاح شامل وحاسم: التباين المرتفع الفائق لحقول الإدخال والـ Tabs والوضع الليلي
 ===============================================================================
 """
 
@@ -463,19 +463,19 @@ def inject_custom_css():
     if theme == "dark":
         bg_main, bg_sidebar = "#0b0f19", "#0f172a"
         text_color = "#f8fafc"
-        label_color = "#e2e8f0"
-        input_bg = "rgba(15, 23, 42, 0.85)"
-        input_text = "#ffffff"
-        input_border = "rgba(59, 130, 246, 0.4)"
+        label_color = "#38bdf8"
+        input_bg = "#1e293b"            # خلفية داكنة قوية وواضحة جداً
+        input_text = "#ffffff"          # أبيض ناصع جداً
+        input_border = "#3b82f6"        # إطار أزرق متوهج
         input_focus_border = "#60a5fa"
     else:
         bg_main, bg_sidebar = "#f8fafc", "#ffffff"
         text_color = "#0f172a"
         label_color = "#1e293b"
-        input_bg = "rgba(255, 255, 255, 0.95)"
+        input_bg = "#ffffff"
         input_text = "#0f172a"
-        input_border = "rgba(37, 99, 235, 0.3)"
-        input_focus_border = "#2563eb"
+        input_border = "#2563eb"
+        input_focus_border = "#1d4ed8"
 
     st.markdown(f"""
     <style>
@@ -506,46 +506,77 @@ def inject_custom_css():
             overflow-x: hidden !important;
         }}
 
-        /* 🟢 3. ULTRA-HIGH CONTRAST GLASSMORPHISM INPUT FIELDS & TEXT (FIX FOR FADED TEXT) */
+        /* 🟢 3. ULTRA-HIGH CONTRAST INPUT FIELDS & TEXT FIX (حاسمة ومباشرة) */
         .stTextInput label, .stSelectbox label, .stTextArea label, .stNumberInput label {{
             color: {label_color} !important;
-            font-size: 0.98rem !important;
-            font-weight: 700 !important;
-            margin-bottom: 6px !important;
-        }}
-
-        /* GLASS CONTAINERS FOR INPUTS */
-        div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"], div[data-baseweb="textarea"] {{
-            background: {input_bg} !important;
-            border: 1.5px solid {input_border} !important;
-            border-radius: 12px !important;
-            backdrop-filter: blur(16px) !important;
-            -webkit-backdrop-filter: blur(16px) !important;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
-            transition: all 0.25s ease-in-out !important;
-        }}
-
-        div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
-            border-color: {input_focus_border} !important;
-            box-shadow: 0 0 16px rgba(96, 165, 250, 0.5) !important;
-        }}
-
-        /* FORCE CLEAR HIGH-CONTRAST TEXT INSIDE INPUTS AND TEXTAREAS */
-        input, textarea, div[data-baseweb="select"] * {{
-            color: {input_text} !important;
             font-size: 1.05rem !important;
-            font-weight: 600 !important;
+            font-weight: 800 !important;
+            margin-bottom: 8px !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }}
+
+        /* إجبار لون الحقول والخلفية الداكنة */
+        div[data-baseweb="input"], 
+        div[data-baseweb="select"], 
+        div[data-baseweb="base-input"], 
+        div[data-baseweb="textarea"],
+        input[type="text"],
+        textarea {{
+            background-color: {input_bg} !important;
+            background: {input_bg} !important;
+            border: 2px solid {input_border} !important;
+            border-radius: 12px !important;
+            color: {input_text} !important;
             -webkit-text-fill-color: {input_text} !important;
+            font-size: 1.1rem !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
         }}
 
-        /* PLACEHOLDER STYLING */
+        /* إجبار استهداف النص الداخلي للنظام لمقاومة التنسيقات الافتراضية */
+        input[type="text"]::value, textarea::value {{
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+        }}
+
+        /* التركيز والتفعيل */
+        div[data-baseweb="input"]:focus-within, 
+        div[data-baseweb="select"]:focus-within, 
+        div[data-baseweb="textarea"]:focus-within {{
+            border-color: {input_focus_border} !important;
+            box-shadow: 0 0 18px rgba(96, 165, 250, 0.6) !important;
+        }}
+
+        /* تحسين الـ Placeholder الداخلي */
         input::placeholder, textarea::placeholder {{
-            color: #94a3b8 !important;
-            -webkit-text-fill-color: #94a3b8 !important;
-            opacity: 0.8 !important;
+            color: #cbd5e1 !important;
+            -webkit-text-fill-color: #cbd5e1 !important;
+            opacity: 0.85 !important;
         }}
 
-        /* 🟣 4. MODERN HERO HEADER & CARDS */
+        /* 🟡 4. STYLES FOR TABS (علامات التبويب العلوي) */
+        button[data-baseweb="tab"] {{
+            background-color: rgba(30, 41, 59, 0.6) !important;
+            border-radius: 8px 8px 0 0 !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            padding: 10px 16px !important;
+            margin-right: 4px !important;
+        }}
+        button[data-baseweb="tab"] p {{
+            color: #cbd5e1 !important;
+            font-weight: 700 !important;
+            font-size: 1.05rem !important;
+        }}
+        button[aria-selected="true"] {{
+            background-color: #2563eb !important;
+            border-bottom: 3px solid #60a5fa !important;
+        }}
+        button[aria-selected="true"] p {{
+            color: #ffffff !important;
+            font-weight: 800 !important;
+        }}
+
+        /* 🟣 5. MODERN HERO HEADER & CARDS */
         .hero-header {{
             font-size: 2.2rem;
             font-weight: 800;
@@ -558,7 +589,7 @@ def inject_custom_css():
         }}
 
         .stat-card {{
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 14px;
             padding: 16px;
@@ -581,12 +612,11 @@ def inject_custom_css():
         }}
 
         .plan-box {{
-            background: {input_bg};
-            border: 1px solid {input_border};
+            background: #1e293b;
+            border: 1px solid #3b82f6;
             border-radius: 14px;
             padding: 20px;
             margin-top: 15px;
-            backdrop-filter: blur(16px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.4);
         }}
 
@@ -614,7 +644,7 @@ def inject_custom_css():
     """, unsafe_allow_html=True)
 
 # =====================================================================
-# 9. INTERACTIVE HITL TASK EDITOR MODULE (FIXED SELECTBOX ERROR)
+# 9. INTERACTIVE HITL TASK EDITOR MODULE
 # =====================================================================
 def render_hitl_task_editor(plan: dict):
     st.markdown("### ✏️ تعديل ومراجعة المهام المباشرة (HITL Engine)")
@@ -635,7 +665,6 @@ def render_hitl_task_editor(plan: dict):
             with col3:
                 t_cost = st.number_input(f"التكلفة ($)", min_value=0, value=int(task.get('cost', 100)), step=50, key=f"t_cost_{idx}")
             with col4:
-                # 🟢 SAFE INDEX EXTRACTION PREVENTS VALUE ERROR
                 raw_priority = str(task.get('priority', 'Medium')).capitalize()
                 selected_index = p_opts.index(raw_priority) if raw_priority in p_opts else 1
 
