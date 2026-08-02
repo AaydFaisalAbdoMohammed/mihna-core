@@ -3,8 +3,8 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE v7.0 - ULTIMATE SaaS PLATFORM
-تحديث UI/UX: تحسين الواجهات الزجاجية، إصلاح القائمة الجانبية وإضافة تأكيد كلمة المرور
+© 2026 PHOENIX PRO ENTERPRISE ARCHITECTURE v8.0 - ULTIMATE SaaS PLATFORM
+تحديث UI/UX النهائي: إصلاح شامل ونهائي لتسرب نصوص القائمة الجانبية على الموبايل
 ===============================================================================
 """
 
@@ -436,7 +436,7 @@ class ExportEngine:
         return buffer.getvalue()
 
 # =====================================================================
-# 8. SESSION MANAGEMENT & CSS FIXES ENGINE (GLASSMORPHISM ADVANCED)
+# 8. SESSION MANAGEMENT & CSS FIXES ENGINE (FIXED OVERFLOW & SIDEBAR)
 # =====================================================================
 def init_session():
     if "users_db" not in st.session_state:
@@ -479,34 +479,41 @@ def inject_custom_css():
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap');
 
-        /* 🔴 1. FIX SIDEBAR OVERLAY & MOBILE OVERFLOW */
-        [data-testid="stSidebar"] {{
+        /* 🔴 1. ABSOLUTE CRITICAL FIX: SIDEBAR TEXT OVERFLOW & MOBILE OVERLAY LEAKS */
+        section[data-testid="stSidebar"] {{
             background-color: {bg_sidebar} !important;
-            z-index: 99999 !important;
+            z-index: 999999 !important;
+            writing-mode: horizontal-tb !important;
             white-space: normal !important;
-        }}
-        
-        [data-testid="stSidebar"] * {{
-            word-break: normal !important;
-            overflow-wrap: break-word !important;
+            overflow-x: hidden !important;
         }}
 
-        [data-testid="stSidebarCollapseButton"],
-        [data-testid="stSidebarCollapseButton"] *,
-        [data-testid="stSidebarHeader"] *,
-        [data-testid="stIcon"],
-        [data-baseweb="icon"] {{
-            font-family: 'Material Icons', 'Material Symbols Outlined' !important;
-            direction: ltr !important;
+        section[data-testid="stSidebar"] * {{
+            writing-mode: horizontal-tb !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            text-orientation: mixed !important;
+        }}
+
+        /* PREVENT STREAMLIT DRAWER & MOBILE OVERLAY FROM LEAKING CENTER TEXT */
+        div[data-testid="stSidebarCollapseButton"],
+        div[data-testid="stSidebarUserContent"],
+        div[aria-expanded="false"] * {{
+            writing-mode: horizontal-tb !important;
+        }}
+
+        [data-testid="stSidebarContent"] {{
+            overflow-x: hidden !important;
         }}
 
         /* 🔵 2. BASE LAYOUT & TYPOGRAPHY */
-        html, body, [data-testid="stAppViewContainer"] {{
+        html, body, [data-testid="stAppViewContainer"], .main {{
             font-family: 'Cairo', 'Inter', sans-serif !important;
             direction: {direction};
             text-align: {align_text};
             background-color: {bg_main} !important;
             color: {text_color} !important;
+            overflow-x: hidden !important;
         }}
 
         /* 🟢 3. HIGH-CONTRAST GLASSMORPHISM INPUT FIELDS & LABELS */
@@ -593,6 +600,16 @@ def inject_custom_css():
             text-decoration: none;
             font-weight: bold;
             margin-bottom: 5px;
+        }}
+
+        /* MOBILE SPECIFIC RESPONSIVE ADJUSTMENTS */
+        @media (max-width: 768px) {{
+            .hero-header {{
+                font-size: 1.6rem !important;
+            }}
+            section[data-testid="stSidebar"] {{
+                width: 85vw !important;
+            }}
         }}
     </style>
     """, unsafe_allow_html=True)
