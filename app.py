@@ -699,7 +699,7 @@ class CommercialEngine:
 
 
 # =====================================================================
-# 8. UI STYLE & CSS INJECTION
+# 8. UI STYLE & CSS INJECTION (تم تحديث وتأمين التصميم لمنع تداخل النصوص)
 # =====================================================================
 def init_session():
     if "authenticated" not in st.session_state:
@@ -722,34 +722,48 @@ def inject_custom_css():
         bg_main, bg_sidebar = "#0b0f19", "#0f172a"
         text_color = "#f8fafc"
         input_bg = "#1e293b"
-        input_text = "#ffffff"
         input_border = "#3b82f6"
     else:
         bg_main, bg_sidebar = "#f8fafc", "#ffffff"
         text_color = "#0f172a"
         input_bg = "#ffffff"
-        input_text = "#0f172a"
         input_border = "#2563eb"
 
     st.markdown(f"""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
 
+        /* ضبط الخط والاتجاه والخلفية الأساسية فقط بدون إجبار الألوان الداخلية لتجنب تشويه الطبقات */
         html, body, [data-testid="stAppViewContainer"] {{
             font-family: 'Cairo', sans-serif !important;
             direction: {direction};
             background-color: {bg_main} !important;
-            color: {text_color} !important;
         }}
 
+        /* حماية احترافية: منع التداخل النصي وضبط الكسر التلقائي للكلمات والروابط الطويلة */
+        p, span, div, a, h1, h2, h3, h4, h5, h6 {{
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: normal !important;
+        }}
+
+        /* منع تمدد عناصر الشريط الجانبي (Sidebar) فوق منطقة العمل الرئيسية */
         section[data-testid="stSidebar"] {{
             background-color: {bg_sidebar} !important;
+            z-index: 100 !important;
+            overflow-x: hidden !important;
         }}
 
+        section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {{
+            overflow: hidden !important;
+        }}
+
+        /* تنسيقات الأزرار والبطاقات */
         .stButton button {{
             border-radius: 8px !important;
             font-weight: 700 !important;
             transition: all 0.3s ease !important;
+            width: 100%;
         }}
 
         .plan-card {{
@@ -758,6 +772,13 @@ def inject_custom_css():
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
+        }}
+
+        /* تحسين الاستجابة مع الشاشات الصغيرة والتطبيقات المحمولة */
+        @media (max-width: 768px) {{
+            .stApp {{
+                padding: 5px !important;
+            }}
         }}
     </style>
     """, unsafe_allow_html=True)
@@ -870,10 +891,18 @@ def main():
     t = TRANSLATIONS[st.session_state.lang]
     user = st.session_state.user
 
-    # ----- SIDEBAR -----
+    # ----- SIDEBAR (تم دمج التنسيق المطور لمنع التداخل العمودي) -----
     with st.sidebar:
-        st.markdown(f"### 👤 {user.get('username', 'المستخدم')}")
-        st.caption(f"📧 {user.get('email', '')}")
+        username_display = user.get('username', 'المستخدم')
+        email_display = user.get('email', '')
+
+        st.markdown(f"""
+        <div style="max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <h4 style="margin: 0; padding: 0;">👤 {username_display}</h4>
+            <p style="font-size: 0.85rem; color: #94a3b8; margin: 4px 0; overflow: hidden; text-overflow: ellipsis;">📧 {email_display}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
         st.info(f"⚡ {t['credits']}: {user.get('credits', 0)}")
         st.caption(f"🛡️ {t['plan']}: {user.get('plan_status', 'Free')}")
 
