@@ -36,11 +36,9 @@ st.set_page_config(
 )
 
 # Persistent Session State Setup
-if 'lang' not in st.session_state:
+def init_default_session():
     st.session_state.lang = 'ar'
-if 'theme' not in st.session_state:
     st.session_state.theme = 'dark'
-if 'user' not in st.session_state:
     st.session_state.user = {
         'username': 'Eng. Ayad', 
         'credits': 5,
@@ -48,26 +46,18 @@ if 'user' not in st.session_state:
         'is_subscribed': False,
         'subscription_type': 'Free'
     }
-if 'current_plan' not in st.session_state:
     st.session_state.current_plan = None
-if 'plan_signature' not in st.session_state:
     st.session_state.plan_signature = None
-if 'notify_whatsapp' not in st.session_state:
     st.session_state.notify_whatsapp = "+967700000000"
-if 'notify_telegram' not in st.session_state:
     st.session_state.notify_telegram = "@Ayad_Developer"
-
-# Form Specific Keys
-if 'form_scope' not in st.session_state:
     st.session_state.form_scope = ""
-if 'form_pname' not in st.session_state:
     st.session_state.form_pname = "مشروع جديد Pro"
-if 'form_domain' not in st.session_state:
     st.session_state.form_domain = "التجارة الإلكترونية"
-if 'form_budget' not in st.session_state:
     st.session_state.form_budget = 3500
-if 'form_days' not in st.session_state:
     st.session_state.form_days = 30
+
+if 'user' not in st.session_state:
+    init_default_session()
 
 # Callback Functions
 def update_language():
@@ -85,6 +75,11 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_days = days
     st.session_state.form_pname = pname
 
+def logout_user():
+    st.session_state.clear()
+    init_default_session()
+    st.rerun()
+
 # Translations Dictionary
 T = {
     'ar': {
@@ -99,6 +94,7 @@ T = {
         'points': "نقاط مجانية",
         'renew_title': "🛒 ترقية الاشتراك",
         'renew_btn': "⚡ اشترك الآن وترقية الحساب",
+        'logout_btn': "🚪 تسجيل الخروج",
         'notify_settings': "📲 إعدادات الإشعارات الفورية",
         'wa_phone': "رقم الواتساب (مع الرمز)",
         'tg_handle': "معرف التليجرام (Telegram Handle)",
@@ -140,6 +136,7 @@ T = {
         'points': "free pts",
         'renew_title': "🛒 Upgrade Plan",
         'renew_btn': "⚡ Upgrade & Subscribe Now",
+        'logout_btn': "🚪 Log Out",
         'notify_settings': "📲 Instant Notification Settings",
         'wa_phone': "WhatsApp Phone (with Country Code)",
         'tg_handle': "Telegram Handle",
@@ -289,7 +286,7 @@ def build_detailed_plan_text(plan: dict) -> str:
 """
 
 # ==========================================
-# 3. SIDEBAR WITH INSTANT CALLBACKS
+# 3. SIDEBAR WITH INSTANT CALLBACKS & LOGOUT
 # ==========================================
 with st.sidebar:
     st.title("🛡️ PHOENIX AGENT")
@@ -322,6 +319,9 @@ with st.sidebar:
         st.markdown(f"نوع الحساب: <span class='badge-purple'>تجريبي (5 نقاط هدية)</span>", unsafe_allow_html=True)
         st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
     
+    # Logout Button added here
+    st.button(txt['logout_btn'], on_click=logout_user, use_container_width=True, type="secondary")
+
     st.write("---")
     st.markdown(f"### {txt['renew_title']}")
     st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">{txt["renew_btn"]}</a>', unsafe_allow_html=True)
@@ -470,7 +470,7 @@ with tab1:
                 st.success(f"✅ Notification dispatched to {st.session_state.notify_telegram}")
 
 # ==========================================
-# TAB 2: التحليلات التفاعلية الفائقة (النسخة المطورة والمبهرة)
+# TAB 2: التحليلات التفاعلية الفائقة
 # ==========================================
 with tab2:
     if not st.session_state.current_plan:
@@ -501,7 +501,6 @@ with tab2:
         with col_c1:
             st.markdown("### 🍩 التحليل المالي الدائري المتداخل (Sunburst Hierarchy)")
             
-            # Construct Hierarchical Data structure for Sunburst Chart
             labels = [plan['project_name']] + list(df['task'])
             parents = [""] + [plan['project_name']] * len(df)
             values = [plan['budget']] + list(df['cost'])
