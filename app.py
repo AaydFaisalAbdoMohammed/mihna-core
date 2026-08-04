@@ -22,7 +22,7 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 
 # ==========================================
-# 1. CONFIGURATION & STYLING
+# 1. CONFIGURATION & STATE INITIALIZATION
 # ==========================================
 APP_TITLE = "PHOENIX & MIHNA AGENT PRO - ENTERPRISE"
 PAYMENT_LINK = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3"
@@ -35,7 +35,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Session State Initialization
+# Persistent Session State Setup
 if 'lang' not in st.session_state:
     st.session_state.lang = 'ar'
 if 'theme' not in st.session_state:
@@ -50,6 +50,34 @@ if 'notify_whatsapp' not in st.session_state:
     st.session_state.notify_whatsapp = "+967700000000"
 if 'notify_telegram' not in st.session_state:
     st.session_state.notify_telegram = "@Ayad_Developer"
+
+# Form Specific Keys (Fixes text reset bug)
+if 'form_scope' not in st.session_state:
+    st.session_state.form_scope = ""
+if 'form_pname' not in st.session_state:
+    st.session_state.form_pname = "مشروع جديد Pro"
+if 'form_domain' not in st.session_state:
+    st.session_state.form_domain = "التجارة الإلكترونية"
+if 'form_budget' not in st.session_state:
+    st.session_state.form_budget = 3500
+if 'form_days' not in st.session_state:
+    st.session_state.form_days = 30
+
+# Callback Functions for Instant UI Response (Fixes double click bug)
+def update_language():
+    selected = st.session_state.lang_radio
+    st.session_state.lang = 'ar' if "العربية" in selected else 'en'
+
+def update_theme():
+    selected = st.session_state.theme_radio
+    st.session_state.theme = 'dark' if ("الداكن" in selected or "Dark" in selected) else 'light'
+
+def apply_template(scope, domain, budget, days, pname):
+    st.session_state.form_scope = scope
+    st.session_state.form_domain = domain
+    st.session_state.form_budget = budget
+    st.session_state.form_days = days
+    st.session_state.form_pname = pname
 
 # Translations Dictionary
 T = {
@@ -140,23 +168,16 @@ T = {
 lang = st.session_state.lang
 txt = T[lang]
 
-# Theme Dynamic CSS
-if st.session_state.theme == 'dark':
-    bg_color = "#0E1117"
-    card_bg = "#1E293B"
-    text_color = "#FFFFFF"
-    border_color = "#334155"
-else:
-    bg_color = "#F8FAFC"
-    card_bg = "#FFFFFF"
-    text_color = "#0F172A"
-    border_color = "#E2E8F0"
+# Dynamic CSS
+bg_color = "#0E1117" if st.session_state.theme == 'dark' else "#F8FAFC"
+card_bg = "#1E293B" if st.session_state.theme == 'dark' else "#FFFFFF"
+text_color = "#FFFFFF" if st.session_state.theme == 'dark' else "#0F172A"
+border_color = "#334155" if st.session_state.theme == 'dark' else "#E2E8F0"
 
 st.markdown(f"""
 <style>
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
     .badge-green {{ background-color: #10B981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; }}
-    .badge-blue {{ background-color: #3B82F6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; }}
     .badge-purple {{ background-color: #8B5CF6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; }}
     .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #E11D48, #F43F5E); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(225,29,72,0.3); }}
     .checkout-btn:hover {{ opacity: 0.9; }}
@@ -167,7 +188,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. HELPER ENGINES & UTILITIES
+# 2. HELPER ENGINES
 # ==========================================
 class SecurityEngine:
     @staticmethod
@@ -201,24 +222,23 @@ def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
     story = []
     styles = getSampleStyleSheet()
 
-    # Function to prepare RTL Arabic text safely
     def prepare_text(text):
-        reshaped = arabic_reshaper.reshape(text)
-        return get_display(reshaped)
+        try:
+            reshaped = arabic_reshaper.reshape(text)
+            return get_display(reshaped)
+        except Exception:
+            return text
 
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, alignment=1)
     body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14, alignment=2)
 
-    # Document Header
     story.append(Paragraph(prepare_text(f"خطة مشروع: {plan['project_name']}"), title_style))
     story.append(Spacer(1, 15))
     
-    # Overview Parameters
     info_text = f"المجال التقني: {plan['domain']} | الميزانية: ${plan['budget']} | المدة: {plan['target_days']} يوم"
     story.append(Paragraph(prepare_text(info_text), body_style))
     story.append(Spacer(1, 10))
 
-    # Detailed Text Section
     story.append(Paragraph(prepare_text("--- تفاصيل الخطة التنفيذية ---"), title_style))
     for line in detailed_text.split("\n"):
         if line.strip():
@@ -226,7 +246,6 @@ def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
             story.append(Spacer(1, 4))
 
     story.append(Spacer(1, 15))
-    # Signature Footer
     story.append(Paragraph(prepare_text(f"التوقيع الرقمي HMAC-SHA512: {signature[:40]}..."), body_style))
 
     doc.build(story)
@@ -244,35 +263,45 @@ def build_detailed_plan_text(plan: dict) -> str:
 يهدف مشروع **{p_name}** إلى تقديم حل متكامل في قطاع **{domain}** بميزانية إجمالية قدرها **${budget:,}** ومدة إنجاز مقدرة بـ **{days} يوماً**.
 
 ### 2. معمارية النظام والبنية البرمجية (System Architecture):
-* **تطوير الواجهات:** بناء مكونات UI خفيفة وسريعة التفاعل تضمن سلسة الاستخدام.
+* **تطوير الواجهات:** بناء مكونات UI خفيفة وسريعة التفاعل تضمن سلاسة الاستخدام.
 * **إدارة قواعد البيانات:** إعداد جداول منظمة تدعم العزل الآمن، مع الصلاحيات الدقيقة RLS.
-* **الخوادم وبوابات API:** إنشاء واجهات REST/tRPC مؤمنة بالتشفير والتحقق الذاتي للتفاعل السريع.
+* **الخوادم وبوابات API:** إنشاء واجهات REST/tRPC مؤمنة بالتشفير والتحقق الذاتي.
 
 ### 3. مراحل التنفيذ وجدول المهام (Milestones & Tasks):
-* **المرحلة الأولى - الهندسة والمعمارية:** تحليل المتطلبات، إعداد Schemas، وتصميم المخططات الرئيسية.
-* **المرحلة الثانية - تطوير Backend:** تجهيز قاعدة البيانات، إدارة الجلسات، وبناء الآليات المنطقية Business Logic.
-* **المرحلة الثالثة - Frontend & UI:** الربط التفاعلي، استجابة الواجهات لكافة الشاشات والهواتف.
-* **المرحلة الرابعة - الاختبار والتكامل Deployment & QA:** اختبارات الأمان، ضغط الأحمال، والرفع للإنتاج.
+* **المرحلة الأولى - الهندسة والمعمارية:** تحليل المتطلبات وإعداد Schemas.
+* **المرحلة الثانية - تطوير Backend:** تجهيز قاعدة البيانات وبناء Business Logic.
+* **المرحلة الثالثة - Frontend & UI:** الربط التفاعلي للواجهات.
+* **المرحلة الرابعة - الاختبار والتكامل Deployment & QA:** اختبارات الأمان والرفع للإنتاج.
 
 ### 4. معايير الجودة والأمان الرقمي:
-* تم توقيع هذه الخطة رقمياً باستخدام خوارزمية HMAC-SHA512 لضمان موثوقية التقديرات ومنع التلاعب.
+* تم توقيع هذه الخطة رقمياً باستخدام خوارزمية HMAC-SHA512 لضمان موثوقية التقديرات.
 """
 
 # ==========================================
-# 3. SIDEBAR (LANG, THEME & USER INFO)
+# 3. SIDEBAR WITH INSTANT CALLBACKS
 # ==========================================
 with st.sidebar:
     st.title("🛡️ PHOENIX AGENT")
     st.markdown("<span class='badge-purple'>Enterprise Edition 2026</span>", unsafe_allow_html=True)
     st.write("---")
     
-    # Language Switcher
-    selected_lang = st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if st.session_state.lang == 'ar' else 1)
-    st.session_state.lang = 'ar' if "العربية" in selected_lang else 'en'
+    # Language Switcher with Callback
+    st.radio(
+        txt['lang_select'], 
+        ["العربية (Arabic)", "English"], 
+        index=0 if st.session_state.lang == 'ar' else 1,
+        key='lang_radio',
+        on_change=update_language
+    )
     
-    # Theme Switcher
-    theme_btn = st.radio(txt['theme_select'], [txt['dark'], txt['light']], index=0 if st.session_state.theme == 'dark' else 1)
-    st.session_state.theme = 'dark' if txt['dark'] in theme_btn else 'light'
+    # Theme Switcher with Callback
+    st.radio(
+        txt['theme_select'], 
+        [txt['dark'], txt['light']], 
+        index=0 if st.session_state.theme == 'dark' else 1,
+        key='theme_radio',
+        on_change=update_theme
+    )
     
     st.write("---")
     st.markdown(f"{txt['user']} **{st.session_state.user['username']}**")
@@ -287,7 +316,7 @@ with st.sidebar:
     st.session_state.notify_telegram = st.text_input(txt['tg_handle'], value=st.session_state.notify_telegram)
 
 # ==========================================
-# 4. MAIN PAGE NAVIGATION
+# 4. MAIN INTERFACE
 # ==========================================
 st.title(txt['title'])
 st.caption(txt['subtitle'])
@@ -295,42 +324,47 @@ st.caption(txt['subtitle'])
 tab1, tab2, tab3, tab4 = st.tabs([txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4']])
 
 # ==========================================
-# TAB 1: BUILD PROJECT PLAN
+# TAB 1: BUILD PROJECT PLAN (OPTIMIZED)
 # ==========================================
 with tab1:
     st.subheader(txt['quick_templates'])
     col_t1, col_t2, col_t3 = st.columns(3)
     
-    scope_val, domain_val, budget_val, days_val = "", "التجارة الإلكترونية", 3500, 30
-    
-    if col_t1.button(txt['ecom'], use_container_width=True):
-        scope_val = "تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون"
-        domain_val = "التجارة الإلكترونية"
-        budget_val = 4500
-        days_val = 35
-    elif col_t2.button(txt['edu'], use_container_width=True):
-        scope_val = "منصة تعليمية تتيح رفع الكورسات واختبارات تفاعلية وشهادات تلقائية"
-        domain_val = "التعليم الرقمي"
-        budget_val = 3000
-        days_val = 25
-    elif col_t3.button(txt['delivery'], use_container_width=True):
-        scope_val = "تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي"
-        domain_val = "الخدمات واللوجستيات"
-        budget_val = 6000
-        days_val = 50
+    # Quick Templates Instant Assignment via Callbacks
+    col_t1.button(
+        txt['ecom'], 
+        use_container_width=True, 
+        on_click=apply_template, 
+        args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل")
+    )
+    col_t2.button(
+        txt['edu'], 
+        use_container_width=True, 
+        on_click=apply_template, 
+        args=("منصة تعليمية تتيح رفع الكورسات واختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية")
+    )
+    col_t3.button(
+        txt['delivery'], 
+        use_container_width=True, 
+        on_click=apply_template, 
+        args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع")
+    )
+
+    domain_options = ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
+    domain_idx = domain_options.index(st.session_state.form_domain) if st.session_state.form_domain in domain_options else 0
 
     with st.form("project_form"):
         col1, col2 = st.columns(2)
         with col1:
-            project_name = st.text_input(txt['p_name'], value="مشروع جديد Pro")
-            domain = st.selectbox(txt['tech_domain'], ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"], index=0)
-            budget = st.number_input(txt['budget'], min_value=500, value=budget_val)
+            project_name = st.text_input(txt['p_name'], key="form_pname")
+            domain = st.selectbox(txt['tech_domain'], domain_options, index=domain_idx, key="form_domain")
+            budget = st.number_input(txt['budget'], min_value=500, key="form_budget")
         with col2:
             tech_stack = st.text_input(txt['tech_stack'], value="Flutter, Node.js, PostgreSQL, Supabase")
-            target_days = st.number_input(txt['target_days'], min_value=5, value=days_val)
+            target_days = st.number_input(txt['target_days'], min_value=5, key="form_days")
             risk_tolerance = st.select_slider(txt['risk_level'], options=["منخفض جداً", "متوسط", "عالي"])
             
-        project_scope = st.text_area(txt['scope'], value=scope_val, placeholder="اكتب تفاصيل ومتطلبات المشروع هنا...")
+        project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="اكتب تفاصيل ومتطلبات المشروع هنا...")
         
         submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
         
@@ -338,11 +372,11 @@ with tab1:
         if st.session_state.user['credits'] < 1:
             st.error("❌ رصيدك غير كافٍ! يرجى الشحن للاستمرار.")
             st.markdown(f'<a href="{PAYMENT_LINK}" target="_blank" class="checkout-btn">تجديد الاشتراك الآن</a>', unsafe_allow_html=True)
-        elif not project_scope:
+        elif not project_scope.strip():
             st.warning("⚠️ يرجى تقديم نطاق العمل لتبدأ عملية التوليد.")
         else:
             with st.spinner("⏳ جاري توليد المهام والتوقيع الرقمي..."):
-                time.sleep(1.0)
+                time.sleep(0.5)
                 
                 tasks = [
                     {"id": 1, "task": "تحليل المتطلبات وتصميم المخططات Architecture", "days": max(1, int(target_days*0.15)), "cost": int(budget*0.15), "status": "مخطط"},
@@ -383,7 +417,6 @@ with tab1:
         df_tasks = pd.DataFrame(st.session_state.current_plan['tasks'])
         st.dataframe(df_tasks, use_container_width=True)
         
-        # Download Action Buttons
         col_dl1, col_dl2 = st.columns(2)
         with col_dl1:
             excel_bytes = generate_excel_download(df_tasks)
@@ -405,7 +438,6 @@ with tab1:
                 use_container_width=True
             )
 
-        # Immediate Notifications Section
         st.write("---")
         col_n1, col_n2 = st.columns(2)
         msg_body = f"🚀 Project Plan: {st.session_state.current_plan['project_name']}\n💰 Budget: ${st.session_state.current_plan['budget']}\n⏱️ Days: {st.session_state.current_plan['target_days']}\n🔑 Sig: {st.session_state.plan_signature[:20]}..."
@@ -454,7 +486,6 @@ with tab3:
     if not st.session_state.current_plan:
         st.warning("⚠️ لا توجد خطة حالية لتعديلها. قم بتوليد خطة من تبويب 'بناء خطة مشروع'.")
     else:
-        # Interactive Table Editor
         edited_df = st.data_editor(
             pd.DataFrame(st.session_state.current_plan['tasks']),
             num_rows="dynamic",
@@ -473,13 +504,11 @@ with tab3:
             st.rerun()
 
         st.write("---")
-        # Detailed Textual Plan Section
         st.subheader(txt['detailed_plan'])
         detailed_plan_text = build_detailed_plan_text(st.session_state.current_plan)
         st.markdown(detailed_plan_text)
         
         st.write("---")
-        # Downloads Section in Tab 3
         col_d1, col_d2 = st.columns(2)
         with col_d1:
             excel_bytes = generate_excel_download(edited_df)
