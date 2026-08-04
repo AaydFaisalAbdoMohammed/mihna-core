@@ -15,9 +15,8 @@ import io
 
 # ReportLab & Arabic reshaper imports for clean PDF generation
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 import arabic_reshaper
 from bidi.algorithm import get_display
 
@@ -51,7 +50,7 @@ if 'notify_whatsapp' not in st.session_state:
 if 'notify_telegram' not in st.session_state:
     st.session_state.notify_telegram = "@Ayad_Developer"
 
-# Form Specific Keys (Fixes text reset bug)
+# Form Specific Keys
 if 'form_scope' not in st.session_state:
     st.session_state.form_scope = ""
 if 'form_pname' not in st.session_state:
@@ -63,7 +62,7 @@ if 'form_budget' not in st.session_state:
 if 'form_days' not in st.session_state:
     st.session_state.form_days = 30
 
-# Callback Functions for Instant UI Response (Fixes double click bug)
+# Callback Functions
 def update_language():
     selected = st.session_state.lang_radio
     st.session_state.lang = 'ar' if "العربية" in selected else 'en'
@@ -98,7 +97,7 @@ T = {
         'tg_handle': "معرف التليجرام (Telegram Handle)",
         'tab1': "🏗️ بناء خطة مشروع",
         'tab2': "📊 التحليلات التفاعلية",
-        'tab3': "✏️ محرر المهام والخطة التفصيلية",
+        'tab3': "✏️ محرر المهام وخطة المشروع",
         'tab4': "💳 إدارة الحساب والاشتراك",
         'quick_templates': "⚡ قوالب جاهزة للبدء السريع",
         'ecom': "🛒 متجر إلكتروني",
@@ -139,7 +138,7 @@ T = {
         'tg_handle': "Telegram Handle",
         'tab1': "🏗️ Build Project Plan",
         'tab2': "📊 Interactive Analytics",
-        'tab3': "✏️ Task Editor & Detailed Plan",
+        'tab3': "✏️ Task Editor & Plan",
         'tab4': "💳 Account & Subscription",
         'quick_templates': "⚡ Quick Start Templates",
         'ecom': "🛒 E-Commerce App",
@@ -177,8 +176,8 @@ border_color = "#334155" if st.session_state.theme == 'dark' else "#E2E8F0"
 st.markdown(f"""
 <style>
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-    .badge-green {{ background-color: #10B981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; }}
-    .badge-purple {{ background-color: #8B5CF6; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 12px; }}
+    .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
+    .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
     .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #E11D48, #F43F5E); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(225,29,72,0.3); }}
     .checkout-btn:hover {{ opacity: 0.9; }}
     .stTabs [data-baseweb="tab-list"] {{ gap: 8px; }}
@@ -285,7 +284,6 @@ with st.sidebar:
     st.markdown("<span class='badge-purple'>Enterprise Edition 2026</span>", unsafe_allow_html=True)
     st.write("---")
     
-    # Language Switcher with Callback
     st.radio(
         txt['lang_select'], 
         ["العربية (Arabic)", "English"], 
@@ -294,7 +292,6 @@ with st.sidebar:
         on_change=update_language
     )
     
-    # Theme Switcher with Callback
     st.radio(
         txt['theme_select'], 
         [txt['dark'], txt['light']], 
@@ -316,7 +313,7 @@ with st.sidebar:
     st.session_state.notify_telegram = st.text_input(txt['tg_handle'], value=st.session_state.notify_telegram)
 
 # ==========================================
-# 4. MAIN INTERFACE
+# 4. MAIN INTERFACE WITH 4 DISTINCT TABS
 # ==========================================
 st.title(txt['title'])
 st.caption(txt['subtitle'])
@@ -324,13 +321,12 @@ st.caption(txt['subtitle'])
 tab1, tab2, tab3, tab4 = st.tabs([txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4']])
 
 # ==========================================
-# TAB 1: BUILD PROJECT PLAN (OPTIMIZED)
+# TAB 1: بناء خطة مشروع
 # ==========================================
 with tab1:
     st.subheader(txt['quick_templates'])
     col_t1, col_t2, col_t3 = st.columns(3)
     
-    # Quick Templates Instant Assignment via Callbacks
     col_t1.button(
         txt['ecom'], 
         use_container_width=True, 
@@ -401,7 +397,6 @@ with tab1:
                 
                 st.success("✅ تم توليد الخطة وتوقيعها رقمياً بنجاح!")
 
-    # Display Generated Plan Info & Export Shortcuts
     if st.session_state.current_plan:
         st.write("---")
         col_sig1, col_sig2 = st.columns([3, 1])
@@ -425,7 +420,8 @@ with tab1:
                 data=excel_bytes,
                 file_name=f"{st.session_state.current_plan['project_name']}_Tasks.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                use_container_width=True,
+                key="btn_dl_excel_tab1"
             )
         with col_dl2:
             detailed_txt = build_detailed_plan_text(st.session_state.current_plan)
@@ -435,7 +431,8 @@ with tab1:
                 data=pdf_bytes,
                 file_name=f"{st.session_state.current_plan['project_name']}_Plan.pdf",
                 mime="application/pdf",
-                use_container_width=True
+                use_container_width=True,
+                key="btn_dl_pdf_tab1"
             )
 
         st.write("---")
@@ -446,11 +443,11 @@ with tab1:
         with col_n1:
             st.markdown(f'<a href="{wa_url}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">{txt["send_wa"]}</a>', unsafe_allow_html=True)
         with col_n2:
-            if st.button(txt['send_tg'], use_container_width=True):
+            if st.button(txt['send_tg'], use_container_width=True, key="btn_tg_notify_tab1"):
                 st.success(f"✅ Notification dispatched to {st.session_state.notify_telegram}")
 
 # ==========================================
-# TAB 2: INTERACTIVE ANALYTICS
+# TAB 2: التحليلات التفاعلية
 # ==========================================
 with tab2:
     if not st.session_state.current_plan:
@@ -478,7 +475,7 @@ with tab2:
             st.plotly_chart(fig_bar, use_container_width=True)
 
 # ==========================================
-# TAB 3: TASK EDITOR & DETAILED TEXT PLAN
+# TAB 3: محرر المهام وخطة المشروع
 # ==========================================
 with tab3:
     st.subheader(txt['tab3'])
@@ -489,10 +486,11 @@ with tab3:
         edited_df = st.data_editor(
             pd.DataFrame(st.session_state.current_plan['tasks']),
             num_rows="dynamic",
-            use_container_width=True
+            use_container_width=True,
+            key="task_data_editor"
         )
         
-        if st.button(txt['save_re_sign'], use_container_width=True):
+        if st.button(txt['save_re_sign'], use_container_width=True, key="btn_save_resign_tab3"):
             updated_tasks = edited_df.to_dict(orient='records')
             st.session_state.current_plan['tasks'] = updated_tasks
             st.session_state.current_plan['budget'] = sum(int(item.get('cost', 0)) for item in updated_tasks)
@@ -517,7 +515,8 @@ with tab3:
                 data=excel_bytes,
                 file_name=f"{st.session_state.current_plan['project_name']}_Tasks.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                use_container_width=True,
+                key="btn_dl_excel_tab3"
             )
         with col_d2:
             pdf_bytes = generate_pdf_plan(st.session_state.current_plan, st.session_state.plan_signature, detailed_plan_text)
@@ -526,11 +525,12 @@ with tab3:
                 data=pdf_bytes,
                 file_name=f"{st.session_state.current_plan['project_name']}_Plan.pdf",
                 mime="application/pdf",
-                use_container_width=True
+                use_container_width=True,
+                key="btn_dl_pdf_tab3"
             )
 
 # ==========================================
-# TAB 4: ACCOUNT MANAGEMENT
+# TAB 4: إدارة الحساب والاشتراك
 # ==========================================
 with tab4:
     st.subheader(txt['tab4'])
