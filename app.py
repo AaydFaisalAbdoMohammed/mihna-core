@@ -24,7 +24,8 @@ from bidi.algorithm import get_display
 # 1. CONFIGURATION & STATE INITIALIZATION
 # ==========================================
 APP_TITLE = "PHOENIX & MIHNA AGENT PRO - ENTERPRISE"
-PAYMENT_LINK = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3"
+PAYMENT_LINK_MONTHLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly"
+PAYMENT_LINK_YEARLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly"
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_DEFAULT")
 
 st.set_page_config(
@@ -34,13 +35,19 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Persistent Session State Setup
+# Persistent Session State Setup (Defaulting to 5 Free Credits for new users)
 if 'lang' not in st.session_state:
     st.session_state.lang = 'ar'
 if 'theme' not in st.session_state:
     st.session_state.theme = 'dark'
 if 'user' not in st.session_state:
-    st.session_state.user = {'username': 'Eng. Ayad', 'credits': 15, 'role': 'Enterprise'}
+    st.session_state.user = {
+        'username': 'Eng. Ayad', 
+        'credits': 5,  # 🎁 5 Free Credits allocated on start
+        'role': 'Free Trial',
+        'is_subscribed': False,
+        'subscription_type': 'Free'
+    }
 if 'current_plan' not in st.session_state:
     st.session_state.current_plan = None
 if 'plan_signature' not in st.session_state:
@@ -88,17 +95,17 @@ T = {
         'dark': "🌙 الداكن (Dark)",
         'light': "☀️ الفاتح (Light)",
         'user': "👤 المستخدم:",
-        'credits': "💳 الرصيد المتبقي:",
-        'points': "نقطة",
-        'renew_title': "🛒 تجديد الاشتراك",
-        'renew_btn': "🛒 شراء نقاط / تجديد الاشتراك",
+        'credits': "💳 الرصيد التجريبي / الحالي:",
+        'points': "نقاط مجانية",
+        'renew_title': "🛒 ترقية الاشتراك",
+        'renew_btn': "⚡ اشترك الآن وترقية الحساب",
         'notify_settings': "📲 إعدادات الإشعارات الفورية",
         'wa_phone': "رقم الواتساب (مع الرمز)",
         'tg_handle': "معرف التليجرام (Telegram Handle)",
         'tab1': "🏗️ بناء خطة مشروع",
-        'tab2': "📊 التحليلات التفاعلية",
+        'tab2': "📊 التحليلات التفاعلية الفائقة",
         'tab3': "✏️ محرر المهام وخطة المشروع",
-        'tab4': "💳 إدارة الحساب والاشتراك",
+        'tab4': "💳 إدارة الحساب والاشتراكات",
         'quick_templates': "⚡ قوالب جاهزة للبدء السريع",
         'ecom': "🛒 متجر إلكتروني",
         'edu': "🎓 منصة تعليمية",
@@ -110,7 +117,7 @@ T = {
         'target_days': "المدة الزمنية المستهدفة (يوم)",
         'risk_level': "تحمل المخاطر",
         'scope': "نطاق العمل (Scope of Work)",
-        'generate_btn': "🚀 توليد وتوقيع الخطة الهندسية",
+        'generate_btn': "🚀 توليد وتوقيع الخطة الهندسية (تستهلك 1 نقطة)",
         'export_excel': "📥 تحميل جدول المهام (Excel)",
         'export_pdf': "📄 تحميل الخطة التنفيذية (PDF)",
         'detailed_plan': "📜 الخطة التنفيذية النصية الشاملة",
@@ -129,17 +136,17 @@ T = {
         'dark': "🌙 Dark",
         'light': "☀️ Light",
         'user': "👤 User:",
-        'credits': "💳 Remaining Credits:",
-        'points': "pts",
-        'renew_title': "🛒 Subscription Renewal",
-        'renew_btn': "🛒 Buy Credits / Renew Plan",
+        'credits': "💳 Free / Current Balance:",
+        'points': "free pts",
+        'renew_title': "🛒 Upgrade Plan",
+        'renew_btn': "⚡ Upgrade & Subscribe Now",
         'notify_settings': "📲 Instant Notification Settings",
         'wa_phone': "WhatsApp Phone (with Country Code)",
         'tg_handle': "Telegram Handle",
         'tab1': "🏗️ Build Project Plan",
-        'tab2': "📊 Interactive Analytics",
+        'tab2': "📊 Advanced Interactive Analytics",
         'tab3': "✏️ Task Editor & Plan",
-        'tab4': "💳 Account & Subscription",
+        'tab4': "💳 Account & Subscriptions",
         'quick_templates': "⚡ Quick Start Templates",
         'ecom': "🛒 E-Commerce App",
         'edu': "🎓 E-Learning Platform",
@@ -151,7 +158,7 @@ T = {
         'target_days': "Target Timeline (Days)",
         'risk_level': "Risk Tolerance",
         'scope': "Scope of Work",
-        'generate_btn': "🚀 Generate & Sign Engineering Plan",
+        'generate_btn': "🚀 Generate & Sign Engineering Plan (1 Credit)",
         'export_excel': "📥 Download Tasks (Excel)",
         'export_pdf': "📄 Download Detailed Plan (PDF)",
         'detailed_plan': "📜 Comprehensive Text Plan",
@@ -178,8 +185,12 @@ st.markdown(f"""
     .stApp {{ background-color: {bg_color}; color: {text_color}; }}
     .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
     .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
-    .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #E11D48, #F43F5E); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(225,29,72,0.3); }}
-    .checkout-btn:hover {{ opacity: 0.9; }}
+    .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
+    .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }}
+    .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(124,58,237,0.3); }}
+    .checkout-btn:hover, .checkout-btn-yearly:hover {{ opacity: 0.9; transform: translateY(-1px); }}
+    .pricing-card {{ background-color: {card_bg}; border: 2px solid {border_color}; border-radius: 16px; padding: 24px; text-align: center; transition: all 0.3s ease; }}
+    .pricing-card-highlight {{ background-color: {card_bg}; border: 2px solid #8B5CF6; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 10px 25px rgba(139,92,246,0.2); }}
     .stTabs [data-baseweb="tab-list"] {{ gap: 8px; }}
     .stTabs [data-baseweb="tab"] {{ background-color: {card_bg}; border-radius: 8px; padding: 10px 20px; color: {text_color}; border: 1px solid {border_color}; font-weight: bold; }}
     .stTabs [aria-selected="true"] {{ background-color: #3B82F6 !important; color: white !important; border-color: #3B82F6 !important; }}
@@ -302,10 +313,18 @@ with st.sidebar:
     
     st.write("---")
     st.markdown(f"{txt['user']} **{st.session_state.user['username']}**")
-    st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
     
+    # User status display (Free Trial vs Subscribed)
+    if st.session_state.user['is_subscribed']:
+        st.markdown(f"نوع الاشتراك: <span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
+        st.markdown(f"الرصيد المتاح: **غير محدود ♾️**")
+    else:
+        st.markdown(f"نوع الحساب: <span class='badge-purple'>تجريبي (5 نقاط هدية)</span>", unsafe_allow_html=True)
+        st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
+    
+    st.write("---")
     st.markdown(f"### {txt['renew_title']}")
-    st.markdown(f'<a href="{PAYMENT_LINK}" target="_blank" class="checkout-btn">{txt["renew_btn"]}</a>', unsafe_allow_html=True)
+    st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">{txt["renew_btn"]}</a>', unsafe_allow_html=True)
     
     st.write("---")
     st.subheader(txt['notify_settings'])
@@ -365,9 +384,9 @@ with tab1:
         submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
         
     if submit_btn:
-        if st.session_state.user['credits'] < 1:
-            st.error("❌ رصيدك غير كافٍ! يرجى الشحن للاستمرار.")
-            st.markdown(f'<a href="{PAYMENT_LINK}" target="_blank" class="checkout-btn">تجديد الاشتراك الآن</a>', unsafe_allow_html=True)
+        if st.session_state.user['credits'] < 1 and not st.session_state.user['is_subscribed']:
+            st.error("❌ لقد استنفدت نقاطك المجانية (5/5)! يرجى ترقية اشتراكك للاستمرار.")
+            st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">🛒 اشترك الآن للحصول على رصيد لا محدود</a>', unsafe_allow_html=True)
         elif not project_scope.strip():
             st.warning("⚠️ يرجى تقديم نطاق العمل لتبدأ عملية التوليد.")
         else:
@@ -386,6 +405,8 @@ with tab1:
                     "domain": domain,
                     "budget": budget,
                     "target_days": target_days,
+                    "risk": risk_tolerance,
+                    "tech": tech_stack,
                     "tasks": tasks,
                     "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M")
                 }
@@ -393,7 +414,10 @@ with tab1:
                 signature = SecurityEngine.generate_signature(plan_payload)
                 st.session_state.current_plan = plan_payload
                 st.session_state.plan_signature = signature
-                st.session_state.user['credits'] -= 1
+                
+                # Deduct credit if on free tier
+                if not st.session_state.user['is_subscribed']:
+                    st.session_state.user['credits'] -= 1
                 
                 st.success("✅ تم توليد الخطة وتوقيعها رقمياً بنجاح!")
 
@@ -447,32 +471,111 @@ with tab1:
                 st.success(f"✅ Notification dispatched to {st.session_state.notify_telegram}")
 
 # ==========================================
-# TAB 2: التحليلات التفاعلية
+# TAB 2: التحليلات التفاعلية الفائقة (مبهرة وفريدة)
 # ==========================================
 with tab2:
     if not st.session_state.current_plan:
-        st.info("💡 قم بتوليد خطة مشروع أولاً من تبويب 'بناء خطة مشروع'.")
+        st.info("💡 قم بتوليد خطة مشروع أولاً من تبويب 'بناء خطة مشروع' لاستعراض التحليلات الهندسية المتقدمة.")
     else:
         plan = st.session_state.current_plan
         df = pd.DataFrame(plan['tasks'])
         
+        st.markdown("### 📊 لوحة القيادة الهندسية وتخيم الجودة والمخاطر")
+        
         col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-        col_m1.metric("إجمالي التكلفة", f"${plan['budget']:,}")
-        col_m2.metric("إجمالي الأيام", f"{plan['target_days']} يوم")
-        col_m3.metric("عدد المهام", f"{len(df)}")
-        col_m4.metric("الأمان الرقمي", "HMAC-Verified")
+        col_m1.metric("إجمالي الميزانية المعتمدة", f"${plan['budget']:,}")
+        col_m2.metric("المدى الزمني الشامل", f"{plan['target_days']} يوم")
+        col_m3.metric("معدل التكلفة اليومية", f"${int(plan['budget']/max(1, plan['target_days'])):,}/يوم")
+        col_m4.metric("درجة الموثوقية الرقمية", "100% (HMAC)")
         
         st.write("---")
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            fig_pie = px.pie(df, values='cost', names='task', title='توزيع الميزانية على المهام', hole=0.4)
-            fig_pie.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': text_color})
-            st.plotly_chart(fig_pie, use_container_width=True)
+        
+        # 1. Custom Radar Assessment Chart (Unique Engineering Radar)
+        col_rad1, col_rad2 = st.columns([1, 1])
+        
+        with col_rad1:
+            st.markdown("#### 🛡️ تقييم أبعاد المشروع (Radar Matrix)")
+            radar_categories = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
             
-        with col_c2:
-            fig_bar = px.bar(df, x='task', y='days', title='المدة الزمنية لكل مهمة (أيام)', color='days', color_continuous_scale='Blues')
-            fig_bar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': text_color})
-            st.plotly_chart(fig_bar, use_container_width=True)
+            # Dynamic scoring based on user selections
+            risk_val = 85 if plan.get('risk') == 'عالي' else (65 if plan.get('risk') == 'متوسط' else 45)
+            radar_values = [75, 95, 80, 85, risk_val]
+            
+            fig_radar = go.Figure()
+            fig_radar.add_trace(go.Scatterpolar(
+                r=radar_values,
+                theta=radar_categories,
+                fill='toself',
+                name='المشروع الحالي',
+                line_color='#3B82F6',
+                fillcolor='rgba(59, 130, 246, 0.3)'
+            ))
+            fig_radar.update_layout(
+                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                showlegend=False,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color)
+            )
+            st.plotly_chart(fig_radar, use_container_width=True)
+            
+        with col_rad2:
+            st.markdown("#### 🌊 التدفق المالي التراكمي للمراحل (Waterfall Cost)")
+            
+            fig_waterfall = go.Figure(go.Waterfall(
+                name="التكلفة",
+                orientation="v",
+                measure=["relative"] * len(df),
+                x=df['task'],
+                textposition="outside",
+                text=[f"${c:,}" for c in df['cost']],
+                y=df['cost'],
+                connector={"line": {"color": "#64748B"}},
+                decreasing={"marker": {"color": "#EF4444"}},
+                increasing={"marker": {"color": "#10B981"}},
+            ))
+            fig_waterfall.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color),
+                showlegend=False
+            )
+            st.plotly_chart(fig_waterfall, use_container_width=True)
+            
+        st.write("---")
+        
+        # 3. Gantt Phase Timeline (Unique Implementation)
+        st.markdown("#### ⏱️ المخطط الزمني التنفيذي للمراحل (Gantt Phase Breakdown)")
+        
+        df_gantt = df.copy()
+        start_days = []
+        curr = 0
+        for d in df_gantt['days']:
+            start_days.append(curr)
+            curr += d
+            
+        df_gantt['Start'] = start_days
+        df_gantt['End'] = curr
+        
+        fig_gantt = px.bar(
+            df_gantt, 
+            x='days', 
+            y='task', 
+            orientation='h', 
+            base='Start',
+            color='task',
+            title="التسلسل الزمني المتتابع للمهام (بالأيام)",
+            color_discrete_sequence=px.colors.qualitative.Prism
+        )
+        fig_gantt.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color=text_color),
+            showlegend=False,
+            xaxis_title="الأيام التراكمية",
+            yaxis_title="المهمة الهندسية"
+        )
+        st.plotly_chart(fig_gantt, use_container_width=True)
 
 # ==========================================
 # TAB 3: محرر المهام وخطة المشروع
@@ -530,20 +633,70 @@ with tab3:
             )
 
 # ==========================================
-# TAB 4: إدارة الحساب والاشتراك
+# TAB 4: إدارة الحساب والاشتراكات (تصميم احترافي مذهل)
 # ==========================================
 with tab4:
-    st.subheader(txt['tab4'])
-    col_a1, col_a2 = st.columns(2)
-    with col_a1:
-        st.markdown(f"**اسم المشترك:** {st.session_state.user['username']}")
-        st.markdown(f"**باقة الاشتراك:** {st.session_state.user['role']}")
-        st.markdown(f"**الرصيد الحالي:** {st.session_state.user['credits']} نقطة")
+    st.subheader("💳 إدارة الاشتراكات والخطط التجارية")
+    st.caption("اختر الخطة المناسبة لاحتياجاتك البرمجية والهندسية لتوليد خطط غير محدودة.")
+    
+    # Status Banner
+    col_stat1, col_stat2 = st.columns([2, 1])
+    with col_stat1:
+        st.info(f"👤 **المستخدم:** {st.session_state.user['username']} | **الرصيد التجريبي المجاني المتبقي:** {st.session_state.user['credits']} من أصل 5 نقاط مجانية.")
+    with col_stat2:
+        if st.session_state.user['credits'] > 0 and not st.session_state.user['is_subscribed']:
+            st.markdown("<span class='badge-green'>🎁 الفترة التجريبية نشطة (5 نقاط)</span>", unsafe_allow_html=True)
+        elif st.session_state.user['is_subscribed']:
+            st.markdown("<span class='badge-gold'>👑 اشتراك مدفوع نشط</span>", unsafe_allow_html=True)
+
+    st.write("---")
+    
+    # Pricing Cards Comparison
+    col_p1, col_p2, col_p3 = st.columns(3)
+    
+    with col_p1:
+        st.markdown("""
+        <div class="pricing-card">
+            <h3>🎁 التجريبي المجاني</h3>
+            <h2>$0 <small>/ للأبد</small></h2>
+            <hr>
+            <p>✔ <b>5 نقاط مجانية</b> للبدء والتجربة</p>
+            <p>✔ توليد خطط هندسية موثقة</p>
+            <p>✔ التوقيع الرقمي HMAC-SHA512</p>
+            <p>✔ تصدير ملفات Excel & PDF</p>
+            <hr>
+            <p><i>مفعل تلقائياً لكل مستخدم جديد</i></p>
+        </div>
+        """, unsafe_allow_html=True)
         
-    with col_a2:
-        st.markdown("### ترقية الحساب / شراء رصيد")
-        st.write("احصل على نقاط إضافية لتوليد الخطط الهندسية واستخدام الذكاء الاصطناعي.")
-        st.markdown(
-            f'<a href="{PAYMENT_LINK}" target="_blank" class="checkout-btn">🔗 الذهاب لبوابة الدفع Lemon Squeezy</a>', 
-            unsafe_allow_html=True
-        )
+    with col_p2:
+        st.markdown(f"""
+        <div class="pricing-card-highlight">
+            <span class="badge-purple">الأكثر شعبية 🚀</span>
+            <h3>⚡ الاشتراك الشهري Pro</h3>
+            <h2>$29 <small>/ شهرياً</small></h2>
+            <hr>
+            <p>✔ <b>توليد خطط غير محدود</b></p>
+            <p>✔ تحليلات هندسية فائقة ومتقدمة</p>
+            <p>✔ تصدير تقارير موثقة بلا حدود</p>
+            <p>✔ ربط الإشعارات التلقائية الفورية</p>
+            <hr>
+            <a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">🚀 الاشتراك الشهري الآن</a>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_p3:
+        st.markdown(f"""
+        <div class="pricing-card">
+            <span class="badge-gold">خصم 20% 🏆</span>
+            <h3>👑 اشتراك المؤسسات السنوي</h3>
+            <h2>$279 <small>/ سنوياً</small></h2>
+            <hr>
+            <p>✔ <b>جميع ميزات باقة Pro</b></p>
+            <p>✔ دعم فني وتصميم خاص</p>
+            <p>✔ تخصيص القوالب ومعمارية النظام</p>
+            <p>✔ إمكانية الربط التلقائي عبر API</p>
+            <hr>
+            <a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">💎 الاشتراك السنوي المميز</a>
+        </div>
+        """, unsafe_allow_html=True)
