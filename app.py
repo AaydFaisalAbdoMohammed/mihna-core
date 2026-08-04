@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 import urllib.parse
 import os
+import re  # 👈 إصلاح السبب الرئيسي للخطأ: استيراد مكتبة التعبيرات النمطية
 
 # ==========================================
 # 1. CONFIGURATION & STYLING
@@ -77,6 +78,8 @@ class SecurityEngine:
 
     @staticmethod
     def verify_signature(data_dict: dict, signature: str) -> bool:
+        if not signature:
+            return False
         expected_sig = SecurityEngine.generate_signature(data_dict)
         return hmac.compare_digest(expected_sig, signature)
 
@@ -84,7 +87,7 @@ class NotificationEngine:
     @staticmethod
     def create_whatsapp_link(phone: str, message: str) -> str:
         encoded_msg = urllib.parse.quote(message)
-        clean_phone = re.sub(r'[^\d]', '', phone)
+        clean_phone = re.sub(r'[^\d]', '', str(phone))  # 👈 آمنة من الأخطاء
         return f"https://wa.me/{clean_phone}?text={encoded_msg}"
 
 class RAGMemoryEngine:
@@ -124,14 +127,13 @@ with st.sidebar:
     st.subheader("📲 إعدادات الإشعارات الفورية")
     st.session_state.notify_whatsapp = st.text_input("رقم الواتساب (مع الرمز)", value=st.session_state.notify_whatsapp)
     st.session_state.notify_telegram = st.text_input("معرف التليجرام (Telegram Handle)", value=st.session_state.notify_telegram)
-    
+
 # ==========================================
 # 4. MAIN PAGE NAVIGATION (TOP TABS)
 # ==========================================
 st.title("🚀 وكيل مهنة PRO | PHOENIX Enterprise")
 st.caption("المنصة المتقدمة لهندسة خطط المشاريع وتأمينها بالتوقيع الرقمي والذكاء الاصطناعي.")
 
-# Move Navigation from Sidebar to Main Screen Tabs
 tab1, tab2, tab3, tab4 = st.tabs([
     "🏗️ بناء خطة مشروع", 
     "📊 التحليلات التفاعلية", 
@@ -212,6 +214,7 @@ with tab1:
                 
                 st.success("✅ تم توليد الخطة وتوقيعها رقمياً بنجاح!")
 
+    # عرض تفاصيل الخطة والإشعارات بشرط وجود خطة مولدة
     if st.session_state.current_plan:
         st.write("---")
         st.subheader("📌 الخطة الحالية والتوقيع الرقمي")
@@ -229,7 +232,7 @@ with tab1:
         df_tasks = pd.DataFrame(st.session_state.current_plan['tasks'])
         st.dataframe(df_tasks, use_container_width=True)
         
-        # Notification Trigger Section
+        # Section Notification safely placed inside plan condition
         st.subheader("📲 إرسال الخطة عبر التنبيهات")
         col_n1, col_n2 = st.columns(2)
         
