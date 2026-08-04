@@ -470,7 +470,7 @@ with tab1:
                 st.success(f"✅ Notification dispatched to {st.session_state.notify_telegram}")
 
 # ==========================================
-# TAB 2: التحليلات التفاعلية الفائقة (النسخة الفضائية المبهرة)
+# TAB 2: التحليلات التفاعلية الفائقة (النسخة المطورة والمبهرة)
 # ==========================================
 with tab2:
     if not st.session_state.current_plan:
@@ -482,9 +482,8 @@ with tab2:
         st.markdown("## 📊 لوحة القيادة الهندسية وتخيم الجودة والمخاطر")
         st.caption("تحليل بصري متقدم للتكلفة، الأداء، المخاطر، والمسار الزمني الشامل لمشروعك.")
         
-        # 1. Executive Metrics & Feasibility Score
+        # Executive Metrics
         daily_rate = int(plan['budget'] / max(1, plan['target_days']))
-        # Logic to compute dynamic Feasibility Index
         feasibility_score = min(98, max(65, int(100 - (plan['target_days'] / max(1, plan['budget'] / 100)) * 5)))
         
         m1, m2, m3, m4 = st.columns(4)
@@ -496,11 +495,91 @@ with tab2:
         st.progress(feasibility_score / 100)
         st.write("---")
         
-        # Row 1: Radar Risk Chart & Waterfall Budget Flow
+        # SECTION 1: CIRCULAR & ADVANCED DASHBOARD VISUALS
+        col_c1, col_c2 = st.columns(2)
+        
+        with col_c1:
+            st.markdown("### 🍩 التحليل المالي الدائري المتداخل (Sunburst Hierarchy)")
+            
+            # Construct Hierarchical Data structure for Sunburst Chart
+            labels = [plan['project_name']] + list(df['task'])
+            parents = [""] + [plan['project_name']] * len(df)
+            values = [plan['budget']] + list(df['cost'])
+            
+            fig_sunburst = go.Figure(go.Sunburst(
+                labels=labels,
+                parents=parents,
+                values=values,
+                branchvalues="total",
+                hovertemplate='<b>%{label}</b><br>المبلغ: $%{value:,}<br>النسبة: %{percentParent:.1%}',
+                marker=dict(
+                    colorscale='Blues',
+                    line=dict(color='#0E1117', width=1.5)
+                ),
+                textfont=dict(size=12, color='#FFFFFF')
+            ))
+            fig_sunburst.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=11),
+                height=350,
+                margin=dict(l=10, r=10, t=10, b=10)
+            )
+            st.plotly_chart(fig_sunburst, use_container_width=True)
+            st.markdown("""
+            <div class="insight-card">
+                <b>💡 قراءة الخبير البصرية:</b> التوزيع الدائري المتداخل يعكس وزن كل مرحلة مالية بالنسبة لإجمالي المشروع. تظهر النسبة الأكبر مخصصة للنية التحتية والـ Backend لضمان أقصى قدر من الثبات الاستثماري.
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_c2:
+            st.markdown("### 🎯 مؤشر الكفاءة والجاهزية الهندسية (Feasibility Gauge)")
+            
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=feasibility_score,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "مؤشر ملاءمة الميزانية والوقت", 'font': {'size': 14, 'color': text_color}},
+                delta={'reference': 80, 'increasing': {'color': "#10B981"}},
+                gauge={
+                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#334155"},
+                    'bar': {'color': "#8B5CF6"},
+                    'bgcolor': "rgba(0,0,0,0)",
+                    'borderwidth': 2,
+                    'bordercolor': "#334155",
+                    'steps': [
+                        {'range': [0, 50], 'color': 'rgba(239, 68, 68, 0.3)'},
+                        {'range': [50, 75], 'color': 'rgba(245, 158, 11, 0.3)'},
+                        {'range': [75, 100], 'color': 'rgba(16, 185, 129, 0.3)'}
+                    ],
+                    'threshold': {
+                        'line': {'color': "red", 'width': 4},
+                        'thickness': 0.75,
+                        'value': 95
+                    }
+                }
+            ))
+            fig_gauge.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=12),
+                height=350,
+                margin=dict(l=20, r=20, t=30, b=20)
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.markdown("""
+            <div class="insight-card">
+                <b>💡 قراءة الخبير البصرية:</b> يعبر المؤشر الدائري التفاعلي عن درجة اتزان الخطة؛ الحصول على نسبة تزيد عن <b>75%</b> يعكس توازناً استثنائياً بين الوقت المستهدف والميزانية المقدرة.
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.write("---")
+
+        # SECTION 2: RADAR & WATERFALL CHARTS
         c_r1, c_r2 = st.columns(2)
         
         with c_r1:
-            st.markdown("### 🎯 تقييم أبعاد المشروع (5D Radar Risk Matrix)")
+            st.markdown("### 🕸️ تقييم أبعاد المشروع (5D Radar Risk Matrix)")
             radar_categories = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
             
             risk_score = 85 if plan.get('risk') == 'عالي' else (65 if plan.get('risk') == 'متوسط' else 45)
@@ -537,7 +616,7 @@ with tab2:
         with c_r2:
             st.markdown("### 🌊 التدفق المالي التراكمي (Waterfall Cost Flow)")
             
-            x_labels = list(df['task']) + ["الإجمالي النهائية"]
+            x_labels = list(df['task']) + ["الإجمالي النهائي"]
             y_measures = ["relative"] * len(df) + ["total"]
             y_values = list(df['cost']) + [0]
             
@@ -572,7 +651,7 @@ with tab2:
 
         st.write("---")
 
-        # Row 2: Donut Budget Allocation & Interactive Gantt Chart
+        # SECTION 3: DONUT ALLOCATION & GANTT CHART
         c_g1, c_g2 = st.columns([1, 1.3])
         
         with c_g1:
