@@ -35,7 +35,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Persistent Session State Setup (Defaulting to 5 Free Credits for new users)
+# Persistent Session State Setup
 if 'lang' not in st.session_state:
     st.session_state.lang = 'ar'
 if 'theme' not in st.session_state:
@@ -43,7 +43,7 @@ if 'theme' not in st.session_state:
 if 'user' not in st.session_state:
     st.session_state.user = {
         'username': 'Eng. Ayad', 
-        'credits': 5,  # 🎁 5 Free Credits allocated on start
+        'credits': 5,
         'role': 'Free Trial',
         'is_subscribed': False,
         'subscription_type': 'Free'
@@ -191,6 +191,7 @@ st.markdown(f"""
     .checkout-btn:hover, .checkout-btn-yearly:hover {{ opacity: 0.9; transform: translateY(-1px); }}
     .pricing-card {{ background-color: {card_bg}; border: 2px solid {border_color}; border-radius: 16px; padding: 24px; text-align: center; transition: all 0.3s ease; }}
     .pricing-card-highlight {{ background-color: {card_bg}; border: 2px solid #8B5CF6; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 10px 25px rgba(139,92,246,0.2); }}
+    .insight-card {{ background-color: {card_bg}; border-right: 4px solid #3B82F6; padding: 14px; border-radius: 8px; margin-top: 8px; font-size: 14px; line-height: 1.6; border: 1px solid {border_color}; }}
     .stTabs [data-baseweb="tab-list"] {{ gap: 8px; }}
     .stTabs [data-baseweb="tab"] {{ background-color: {card_bg}; border-radius: 8px; padding: 10px 20px; color: {text_color}; border: 1px solid {border_color}; font-weight: bold; }}
     .stTabs [aria-selected="true"] {{ background-color: #3B82F6 !important; color: white !important; border-color: #3B82F6 !important; }}
@@ -314,7 +315,6 @@ with st.sidebar:
     st.write("---")
     st.markdown(f"{txt['user']} **{st.session_state.user['username']}**")
     
-    # User status display (Free Trial vs Subscribed)
     if st.session_state.user['is_subscribed']:
         st.markdown(f"نوع الاشتراك: <span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
         st.markdown(f"الرصيد المتاح: **غير محدود ♾️**")
@@ -415,7 +415,6 @@ with tab1:
                 st.session_state.current_plan = plan_payload
                 st.session_state.plan_signature = signature
                 
-                # Deduct credit if on free tier
                 if not st.session_state.user['is_subscribed']:
                     st.session_state.user['credits'] -= 1
                 
@@ -471,7 +470,7 @@ with tab1:
                 st.success(f"✅ Notification dispatched to {st.session_state.notify_telegram}")
 
 # ==========================================
-# TAB 2: التحليلات التفاعلية الفائقة (مبهرة وفريدة)
+# TAB 2: التحليلات التفاعلية الفائقة (النسخة الفضائية المبهرة)
 # ==========================================
 with tab2:
     if not st.session_state.current_plan:
@@ -480,102 +479,171 @@ with tab2:
         plan = st.session_state.current_plan
         df = pd.DataFrame(plan['tasks'])
         
-        st.markdown("### 📊 لوحة القيادة الهندسية وتخيم الجودة والمخاطر")
+        st.markdown("## 📊 لوحة القيادة الهندسية وتخيم الجودة والمخاطر")
+        st.caption("تحليل بصري متقدم للتكلفة، الأداء، المخاطر، والمسار الزمني الشامل لمشروعك.")
         
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-        col_m1.metric("إجمالي الميزانية المعتمدة", f"${plan['budget']:,}")
-        col_m2.metric("المدى الزمني الشامل", f"{plan['target_days']} يوم")
-        col_m3.metric("معدل التكلفة اليومية", f"${int(plan['budget']/max(1, plan['target_days'])):,}/يوم")
-        col_m4.metric("درجة الموثوقية الرقمية", "100% (HMAC)")
+        # 1. Executive Metrics & Feasibility Score
+        daily_rate = int(plan['budget'] / max(1, plan['target_days']))
+        # Logic to compute dynamic Feasibility Index
+        feasibility_score = min(98, max(65, int(100 - (plan['target_days'] / max(1, plan['budget'] / 100)) * 5)))
         
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("💰 إجمالي الميزانية المعتمدة", f"${plan['budget']:,}")
+        m2.metric("⏱️ المدى الزمني الشامل", f"{plan['target_days']} يوم")
+        m3.metric("📈 التكلفة اليومية المستهدفة", f"${daily_rate:,}/يوم")
+        m4.metric("🛡️ مؤشر السلامة الهندسية", f"{feasibility_score}%", delta="ممتاز" if feasibility_score > 80 else "مقبول")
+        
+        st.progress(feasibility_score / 100)
         st.write("---")
         
-        # 1. Custom Radar Assessment Chart (Unique Engineering Radar)
-        col_rad1, col_rad2 = st.columns([1, 1])
+        # Row 1: Radar Risk Chart & Waterfall Budget Flow
+        c_r1, c_r2 = st.columns(2)
         
-        with col_rad1:
-            st.markdown("#### 🛡️ تقييم أبعاد المشروع (Radar Matrix)")
+        with c_r1:
+            st.markdown("### 🎯 تقييم أبعاد المشروع (5D Radar Risk Matrix)")
             radar_categories = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
             
-            # Dynamic scoring based on user selections
-            risk_val = 85 if plan.get('risk') == 'عالي' else (65 if plan.get('risk') == 'متوسط' else 45)
-            radar_values = [75, 95, 80, 85, risk_val]
+            risk_score = 85 if plan.get('risk') == 'عالي' else (65 if plan.get('risk') == 'متوسط' else 45)
+            radar_values = [80, 95, 85, 90, risk_score]
             
             fig_radar = go.Figure()
             fig_radar.add_trace(go.Scatterpolar(
                 r=radar_values,
                 theta=radar_categories,
                 fill='toself',
-                name='المشروع الحالي',
-                line_color='#3B82F6',
-                fillcolor='rgba(59, 130, 246, 0.3)'
+                name='تقدير الأبعاد',
+                line=dict(color='#8B5CF6', width=3),
+                fillcolor='rgba(139, 92, 246, 0.35)'
             ))
             fig_radar.update_layout(
-                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                polar=dict(
+                    radialaxis=dict(visible=True, range=[0, 100], gridcolor='#334155'),
+                    angularaxis=dict(gridcolor='#334155')
+                ),
                 showlegend=False,
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color=text_color)
+                font=dict(color=text_color, size=12),
+                height=340,
+                margin=dict(l=40, r=40, t=30, b=30)
             )
             st.plotly_chart(fig_radar, use_container_width=True)
+            st.markdown("""
+            <div class="insight-card">
+                <b>💡 قراءة الخبير:</b> يوضح الرسم الخماسي استقرار جوانب المشروع. تظهر جودة عالية في <b>الأمان الرقمي والتحكم بالجدول</b>، مع مرونة ممتازة للتعامل مع متطلبات النطاق.
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c_r2:
+            st.markdown("### 🌊 التدفق المالي التراكمي (Waterfall Cost Flow)")
             
-        with col_rad2:
-            st.markdown("#### 🌊 التدفق المالي التراكمي للمراحل (Waterfall Cost)")
+            x_labels = list(df['task']) + ["الإجمالي النهائية"]
+            y_measures = ["relative"] * len(df) + ["total"]
+            y_values = list(df['cost']) + [0]
             
             fig_waterfall = go.Figure(go.Waterfall(
-                name="التكلفة",
+                name="توزيع التكلفة",
                 orientation="v",
-                measure=["relative"] * len(df),
-                x=df['task'],
+                measure=y_measures,
+                x=x_labels,
                 textposition="outside",
-                text=[f"${c:,}" for c in df['cost']],
-                y=df['cost'],
-                connector={"line": {"color": "#64748B"}},
+                text=[f"${c:,}" if c > 0 else f"${plan['budget']:,}" for c in y_values],
+                y=y_values,
+                connector={"line": {"color": "#64748B", "width": 2}},
                 decreasing={"marker": {"color": "#EF4444"}},
-                increasing={"marker": {"color": "#10B981"}},
+                increasing={"marker": {"color": "#3B82F6"}},
+                totals={"marker": {"color": "#10B981"}}
             ))
             fig_waterfall.update_layout(
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color=text_color),
-                showlegend=False
+                font=dict(color=text_color, size=11),
+                showlegend=False,
+                height=340,
+                margin=dict(l=20, r=20, t=30, b=30),
+                yaxis=dict(gridcolor='#334155')
             )
             st.plotly_chart(fig_waterfall, use_container_width=True)
-            
+            st.markdown("""
+            <div class="insight-card">
+                <b>💡 قراءة الخبير:</b> يعرض مخطط الشلال المالي التكلفة التراكمية المضافة بواسطة كل مرحلة حتى الوصول إلى <b>التكلفة الإجمالية المعتمدة</b> للحد من تجاوز الميزانية.
+            </div>
+            """, unsafe_allow_html=True)
+
         st.write("---")
+
+        # Row 2: Donut Budget Allocation & Interactive Gantt Chart
+        c_g1, c_g2 = st.columns([1, 1.3])
         
-        # 3. Gantt Phase Timeline (Unique Implementation)
-        st.markdown("#### ⏱️ المخطط الزمني التنفيذي للمراحل (Gantt Phase Breakdown)")
-        
-        df_gantt = df.copy()
-        start_days = []
-        curr = 0
-        for d in df_gantt['days']:
-            start_days.append(curr)
-            curr += d
+        with c_g1:
+            st.markdown("### 🍩 التوزيع النسبي للميزانية (Budget Breakdown)")
             
-        df_gantt['Start'] = start_days
-        df_gantt['End'] = curr
-        
-        fig_gantt = px.bar(
-            df_gantt, 
-            x='days', 
-            y='task', 
-            orientation='h', 
-            base='Start',
-            color='task',
-            title="التسلسل الزمني المتتابع للمهام (بالأيام)",
-            color_discrete_sequence=px.colors.qualitative.Prism
-        )
-        fig_gantt.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color=text_color),
-            showlegend=False,
-            xaxis_title="الأيام التراكمية",
-            yaxis_title="المهمة الهندسية"
-        )
-        st.plotly_chart(fig_gantt, use_container_width=True)
+            fig_donut = px.pie(
+                df, 
+                values='cost', 
+                names='task', 
+                hole=0.55,
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_donut.update_traces(
+                textposition='inside', 
+                textinfo='percent+label',
+                marker=dict(line=dict(color='#0E1117', width=2))
+            )
+            fig_donut.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=11),
+                showlegend=False,
+                height=350,
+                margin=dict(l=20, r=20, t=20, b=20)
+            )
+            st.plotly_chart(fig_donut, use_container_width=True)
+            st.markdown("""
+            <div class="insight-card">
+                <b>💡 قراءة الخبير:</b> يركز الاستثمار بشكل رئيسي على <b>تطوير قواعد البيانات والباك إند</b> لضمان استقرار وقابلية توسع المنصة (Scalability).
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c_g2:
+            st.markdown("### ⏱️ التسلسل الزمني التنفيذي للمراحل (Gantt Phase Breakdown)")
+            
+            df_gantt = df.copy()
+            start_days = []
+            curr = 0
+            for d in df_gantt['days']:
+                start_days.append(curr)
+                curr += d
+                
+            df_gantt['Start'] = start_days
+            df_gantt['End'] = curr
+            
+            fig_gantt = px.bar(
+                df_gantt, 
+                x='days', 
+                y='task', 
+                orientation='h', 
+                base='Start',
+                color='days',
+                color_continuous_scale='Viridis',
+                labels={'days': 'المدة بالأيام'}
+            )
+            fig_gantt.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=11),
+                showlegend=False,
+                height=350,
+                margin=dict(l=20, r=20, t=20, b=20),
+                xaxis=dict(title="الأيام التراكمية", gridcolor='#334155'),
+                yaxis=dict(title="")
+            )
+            st.plotly_chart(fig_gantt, use_container_width=True)
+            st.markdown("""
+            <div class="insight-card">
+                <b>💡 قراءة الخبير:</b> يوضح جدول جانت المتتابع بداية ونهاية كل مرحلة باليوم، مما يساعد إدارة المشروع على تتبع التسليمات في الوقت المحدد بالضبط.
+            </div>
+            """, unsafe_allow_html=True)
 
 # ==========================================
 # TAB 3: محرر المهام وخطة المشروع
@@ -633,13 +701,12 @@ with tab3:
             )
 
 # ==========================================
-# TAB 4: إدارة الحساب والاشتراكات (تصميم احترافي مذهل)
+# TAB 4: إدارة الحساب والاشتراكات
 # ==========================================
 with tab4:
     st.subheader("💳 إدارة الاشتراكات والخطط التجارية")
     st.caption("اختر الخطة المناسبة لاحتياجاتك البرمجية والهندسية لتوليد خطط غير محدودة.")
     
-    # Status Banner
     col_stat1, col_stat2 = st.columns([2, 1])
     with col_stat1:
         st.info(f"👤 **المستخدم:** {st.session_state.user['username']} | **الرصيد التجريبي المجاني المتبقي:** {st.session_state.user['credits']} من أصل 5 نقاط مجانية.")
@@ -651,7 +718,6 @@ with tab4:
 
     st.write("---")
     
-    # Pricing Cards Comparison
     col_p1, col_p2, col_p3 = st.columns(3)
     
     with col_p1:
