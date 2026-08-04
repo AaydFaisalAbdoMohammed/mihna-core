@@ -35,12 +35,27 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# In-memory Mock Database for Accounts (Can be linked to Supabase / PostgreSQL)
+if 'user_db' not in st.session_state:
+    st.session_state.user_db = {
+        "eng.ayad@phoenix.com": {
+            "password_hash": hashlib.sha256("123456".encode()).hexdigest(),
+            "username": "Eng. Ayad",
+            "role": "Enterprise Pro",
+            "credits": 9999,
+            "is_subscribed": True,
+            "subscription_type": "Enterprise Yearly"
+        }
+    }
+
 # Persistent Session State Setup
 def init_default_session():
     st.session_state.lang = 'ar'
     st.session_state.theme = 'dark'
+    st.session_state.is_authenticated = False
     st.session_state.user = {
-        'username': 'Eng. Ayad', 
+        'email': '',
+        'username': 'زائر', 
         'credits': 5,
         'role': 'Free Trial',
         'is_subscribed': False,
@@ -56,7 +71,7 @@ def init_default_session():
     st.session_state.form_budget = 3500
     st.session_state.form_days = 30
 
-if 'user' not in st.session_state:
+if 'is_authenticated' not in st.session_state:
     init_default_session()
 
 # Callback Functions
@@ -185,13 +200,15 @@ st.markdown(f"""
     .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
     .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }}
     .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(124,58,237,0.3); }}
-    .checkout-btn:hover, .checkout-btn-yearly:hover {{ opacity: 0.9; transform: translateY(-1px); }}
     .pricing-card {{ background-color: {card_bg}; border: 2px solid {border_color}; border-radius: 16px; padding: 24px; text-align: center; transition: all 0.3s ease; }}
     .pricing-card-highlight {{ background-color: {card_bg}; border: 2px solid #8B5CF6; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 10px 25px rgba(139,92,246,0.2); }}
     .insight-card {{ background-color: {card_bg}; border-right: 4px solid #3B82F6; padding: 14px; border-radius: 8px; margin-top: 8px; font-size: 14px; line-height: 1.6; border: 1px solid {border_color}; }}
     .stTabs [data-baseweb="tab-list"] {{ gap: 8px; }}
     .stTabs [data-baseweb="tab"] {{ background-color: {card_bg}; border-radius: 8px; padding: 10px 20px; color: {text_color}; border: 1px solid {border_color}; font-weight: bold; }}
     .stTabs [aria-selected="true"] {{ background-color: #3B82F6 !important; color: white !important; border-color: #3B82F6 !important; }}
+    
+    /* Custom Auth Form Card */
+    .auth-card {{ background-color: {card_bg}; border: 1px solid {border_color}; border-radius: 16px; padding: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.25); margin: 0 auto; max-width: 500px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -199,6 +216,10 @@ st.markdown(f"""
 # 2. HELPER ENGINES
 # ==========================================
 class SecurityEngine:
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return hashlib.sha256(password.encode()).hexdigest()
+
     @staticmethod
     def generate_signature(data_dict: dict) -> str:
         serialized = json.dumps(data_dict, sort_keys=True, ensure_ascii=False)
@@ -286,7 +307,103 @@ def build_detailed_plan_text(plan: dict) -> str:
 """
 
 # ==========================================
-# 3. SIDEBAR WITH INSTANT CALLBACKS & LOGOUT
+# 3. AUTHENTICATION MODULE (LOGIN / SIGNUP)
+# ==========================================
+def render_auth_page():
+    st.markdown("<h1 style='text-align: center;'>🔐 بوابة الدخول | PHOENIX Enterprise</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى منصة مهنة الهندسية الذكية</p>", unsafe_allow_html=True)
+    st.write("<br>", unsafe_allow_html=True)
+
+    col_center, _ = st.columns([1, 0.01])
+    with col_center:
+        auth_tab1, auth_tab2 = st.tabs(["🔑 تسجيل الدخول (Sign In)", "✨ إنشاء حساب جديد (Sign Up)"])
+        
+        # TAB 1: LOG IN
+        with auth_tab1:
+            with st.form("login_form"):
+                st.subheader("مرحباً بك مجدداً!")
+                email_input = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
+                password_input = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
+                
+                submit_login = st.form_submit_button("🚀 تسجيل الدخول", use_container_width=True)
+                
+                if submit_login:
+                    hashed_pw = SecurityEngine.hash_password(password_input)
+                    if email_input in st.session_state.user_db:
+                        user_data = st.session_state.user_db[email_input]
+                        if user_data['password_hash'] == hashed_pw:
+                            st.session_state.is_authenticated = True
+                            st.session_state.user = {
+                                'email': email_input,
+                                'username': user_data['username'],
+                                'credits': user_data['credits'],
+                                'role': user_data['role'],
+                                'is_subscribed': user_data['is_subscribed'],
+                                'subscription_type': user_data['subscription_type']
+                            }
+                            st.success(f"🎉 أهلاً بك مجدداً {user_data['username']}! جاري التوجيه...")
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.error("❌ كلمة المرور غير صحيحة.")
+                    else:
+                        st.error("❌ البريد الإلكتروني غير مسجل بالمنظومة.")
+
+        # TAB 2: SIGN UP
+        with auth_tab2:
+            with st.form("signup_form"):
+                st.subheader("انضم إلى منصة PHOENIX")
+                new_username = st.text_input("الاسم الكامل / اسم المهندس", placeholder="م. أياد فيصل")
+                new_email = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
+                new_password = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
+                confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="••••••••")
+                
+                submit_signup = st.form_submit_button("✨ إنشاء الحساب وتفعيل 5 نقاط هدية", use_container_width=True)
+                
+                if submit_signup:
+                    if not new_username or not new_email or not new_password:
+                        st.warning("⚠️ يرجى ملء كافة الحقول المطلوب.")
+                    elif new_password != confirm_password:
+                        st.error("❌ كلمة المرور وتأكيدها غير متطابقين.")
+                    elif len(new_password) < 6:
+                        st.error("❌ يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.")
+                    elif new_email in st.session_state.user_db:
+                        st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
+                    else:
+                        # Save User to DB Session
+                        st.session_state.user_db[new_email] = {
+                            "password_hash": SecurityEngine.hash_password(new_password),
+                            "username": new_username,
+                            "role": "Free Trial",
+                            "credits": 5,
+                            "is_subscribed": False,
+                            "subscription_type": "Free Trial"
+                        }
+                        
+                        # Auto Login
+                        st.session_state.is_authenticated = True
+                        st.session_state.user = {
+                            'email': new_email,
+                            'username': new_username,
+                            'credits': 5,
+                            'role': "Free Trial",
+                            'is_subscribed': False,
+                            'subscription_type': "Free Trial"
+                        }
+                        st.balloons()
+                        st.success("🎉 تم إنشاء الحساب بنجاح وتم إضافة 5 نقاط مجانية لرصيدك!")
+                        time.sleep(1)
+                        st.rerun()
+
+# ==========================================
+# 4. MAIN ENTRY POINT & ROUTING
+# ==========================================
+if not st.session_state.is_authenticated:
+    render_auth_page()
+    st.stop()
+
+# ==========================================
+# 5. SIDEBAR WITH INSTANT CALLBACKS & LOGOUT
 # ==========================================
 with st.sidebar:
     st.title("🛡️ PHOENIX AGENT")
@@ -319,7 +436,7 @@ with st.sidebar:
         st.markdown(f"نوع الحساب: <span class='badge-purple'>تجريبي (5 نقاط هدية)</span>", unsafe_allow_html=True)
         st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
     
-    # Logout Button added here
+    # Logout Button
     st.button(txt['logout_btn'], on_click=logout_user, use_container_width=True, type="secondary")
 
     st.write("---")
@@ -332,7 +449,7 @@ with st.sidebar:
     st.session_state.notify_telegram = st.text_input(txt['tg_handle'], value=st.session_state.notify_telegram)
 
 # ==========================================
-# 4. MAIN INTERFACE WITH 4 DISTINCT TABS
+# 6. MAIN DASHBOARD INTERFACE WITH 4 TABS
 # ==========================================
 st.title(txt['title'])
 st.caption(txt['subtitle'])
@@ -417,6 +534,9 @@ with tab1:
                 
                 if not st.session_state.user['is_subscribed']:
                     st.session_state.user['credits'] -= 1
+                    # Update active user session credit balance in DB
+                    if st.session_state.user['email'] in st.session_state.user_db:
+                        st.session_state.user_db[st.session_state.user['email']]['credits'] = st.session_state.user['credits']
                 
                 st.success("✅ تم توليد الخطة وتوقيعها رقمياً بنجاح!")
 
@@ -482,7 +602,6 @@ with tab2:
         st.markdown("## 📊 لوحة القيادة الهندسية وتخيم الجودة والمخاطر")
         st.caption("تحليل بصري متقدم للتكلفة، الأداء، المخاطر، والمسار الزمني الشامل لمشروعك.")
         
-        # Executive Metrics
         daily_rate = int(plan['budget'] / max(1, plan['target_days']))
         feasibility_score = min(98, max(65, int(100 - (plan['target_days'] / max(1, plan['budget'] / 100)) * 5)))
         
@@ -495,12 +614,10 @@ with tab2:
         st.progress(feasibility_score / 100)
         st.write("---")
         
-        # SECTION 1: CIRCULAR & ADVANCED DASHBOARD VISUALS
         col_c1, col_c2 = st.columns(2)
         
         with col_c1:
             st.markdown("### 🍩 التحليل المالي الدائري المتداخل (Sunburst Hierarchy)")
-            
             labels = [plan['project_name']] + list(df['task'])
             parents = [""] + [plan['project_name']] * len(df)
             values = [plan['budget']] + list(df['cost'])
@@ -511,10 +628,7 @@ with tab2:
                 values=values,
                 branchvalues="total",
                 hovertemplate='<b>%{label}</b><br>المبلغ: $%{value:,}<br>النسبة: %{percentParent:.1%}',
-                marker=dict(
-                    colorscale='Blues',
-                    line=dict(color='#0E1117', width=1.5)
-                ),
+                marker=dict(colorscale='Blues', line=dict(color='#0E1117', width=1.5)),
                 textfont=dict(size=12, color='#FFFFFF')
             ))
             fig_sunburst.update_layout(
@@ -525,15 +639,9 @@ with tab2:
                 margin=dict(l=10, r=10, t=10, b=10)
             )
             st.plotly_chart(fig_sunburst, use_container_width=True)
-            st.markdown("""
-            <div class="insight-card">
-                <b>💡 قراءة الخبير البصرية:</b> التوزيع الدائري المتداخل يعكس وزن كل مرحلة مالية بالنسبة لإجمالي المشروع. تظهر النسبة الأكبر مخصصة للنية التحتية والـ Backend لضمان أقصى قدر من الثبات الاستثماري.
-            </div>
-            """, unsafe_allow_html=True)
 
         with col_c2:
             st.markdown("### 🎯 مؤشر الكفاءة والجاهزية الهندسية (Feasibility Gauge)")
-            
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number+delta",
                 value=feasibility_score,
@@ -550,12 +658,7 @@ with tab2:
                         {'range': [0, 50], 'color': 'rgba(239, 68, 68, 0.3)'},
                         {'range': [50, 75], 'color': 'rgba(245, 158, 11, 0.3)'},
                         {'range': [75, 100], 'color': 'rgba(16, 185, 129, 0.3)'}
-                    ],
-                    'threshold': {
-                        'line': {'color': "red", 'width': 4},
-                        'thickness': 0.75,
-                        'value': 95
-                    }
+                    ]
                 }
             ))
             fig_gauge.update_layout(
@@ -566,21 +669,13 @@ with tab2:
                 margin=dict(l=20, r=20, t=30, b=20)
             )
             st.plotly_chart(fig_gauge, use_container_width=True)
-            st.markdown("""
-            <div class="insight-card">
-                <b>💡 قراءة الخبير البصرية:</b> يعبر المؤشر الدائري التفاعلي عن درجة اتزان الخطة؛ الحصول على نسبة تزيد عن <b>75%</b> يعكس توازناً استثنائياً بين الوقت المستهدف والميزانية المقدرة.
-            </div>
-            """, unsafe_allow_html=True)
 
         st.write("---")
 
-        # SECTION 2: RADAR & WATERFALL CHARTS
         c_r1, c_r2 = st.columns(2)
-        
         with c_r1:
             st.markdown("### 🕸️ تقييم أبعاد المشروع (5D Radar Risk Matrix)")
             radar_categories = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
-            
             risk_score = 85 if plan.get('risk') == 'عالي' else (65 if plan.get('risk') == 'متوسط' else 45)
             radar_values = [80, 95, 85, 90, risk_score]
             
@@ -606,15 +701,9 @@ with tab2:
                 margin=dict(l=40, r=40, t=30, b=30)
             )
             st.plotly_chart(fig_radar, use_container_width=True)
-            st.markdown("""
-            <div class="insight-card">
-                <b>💡 قراءة الخبير:</b> يوضح الرسم الخماسي استقرار جوانب المشروع. تظهر جودة عالية في <b>الأمان الرقمي والتحكم بالجدول</b>، مع مرونة ممتازة للتعامل مع متطلبات النطاق.
-            </div>
-            """, unsafe_allow_html=True)
 
         with c_r2:
             st.markdown("### 🌊 التدفق المالي التراكمي (Waterfall Cost Flow)")
-            
             x_labels = list(df['task']) + ["الإجمالي النهائي"]
             y_measures = ["relative"] * len(df) + ["total"]
             y_values = list(df['cost']) + [0]
@@ -642,86 +731,6 @@ with tab2:
                 yaxis=dict(gridcolor='#334155')
             )
             st.plotly_chart(fig_waterfall, use_container_width=True)
-            st.markdown("""
-            <div class="insight-card">
-                <b>💡 قراءة الخبير:</b> يعرض مخطط الشلال المالي التكلفة التراكمية المضافة بواسطة كل مرحلة حتى الوصول إلى <b>التكلفة الإجمالية المعتمدة</b> للحد من تجاوز الميزانية.
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.write("---")
-
-        # SECTION 3: DONUT ALLOCATION & GANTT CHART
-        c_g1, c_g2 = st.columns([1, 1.3])
-        
-        with c_g1:
-            st.markdown("### 🍩 التوزيع النسبي للميزانية (Budget Breakdown)")
-            
-            fig_donut = px.pie(
-                df, 
-                values='cost', 
-                names='task', 
-                hole=0.55,
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig_donut.update_traces(
-                textposition='inside', 
-                textinfo='percent+label',
-                marker=dict(line=dict(color='#0E1117', width=2))
-            )
-            fig_donut.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color=text_color, size=11),
-                showlegend=False,
-                height=350,
-                margin=dict(l=20, r=20, t=20, b=20)
-            )
-            st.plotly_chart(fig_donut, use_container_width=True)
-            st.markdown("""
-            <div class="insight-card">
-                <b>💡 قراءة الخبير:</b> يركز الاستثمار بشكل رئيسي على <b>تطوير قواعد البيانات والباك إند</b> لضمان استقرار وقابلية توسع المنصة (Scalability).
-            </div>
-            """, unsafe_allow_html=True)
-
-        with c_g2:
-            st.markdown("### ⏱️ التسلسل الزمني التنفيذي للمراحل (Gantt Phase Breakdown)")
-            
-            df_gantt = df.copy()
-            start_days = []
-            curr = 0
-            for d in df_gantt['days']:
-                start_days.append(curr)
-                curr += d
-                
-            df_gantt['Start'] = start_days
-            df_gantt['End'] = curr
-            
-            fig_gantt = px.bar(
-                df_gantt, 
-                x='days', 
-                y='task', 
-                orientation='h', 
-                base='Start',
-                color='days',
-                color_continuous_scale='Viridis',
-                labels={'days': 'المدة بالأيام'}
-            )
-            fig_gantt.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color=text_color, size=11),
-                showlegend=False,
-                height=350,
-                margin=dict(l=20, r=20, t=20, b=20),
-                xaxis=dict(title="الأيام التراكمية", gridcolor='#334155'),
-                yaxis=dict(title="")
-            )
-            st.plotly_chart(fig_gantt, use_container_width=True)
-            st.markdown("""
-            <div class="insight-card">
-                <b>💡 قراءة الخبير:</b> يوضح جدول جانت المتتابع بداية ونهاية كل مرحلة باليوم، مما يساعد إدارة المشروع على تتبع التسليمات في الوقت المحدد بالضبط.
-            </div>
-            """, unsafe_allow_html=True)
 
 # ==========================================
 # TAB 3: محرر المهام وخطة المشروع
@@ -782,15 +791,15 @@ with tab3:
 # TAB 4: إدارة الحساب والاشتراكات
 # ==========================================
 with tab4:
-    st.subheader("💳 إدارة الاشتراكات والخطط التجارية")
+    st.subheader("💳 إدارة الحساب والاشتراكات التجارية")
     st.caption("اختر الخطة المناسبة لاحتياجاتك البرمجية والهندسية لتوليد خطط غير محدودة.")
     
     col_stat1, col_stat2 = st.columns([2, 1])
     with col_stat1:
-        st.info(f"👤 **المستخدم:** {st.session_state.user['username']} | **الرصيد التجريبي المجاني المتبقي:** {st.session_state.user['credits']} من أصل 5 نقاط مجانية.")
+        st.info(f"👤 **المستخدم الحساب:** {st.session_state.user['username']} ({st.session_state.user.get('email', 'حساب مؤقت')})\n\n💳 **الرصيد المتاح:** {st.session_state.user['credits']} نقطة.")
     with col_stat2:
         if st.session_state.user['credits'] > 0 and not st.session_state.user['is_subscribed']:
-            st.markdown("<span class='badge-green'>🎁 الفترة التجريبية نشطة (5 نقاط)</span>", unsafe_allow_html=True)
+            st.markdown("<span class='badge-green'>🎁 الفترة التجريبية نشطة</span>", unsafe_allow_html=True)
         elif st.session_state.user['is_subscribed']:
             st.markdown("<span class='badge-gold'>👑 اشتراك مدفوع نشط</span>", unsafe_allow_html=True)
 
@@ -804,7 +813,7 @@ with tab4:
             <h3>🎁 التجريبي المجاني</h3>
             <h2>$0 <small>/ للأبد</small></h2>
             <hr>
-            <p>✔ <b>5 نقاط مجانية</b> للبدء والتجربة</p>
+            <p>✔ <b>5 نقاط مجانية</b> عند التسجيل</p>
             <p>✔ توليد خطط هندسية موثقة</p>
             <p>✔ التوقيع الرقمي HMAC-SHA512</p>
             <p>✔ تصدير ملفات Excel & PDF</p>
