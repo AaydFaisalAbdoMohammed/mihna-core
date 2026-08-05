@@ -132,7 +132,7 @@ T = {
         'generate_btn': "🚀 توليد وتوقيع الخطة الهندسية (تستهلك 1 نقطة)",
         'export_excel': "📥 تحميل جدول المهام (Excel)",
         'export_pdf': "📄 تحميل الخطة التنفيذية (PDF)",
-        'detailed_plan': "📜 الخطة التنفيذية النصية الشاملة",
+        'detailed_plan': "📜 الخطة التنفيذية النصية الشاملة والمعمقة",
         'save_re_sign': "💾 حفظ التعديلات وإعادة التوقيع الرقمي",
         'digital_sig': "🔑 التوقيع الرقمي المشفر (HMAC-SHA512):",
         'sig_valid': "✔ توقيع موثوق وسليم",
@@ -174,7 +174,7 @@ T = {
         'generate_btn': "🚀 Generate & Sign Engineering Plan (1 Credit)",
         'export_excel': "📥 Download Tasks (Excel)",
         'export_pdf': "📄 Download Detailed Plan (PDF)",
-        'detailed_plan': "📜 Comprehensive Text Plan",
+        'detailed_plan': "📜 Comprehensive Extended Text Plan",
         'save_re_sign': "💾 Save Edits & Re-Sign Digitally",
         'digital_sig': "🔑 Encrypted Signature (HMAC-SHA512):",
         'sig_valid': "✔ Valid & Authentic Signature",
@@ -249,35 +249,29 @@ class AIPaymentAgent:
         progress_bar = st.progress(0)
         status_box = st.empty()
         
-        # اختيار رابط الدفع الديناميكي من التكوينات
         checkout_url = PAYMENT_LINK_YEARLY if plan_type == "yearly" else PAYMENT_LINK_MONTHLY
         plan_name = "Enterprise Yearly Plan ($279)" if plan_type == "yearly" else "Pro Monthly Plan ($29)"
         amount_str = "$279.00" if plan_type == "yearly" else "$29.00"
 
-        # Step 1: Scan and Detect Payment Method
         method_info = AIPaymentAgent.inspect_payment_method(user_email)
         status_box.info(f"🤖 **[AI Agent]:** فحص وسيلة الدفع المتاحة لـ `{user_email}`... (تم اكتشاف: {method_info['payment_method']})")
         time.sleep(0.6)
         progress_bar.progress(20)
 
-        # Step 2: Route to Lemon Squeezy Target URL
         status_box.info(f"🔗 **[AI Agent]:** قراءة توجيه Lemon Squeezy الآلي للرابط: `{checkout_url}`")
         time.sleep(0.6)
         progress_bar.progress(50)
 
-        # Step 3: Authorize & Process HMAC Payload
         status_box.info("🔐 **[AI Agent]:** تأكيد التوقيع الرقمي للمسار وتمرير معاملات الدفع مع Lemon Squeezy...")
         time.sleep(0.6)
         progress_bar.progress(85)
 
-        # Step 4: Finalize Payment & Trigger Webhook
         progress_bar.progress(100)
         time.sleep(0.3)
         
         progress_bar.empty()
         status_box.empty()
         
-        # التحديث الفوري للحساب والبيانات
         st.session_state.user['is_subscribed'] = True
         st.session_state.user['role'] = f"Enterprise ({plan_name})"
         st.session_state.user['credits'] = 9999
@@ -289,7 +283,6 @@ class AIPaymentAgent:
             st.session_state.user_db[user_email]['credits'] = 9999
             st.session_state.user_db[user_email]['subscription_type'] = plan_name
 
-        # إنشاء وإرسال إشعار بريد إلكتروني تحاكي Lemon Squeezy الفعلي
         order_id = f"LS-ORD-{hashlib.md5(str(time.time()).encode()).hexdigest()[:8].upper()}"
         email_payload = {
             "to": user_email,
@@ -342,7 +335,7 @@ def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
     story.append(Paragraph(prepare_text(info_text), body_style))
     story.append(Spacer(1, 10))
 
-    story.append(Paragraph(prepare_text("--- تفاصيل الخطة التنفيذية ---"), title_style))
+    story.append(Paragraph(prepare_text("--- تفاصيل الخطة التنفيذية الشاملة ---"), title_style))
     for line in detailed_text.split("\n"):
         if line.strip():
             story.append(Paragraph(prepare_text(line.strip()), body_style))
@@ -354,30 +347,91 @@ def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
     doc.build(story)
     return buffer.getvalue()
 
+# ==========================================
+# الدالة المحدثة للخطة النصية الشاملة والموسعة
+# ==========================================
 def build_detailed_plan_text(plan: dict) -> str:
     p_name = plan.get('project_name', 'المشروع')
     domain = plan.get('domain', 'تقني')
-    budget = plan.get('budget', 0)
-    days = plan.get('target_days', 0)
+    budget = float(plan.get('budget', 0))
+    days = int(plan.get('target_days', 0))
+    tech = plan.get('tech', 'Flutter, Node.js, Supabase, PostgreSQL')
+    risk = plan.get('risk', 'متوسط')
+    tasks = plan.get('tasks', [])
     
-    return f"""📌 **المستند التنفيذي والشامل لمشروع ({p_name})**
+    # 1. الحسابات الهندسية والمالية الدقيقة
+    working_hours_per_day = 8
+    total_man_hours = days * working_hours_per_day
+    daily_rate = budget / max(1, days)
+    hourly_rate = budget / max(1, total_man_hours)
+    
+    contingency_rate = 0.15 if risk == "عالي" else (0.10 if risk == "متوسط" else 0.05)
+    contingency_amount = budget * contingency_rate
+    effective_operational_budget = budget - contingency_amount
+    
+    cloud_infra_cost = budget * 0.08
+    dev_labor_cost = effective_operational_budget - cloud_infra_cost
+    
+    # 2. بناء الجدول النصي التفصيلي للمهام والمعالم الرئيسية
+    tasks_breakdown_str = ""
+    for idx, t in enumerate(tasks, 1):
+        t_cost = float(t.get('cost', 0))
+        t_days = int(t.get('days', 0))
+        t_hours = t_days * working_hours_per_day
+        cost_percentage = (t_cost / max(1, budget)) * 100
+        daily_t_cost = t_cost / max(1, t_days)
+        hourly_t_cost = t_cost / max(1, t_hours)
+        
+        tasks_breakdown_str += f"""
+#### Phase {idx}: {t.get('task', 'مهمة')}
+* ⏱️ **المدة الزمنية:** {t_days} أيام عمل ({t_hours} ساعة هندسية)
+* 💰 **التكلفة المخصصة:** ${t_cost:,.2f} ({cost_percentage:.1f}% من إجمالي الميزانية)
+* 📊 **المعدل اليومي للإنفاق:** ${daily_t_cost:,.2f} / يوم
+* ⏱️ **معدل الساعة للمرحلة:** ${hourly_t_cost:,.2f} / ساعة
+* 📌 **الحالة التنفيذية:** {t.get('status', 'مخطط')}
+"""
 
-### 1. نظرة عامة والأهداف التنفيذية:
-يهدف مشروع **{p_name}** إلى تقديم حل متكامل في قطاع **{domain}** بميزانية إجمالية قدرها **${budget:,}** ومدة إنجاز مقدرة بـ **{days} يوماً**.
+    # 3. صياغة الخطة الهندسية التنفيذية الموسعة
+    return f"""📌 **المستند التنفيذي والتفصيلي لمشروع ({p_name})**
+*تاريخ التوليد التلقائي: {plan.get('generated_at', datetime.now().strftime('%Y-%m-%d'))}*
 
-### 2. معمارية النظام والبنية البرمجية (System Architecture):
-* **تطوير الواجهات:** بناء مكونات UI خفيفة وسريعة التفاعل تضمن سلاسة الاستخدام.
-* **إدارة قواعد البيانات:** إعداد جداول منظمة تدعم العزل الآمن، مع الصلاحيات الدقيقة RLS.
-* **الخوادم وبوابات API:** إنشاء واجهات REST/tRPC مؤمنة بالتشفير والتحقق الذاتي.
+---
 
-### 3. مراحل التنفيذ وجدول المهام (Milestones & Tasks):
-* **المرحلة الأولى - الهندسة والمعمارية:** تحليل المتطلبات وإعداد Schemas.
-* **المرحلة الثانية - تطوير Backend:** تجهيز قاعدة البيانات وبناء Business Logic.
-* **المرحلة الثالثة - Frontend & UI:** الربط التفاعلي للواجهات.
-* **المرحلة الرابعة - الاختبار والتكامل Deployment & QA:** اختبارات الأمان والرفع للإنتاج.
+### 1. نظرة عامة والأهداف التنفيذية (Executive Summary & KPIs)
+يهدف مشروع **{p_name}** إلى تقديم حل متكامل وعالي الأداء في قطاع **{domain}**، معتمداً على بيئة العمل والتقنيات: **({tech})**.
+* **الميزانية الكلية (Total Budget):** `${budget:,.2f}`
+* **المدى الزمني المستهدف (Timeline):** `{days}` يوماً تقويمياً.
+* **مستوى تحمل المخاطر (Risk Profile):** `{risk}`.
 
-### 4. معايير الجودة والأمان الرقمي:
-* تم توقيع هذه الخطة رقمياً باستخدام خوارزمية HMAC-SHA512 لضمان موثوقية التقديرات.
+---
+
+### 2. الحسابات المالية والهندسية التفصيلية (Precise Cost & Time Allocation)
+تم استخدام الخوارزميات التحليلية لحساب التكاليف والإنتاجية بدقة متناهية:
+* ⏳ **إجمالي الساعات الهندسية (Total Man-Hours):** `{total_man_hours:,}` ساعة عمل (مبنية على {working_hours_per_day} ساعات/يوم).
+* 💵 **معدل التكلفة اليومي (Daily Rate):** `${daily_rate:,.2f}` / يوم.
+* ⏱️ **معدل تكلفة الساعة الهندسية (Hourly Rate):** `${hourly_rate:,.2f}` / ساعة.
+* 🛡️ **احتياطي الطوارئ والمخاطر ({contingency_rate*100:.0f}% Risk Reserve):** `${contingency_amount:,.2f}` *(محتجزة للتعامل مع المتطلبات المباشرة الطارئة)*.
+* ☁️ **تقدير تكاليف البنية التحتية والخدمات (Infra & Cloud OpEx):** `${cloud_infra_cost:,.2f}`.
+* 🛠️ **صافي ميزانية التطوير الفعلي (Effective Dev Budget):** `${dev_labor_cost:,.2f}`.
+
+---
+
+### 3. معمارية النظام والبنية البرمجية (System & Cloud Architecture)
+* 🎨 **تطوير الواجهات Frontend:** بناء مكونات UI سريعة ومستجيبة (Responsive Component Driven Design).
+* 🗄️ **إدارة قواعد البيانات Database & Cache:** إعداد Schemas منظمة ودعم صلاحيات RLS المتقدمة لحماية البيانات.
+* 🔐 **الخوادم وبوابات REST/tRPC APIs:** إنشاء محطات اتصال مؤمنة بالتشفير والتحقق الذاتي Multi-tenant Architecture.
+* ⚡ **إدارة الأداء والأتمتة:** تكامل أنظمة الدفع والحساب التلقائي والربط الفوري Webhooks.
+
+---
+
+### 4. التفصيل الرحلي للمهام والمعالم الرئيسية (Milestones & Work Breakdown Structure)
+{tasks_breakdown_str}
+
+---
+
+### 5. مصفوفة المخاطر وضمان الجودة والأمان الرقمي (Quality Assurance & Security Controls)
+* **التوقيع الرقمي والتأكيد المشفر:** تم توقيع هذه الخطة رقمياً باستخدام خوارزمية **HMAC-SHA512** لمنع أي تلاعب بالتقديرات المالية أو الزمنية.
+* **إدارة السلامة:** ضمان تطبيق أقصى معايير السلامة البرمجية واختبارات الضغط (Load Testing) قبل الإطلاق النهائي.
 """
 
 # ==========================================
@@ -434,7 +488,7 @@ def render_auth_page():
                 
                 if submit_signup:
                     if not new_username or not new_email or not new_password:
-                        st.warning("⚠️ يرجى ملء كافة الحقول المطلوب.")
+                        st.warning("⚠️ يرجى ملء كافة الحقول المطلوبة.")
                     elif new_password != confirm_password:
                         st.error("❌ كلمة المرور وتأكيدها غير متطابقين.")
                     elif len(new_password) < 6:
@@ -700,7 +754,7 @@ with tab2:
         plan = st.session_state.current_plan
         df = pd.DataFrame(plan['tasks'])
         
-        st.markdown("## 📊 لوحة القيادة الهندسية وتخيم الجودة والمخاطر")
+        st.markdown("## 📊 لوحة القيادة الهندسية وتقييم الجودة والمخاطر")
         st.caption("تحليل بصري متقدم للتكلفة، الأداء، المخاطر، والمسار الزمني الشامل لمشروعك.")
         
         daily_rate = int(plan['budget'] / max(1, plan['target_days']))
