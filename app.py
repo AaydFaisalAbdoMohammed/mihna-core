@@ -1,633 +1,967 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-===============================================================================
-© 2026 PHOENIX & MIHNA AGENT PRO ENTERPRISE - HYBRID ULTIMATE SaaS
-النسخة المدمجة الكاملة والقصوى: تجمع بين قوة Cloud SQL وGemini 2.5 AI والتشفير،
-مع واجهة التحليلات البصرية 5D، معالجة PDF العربية، ومحاكاة وكيل الدفع.
-===============================================================================
-"""
-
-import os
-import re
-import io
-import json
-import uuid
-import hashlib
-import hmac
-import time
-import secrets
-import logging
-import urllib.parse
-import datetime
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-import google.generativeai as genai
-import requests
+import json
+import hashlib
+import hmac
+import time
+from datetime import datetime
+import urllib.parse
+import os
+import re
+import io
 
-# ----------------- Optional Heavy Dependencies -----------------
-try:
-    import bcrypt
-    BCRYPT_AVAILABLE = True
-except ImportError:
-    BCRYPT_AVAILABLE = False
+# ReportLab & Arabic reshaper imports for clean PDF generation
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+import arabic_reshaper
+from bidi.algorithm import get_display
 
-try:
-    import pymysql
-    PYMYSQL_AVAILABLE = True
-except ImportError:
-    PYMYSQL_AVAILABLE = False
-
-try:
-    from reportlab.lib.pagesizes import letter, A4
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    import arabic_reshaper
-    from bidi.algorithm import get_display
-    REPORTLAB_AVAILABLE = True
-except ImportError:
-    REPORTLAB_AVAILABLE = False
-
-# =====================================================================
-# 1. CONFIGURATION & CONSTANTS
-# =====================================================================
+# ==========================================
+# 1. CONFIGURATION & STATE INITIALIZATION
+# ==========================================
 APP_TITLE = "PHOENIX & MIHNA AGENT PRO - ENTERPRISE"
 PAYMENT_LINK_MONTHLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly"
 PAYMENT_LINK_YEARLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly"
+SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_DEFAULT")
 
 st.set_page_config(
-    page_title="وكيل مهنة PRO | PHOENIX Enterprise",
-    page_icon="🧠",
+    page_title="وكيل مهنة PRO | Enterprise Plan Builder",
+    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# =====================================================================
-# 2. SECURITY & CLOUD DATABASE ENGINE (FROM CODE 1)
-# =====================================================================
-class VaultSecurity:
-    HMAC_KEY = os.getenv("HMAC_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_DEFAULT")
+# In-memory Mock Database for Accounts
+if 'user_db' not in st.session_state:
+    st.session_state.user_db = {
+        "eng.ayad@phoenix.com": {
+            "password_hash": hashlib.sha256("123456".encode()).hexdigest(),
+            "username": "Eng. Ayad",
+            "role": "Enterprise Pro",
+            "credits": 9999,
+            "is_subscribed": True,
+            "subscription_type": "Enterprise Yearly"
+        }
+    }
 
-    @classmethod
-    def sign_payload(cls, payload: dict) -> str:
-        clean_payload = {k: v for k, v in payload.items() if k not in ["signature", "timestamp"]}
-        payload_str = json.dumps(clean_payload, sort_keys=True, ensure_ascii=False)
-        return hmac.new(cls.HMAC_KEY.encode(), payload_str.encode(), hashlib.sha512).hexdigest()
+# Persistent Session State Setup
+def init_default_session():
+    st.session_state.lang = 'ar'
+    st.session_state.theme = 'dark'
+    st.session_state.is_authenticated = False
+    st.session_state.user = {
+        'email': '',
+        'username': 'زائر', 
+        'credits': 5,
+        'role': 'Free Trial',
+        'is_subscribed': False,
+        'subscription_type': 'Free'
+    }
+    st.session_state.current_plan = None
+    st.session_state.plan_signature = None
+    st.session_state.notify_whatsapp = "+967700000000"
+    st.session_state.notify_telegram = "@Ayad_Developer"
+    st.session_state.form_scope = ""
+    st.session_state.form_pname = "مشروع جديد Pro"
+    st.session_state.form_domain = "التجارة الإلكترونية"
+    st.session_state.form_budget = 3500
+    st.session_state.form_days = 30
+    st.session_state.payment_notifications = []
 
-    @classmethod
-    def verify_signature(cls, payload: dict, signature: str) -> bool:
-        if not signature: return False
-        expected = cls.sign_payload(payload)
-        return hmac.compare_digest(expected, signature)
+if 'is_authenticated' not in st.session_state:
+    init_default_session()
 
-    @classmethod
-    def hash_password(cls, password: str) -> str:
-        if BCRYPT_AVAILABLE:
-            salt = bcrypt.gensalt()
-            return bcrypt.hashpw(password.encode(), salt).decode()
+# Callback Functions
+def update_language():
+    selected = st.session_state.lang_radio
+    st.session_state.lang = 'ar' if "العربية" in selected else 'en'
+
+def update_theme():
+    selected = st.session_state.theme_radio
+    st.session_state.theme = 'dark' if ("الداكن" in selected or "Dark" in selected) else 'light'
+
+def apply_template(scope, domain, budget, days, pname):
+    st.session_state.form_scope = scope
+    st.session_state.form_domain = domain
+    st.session_state.form_budget = budget
+    st.session_state.form_days = days
+    st.session_state.form_pname = pname
+
+def logout_user():
+    st.session_state.clear()
+    init_default_session()
+    st.rerun()
+
+# Translations Dictionary
+T = {
+    'ar': {
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise",
+        'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع وتأمينها بالتوقيع الرقمي والذكاء الاصطناعي.",
+        'lang_select': "🌐 لغة الواجهة (Language):",
+        'theme_select': "🎨 مظهر التطبيق (Theme):",
+        'dark': "🌙 الداكن (Dark)",
+        'light': "☀️ الفاتح (Light)",
+        'user': "👤 المستخدم:",
+        'credits': "💳 الرصيد التجريبي / الحالي:",
+        'points': "نقاط مجانية",
+        'renew_title': "🛒 ترقية الاشتراك",
+        'renew_btn': "⚡ اشترك الآن وترقية الحساب",
+        'logout_btn': "🚪 تسجيل الخروج",
+        'notify_settings': "📲 إعدادات الإشعارات الفورية",
+        'wa_phone': "رقم الواتساب (مع الرمز)",
+        'tg_handle': "معرف التليجرام (Telegram Handle)",
+        'tab1': "🏗️ بناء خطة مشروع",
+        'tab2': "📊 التحليلات التفاعلية الفائقة",
+        'tab3': "✏️ محرر المهام وخطة المشروع",
+        'tab4': "💳 إدارة الحساب والاشتراكات",
+        'quick_templates': "⚡ قوالب جاهزة للبدء السريع",
+        'ecom': "🛒 متجر إلكتروني",
+        'edu': "🎓 منصة تعليمية",
+        'delivery': "🚗 تطبيق توصيل",
+        'p_name': "اسم المشروع",
+        'tech_domain': "المجال التقني",
+        'budget': "الميزانية التقديرية ($)",
+        'tech_stack': "التقنيات المستخدمة",
+        'target_days': "المدة الزمنية المستهدفة (يوم)",
+        'risk_level': "تحمل المخاطر",
+        'scope': "نطاق العمل (Scope of Work)",
+        'generate_btn': "🚀 توليد وتوقيع الخطة الهندسية (تستهلك 1 نقطة)",
+        'export_excel': "📥 تحميل جدول المهام (Excel)",
+        'export_pdf': "📄 تحميل الخطة التنفيذية (PDF)",
+        'detailed_plan': "📜 الخطة التنفيذية النصية الشاملة",
+        'save_re_sign': "💾 حفظ التعديلات وإعادة التوقيع الرقمي",
+        'digital_sig': "🔑 التوقيع الرقمي المشفر (HMAC-SHA512):",
+        'sig_valid': "✔ توقيع موثوق وسليم",
+        'sig_invalid': "❌ تم التلاعب بالبيانات",
+        'send_wa': "📱 إرسال عبر WhatsApp",
+        'send_tg': "📲 إشعار Telegram Bot",
+    },
+    'en': {
+        'title': "🚀 Mihna Agent PRO | PHOENIX Enterprise",
+        'subtitle': "Advanced Engineering Project Plan Builder Secured with AI & Digital Signatures.",
+        'lang_select': "🌐 Interface Language:",
+        'theme_select': "🎨 Application Theme:",
+        'dark': "🌙 Dark",
+        'light': "☀️ Light",
+        'user': "👤 User:",
+        'credits': "💳 Free / Current Balance:",
+        'points': "free pts",
+        'renew_title': "🛒 Upgrade Plan",
+        'renew_btn': "⚡ Upgrade & Subscribe Now",
+        'logout_btn': "🚪 Log Out",
+        'notify_settings': "📲 Instant Notification Settings",
+        'wa_phone': "WhatsApp Phone (with Country Code)",
+        'tg_handle': "Telegram Handle",
+        'tab1': "🏗️ Build Project Plan",
+        'tab2': "📊 Advanced Interactive Analytics",
+        'tab3': "✏️ Task Editor & Plan",
+        'tab4': "💳 Account & Subscriptions",
+        'quick_templates': "⚡ Quick Start Templates",
+        'ecom': "🛒 E-Commerce App",
+        'edu': "🎓 E-Learning Platform",
+        'delivery': "🚗 Delivery App",
+        'p_name': "Project Name",
+        'tech_domain': "Technical Domain",
+        'budget': "Estimated Budget ($)",
+        'tech_stack': "Tech Stack",
+        'target_days': "Target Timeline (Days)",
+        'risk_level': "Risk Tolerance",
+        'scope': "Scope of Work",
+        'generate_btn': "🚀 Generate & Sign Engineering Plan (1 Credit)",
+        'export_excel': "📥 Download Tasks (Excel)",
+        'export_pdf': "📄 Download Detailed Plan (PDF)",
+        'detailed_plan': "📜 Comprehensive Text Plan",
+        'save_re_sign': "💾 Save Edits & Re-Sign Digitally",
+        'digital_sig': "🔑 Encrypted Signature (HMAC-SHA512):",
+        'sig_valid': "✔ Valid & Authentic Signature",
+        'sig_invalid': "❌ Data Tampered / Invalid Signature",
+        'send_wa': "📱 Send via WhatsApp",
+        'send_tg': "📲 Notify Telegram Bot",
+    }
+}
+
+lang = st.session_state.lang
+txt = T[lang]
+
+# Dynamic CSS
+bg_color = "#0E1117" if st.session_state.theme == 'dark' else "#F8FAFC"
+card_bg = "#1E293B" if st.session_state.theme == 'dark' else "#FFFFFF"
+text_color = "#FFFFFF" if st.session_state.theme == 'dark' else "#0F172A"
+border_color = "#334155" if st.session_state.theme == 'dark' else "#E2E8F0"
+
+st.markdown(f"""
+<style>
+    .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+    .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
+    .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
+    .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
+    .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }}
+    .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 12px rgba(124,58,237,0.3); }}
+    .pricing-card {{ background-color: {card_bg}; border: 2px solid {border_color}; border-radius: 16px; padding: 24px; text-align: center; transition: all 0.3s ease; }}
+    .pricing-card-highlight {{ background-color: {card_bg}; border: 2px solid #8B5CF6; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 10px 25px rgba(139,92,246,0.2); }}
+    .ai-payment-card {{ background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #6366F1; border-radius: 16px; padding: 24px; color: #FFFFFF; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25); }}
+    .stTabs [data-baseweb="tab-list"] {{ gap: 8px; }}
+    .stTabs [data-baseweb="tab"] {{ background-color: {card_bg}; border-radius: 8px; padding: 10px 20px; color: {text_color}; border: 1px solid {border_color}; font-weight: bold; }}
+    .stTabs [aria-selected="true"] {{ background-color: #3B82F6 !important; color: white !important; border-color: #3B82F6 !important; }}
+    .email-notification-box {{ background-color: #022C22; border: 1px solid #10B981; border-radius: 12px; padding: 16px; color: #ECFDF5; margin: 10px 0; font-family: monospace; }}
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 2. HELPER & SECURITY ENGINES
+# ==========================================
+class SecurityEngine:
+    @staticmethod
+    def hash_password(password: str) -> str:
         return hashlib.sha256(password.encode()).hexdigest()
 
-    @classmethod
-    def verify_password(cls, password: str, hashed: str) -> bool:
-        if BCRYPT_AVAILABLE and hashed.startswith("$2b$"):
-            try:
-                return bcrypt.checkpw(password.encode(), hashed.encode())
-            except Exception:
-                return False
-        return hashlib.sha256(password.encode()).hexdigest() == hashed
-
-class CloudSQLUtils:
     @staticmethod
-    def get_db_connection():
-        if not PYMYSQL_AVAILABLE: return None
-        try:
-            conn_name = os.environ.get('CLOUD_SQL_CONNECTION_NAME')
-            db_user = os.environ.get('DB_USER')
-            db_pass = os.environ.get('DB_PASSWORD')
-            db_name = os.environ.get('DB_NAME')
+    def generate_signature(data_dict: dict) -> str:
+        serialized = json.dumps(data_dict, sort_keys=True, ensure_ascii=False)
+        return hmac.new(SECRET_HMAC_KEY.encode(), serialized.encode(), hashlib.sha512).hexdigest()
 
-            if conn_name and db_user and db_pass and db_name:
-                return pymysql.connect(
-                    unix_socket=f"/cloudsql/{conn_name}",
-                    user=db_user,
-                    password=db_pass,
-                    database=db_name,
-                    cursorclass=pymysql.cursors.DictCursor,
-                    autocommit=True
-                )
-        except Exception as e:
-            logging.error(f"Database connection error: {e}")
-        return None
-
-    @classmethod
-    def get_user_by_email(cls, email: str) -> dict:
-        conn = cls.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as cursor:
-                    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-                    user = cursor.fetchone()
-                conn.close()
-                return user
-            except Exception as e:
-                logging.error(f"CloudSQL Get User Error: {e}")
-        return st.session_state.get("users_db", {}).get(email)
-
-    @classmethod
-    def register_user(cls, name: str, email: str, hashed_pass: str, credits: int = 5, plan_status: str = "Free Trial") -> bool:
-        conn = cls.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as cursor:
-                    cursor.execute(
-                        """INSERT INTO users (name, email, password, credits, plan_status, created_at)
-                           VALUES (%s, %s, %s, %s, %s, NOW())""",
-                        (name, email, hashed_pass, credits, plan_status)
-                    )
-                conn.close()
-                return True
-            except Exception as e:
-                logging.error(f"CloudSQL Register Error: {e}")
-        
-        if "users_db" not in st.session_state: st.session_state.users_db = {}
-        st.session_state.users_db[email] = {
-            "name": name, "password": hashed_pass, "credits": credits, "plan_status": plan_status
-        }
-        return True
-
-    @classmethod
-    def update_user_credits(cls, email: str, new_credits: int, new_status: str = None) -> bool:
-        conn = cls.get_db_connection()
-        if conn:
-            try:
-                with conn.cursor() as cursor:
-                    if new_status:
-                        cursor.execute("UPDATE users SET credits = %s, plan_status = %s WHERE email = %s", (new_credits, new_status, email))
-                    else:
-                        cursor.execute("UPDATE users SET credits = %s WHERE email = %s", (new_credits, email))
-                conn.close()
-                return True
-            except Exception as e:
-                logging.error(f"CloudSQL Update Error: {e}")
-        
-        if email in st.session_state.get("users_db", {}):
-            st.session_state.users_db[email]["credits"] = new_credits
-            if new_status: st.session_state.users_db[email]["plan_status"] = new_status
-        return True
-
-# =====================================================================
-# 3. REAL AI GENERATION ENGINE (GEMINI INTEGRATION)
-# =====================================================================
-class PhoenixAI:
     @staticmethod
-    def generate_architecture(api_key: str, req: dict, lang: str = "ar") -> dict:
-        if not api_key:
-            # Fallback Dynamic Generator if Key is Missing
-            b = req['budget']
-            t = req['timeline']
-            return {
-                "project_name": req['client'],
-                "domain": req['tech'],
-                "budget": b,
-                "target_days": t,
-                "executive_summary": f"خطة هندسية معمارية شاملة لمشروع {req['client']} تعتمد تقنيات {req['tech']}.",
-                "risk_score": 22,
-                "confidence_score": 94,
-                "tasks": [
-                    {"id": 1, "task": "تحليل المتطلبات وهندسة معمارية للنظام", "days": max(1, int(t*0.15)), "cost": int(b*0.15), "priority": "High", "phase": "Planning"},
-                    {"id": 2, "task": "تصميم قواعد البيانات والـ Schemas", "days": max(1, int(t*0.20)), "cost": int(b*0.20), "priority": "High", "phase": "Backend"},
-                    {"id": 3, "task": "تطوير الواجهات وتكامل APIs", "days": max(1, int(t*0.35)), "cost": int(b*0.35), "priority": "Medium", "phase": "Frontend"},
-                    {"id": 4, "task": "اختبار الأمان والأداء والانتشار Deploy", "days": max(1, int(t*0.30)), "cost": int(b*0.30), "priority": "Low", "phase": "DevOps"}
-                ]
-            }
+    def verify_signature(data_dict: dict, signature: str) -> bool:
+        if not signature:
+            return False
+        expected_sig = SecurityEngine.generate_signature(data_dict)
+        return hmac.compare_digest(expected_sig, signature)
 
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        lang_instruction = "اللغة العربية" if lang == "ar" else "English"
-
-        prompt = f"""
-        Analyze the following IT project architecture requirements and generate a structured JSON object in {lang_instruction}:
-        - Client/Project Name: {req['client']}
-        - Description: {req['desc']}
-        - Budget ($): {req['budget']}
-        - Timeline (Days): {req['timeline']}
-        - Technology Stack: {req['tech']}
-
-        Requirements for Output JSON ONLY (No markdown extra text):
-        {{
-            "project_name": "{req['client']}",
-            "domain": "{req['tech']}",
-            "budget": {req['budget']},
-            "target_days": {req['timeline']},
-            "executive_summary": "Detailed strategic architectural plan summary...",
-            "risk_score": 25,
-            "confidence_score": 92,
-            "tasks": [
-                {{"id": 1, "task": "Task name", "days": 5, "cost": 1000, "priority": "High", "phase": "Planning"}},
-                {{"id": 2, "task": "Task name 2", "days": 10, "cost": 2500, "priority": "High", "phase": "Core"}}
-            ]
-        }}
+class AIPaymentAgent:
+    """وكيل الدفع بالذكاء الاصطناعي لتوليد روابط Lemon Squeezy المعبأة آلياً وفتحها للمستخدم"""
+    @staticmethod
+    def generate_prefilled_checkout_url(user_email: str, user_name: str, plan_type: str = "monthly") -> str:
         """
-        response = model.generate_content(prompt)
-        match = re.search(r"\{.*\}", response.text, re.DOTALL)
-        data = json.loads(match.group() if match else response.text)
-        data["signature"] = VaultSecurity.sign_payload(data)
-        data["timestamp"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-        return data
-
-# =====================================================================
-# 4. EXPORT ENGINE (EXCEL & ARABIC PDF FIXED)
-# =====================================================================
-class ExportEngine:
-    @staticmethod
-    def build_excel(tasks: list) -> bytes:
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            pd.DataFrame(tasks).to_excel(writer, index=False, sheet_name="Architecture_Tasks")
-        return buffer.getvalue()
-
-    @staticmethod
-    def build_pdf(plan: dict) -> bytes:
-        if not REPORTLAB_AVAILABLE: return b""
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        story = []
-        styles = getSampleStyleSheet()
-
-        def reshape(text):
-            try:
-                return get_display(arabic_reshaper.reshape(str(text)))
-            except Exception:
-                return str(text)
-
-        title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, alignment=1)
-        body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14, alignment=2)
-
-        story.append(Paragraph(reshape(f"خطة مشروع: {plan.get('project_name')}"), title_style))
-        story.append(Spacer(1, 15))
+        توليد رابط Lemon Squeezy مع تعبئة بيانات البريد والاسم تلقائياً عبر URL Query Parameters
+        """
+        base_url = PAYMENT_LINK_YEARLY if plan_type == "yearly" else PAYMENT_LINK_MONTHLY
         
-        info_text = f"الميزانية: ${plan.get('budget')} | المدة: {plan.get('target_days')} يوم | T-Signature: {plan.get('signature', '')[:20]}..."
-        story.append(Paragraph(reshape(info_text), body_style))
-        story.append(Spacer(1, 15))
-
-        table_data = [[reshape("المرحلة"), reshape("الأولوية"), reshape("التكلفة ($)"), reshape("المدة (يوم)"), reshape("اسم المهمة")]]
-        for t in plan.get("tasks", []):
-            table_data.append([
-                reshape(t.get('phase', 'Core')),
-                reshape(t.get('priority', '')),
-                str(t.get('cost', 0)),
-                str(t.get('days', 0)),
-                reshape(t.get('task', ''))
-            ])
-
-        table = Table(table_data)
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('GRID', (0,0), (-1,-1), 1, colors.HexColor("#cbd5e1"))
-        ]))
-        story.append(table)
-        doc.build(story)
-        return buffer.getvalue()
-
-# =====================================================================
-# 5. INITIALIZATION & STYLING
-# =====================================================================
-def init_session():
-    if "users_db" not in st.session_state:
-        st.session_state.users_db = {
-            "eng.alhiadri2020@gmail.com": {
-                "name": "AYAD FAISAL ABDO MOHAMMED",
-                "password": VaultSecurity.hash_password("123456"),
-                "credits": 9999,
-                "plan_status": "Enterprise Pro"
-            }
+        # المعاملات التلقائية للتعبئة في Lemon Squeezy
+        params = {
+            "checkout[email]": user_email,
+            "checkout[name]": user_name,
         }
-    if "authenticated" not in st.session_state: st.session_state.authenticated = False
-    if "current_user" not in st.session_state: st.session_state.current_user = None
-    if "current_plan" not in st.session_state: st.session_state.current_plan = None
-    if "lang" not in st.session_state: st.session_state.lang = "ar"
-    if "theme" not in st.session_state: st.session_state.theme = "dark"
-    if "notify_whatsapp" not in st.session_state: st.session_state.notify_whatsapp = "+967700000000"
-    if "notify_telegram" not in st.session_state: st.session_state.notify_telegram = "@Ayad_Developer"
-    if "payment_logs" not in st.session_state: st.session_state.payment_logs = []
+        
+        # دمج المعاملات مع الرابط الأساسي
+        encoded_params = urllib.parse.urlencode(params)
+        prefilled_url = f"{base_url}&{encoded_params}" if "?" in base_url else f"{base_url}?{encoded_params}"
+        
+        return prefilled_url
 
-def inject_custom_css():
-    bg_main = "#0b0f19" if st.session_state.theme == "dark" else "#f8fafc"
-    text_color = "#f8fafc" if st.session_state.theme == "dark" else "#0f172a"
+    @staticmethod
+    def execute_auto_checkout(user_email: str, user_name: str, plan_type: str = "monthly"):
+        progress_bar = st.progress(0)
+        status_box = st.empty()
+        
+        status_box.info(f"🤖 **[AI Agent]:** جاري تجميع بيانات الحساب وتشفير رابط الدفع لـ `{user_email}`...")
+        time.sleep(0.4)
+        progress_bar.progress(50)
+
+        # إنشاء الرابط المعبأ آلياً
+        final_url = AIPaymentAgent.generate_prefilled_checkout_url(user_email, user_name, plan_type)
+        
+        progress_bar.progress(100)
+        time.sleep(0.2)
+        progress_bar.empty()
+        status_box.empty()
+        
+        # إظهار زر التوجيه التلقائي مع تصميم مميز
+        st.markdown(f"""
+        <div style="background-color: #1E1B4B; border: 2px solid #6366F1; border-radius: 12px; padding: 16px; text-align: center; margin-top: 10px; margin-bottom: 15px;">
+            <h4 style="color: #FFFFFF; margin-bottom: 8px;">🚀 تم إعداد الدفع المعبأ آلياً بنجاح!</h4>
+            <p style="color: #94A3B8; font-size: 13px;">تم حقن البريد الإلكتروني <b>({user_email})</b> والاسم <b>({user_name})</b> داخل نموذج Lemon Squeezy.</p>
+            <a href="{final_url}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 12px 24px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 8px;">
+                🔗 الانتقال لصفحة الدفع المعبأة تلقائياً الآن
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # فتح الرابط تلقائياً في تبويب جديد عبر JavaScript
+        st.components.v1.html(f"<script>window.open('{final_url}', '_blank');</script>", height=0)
+
+class NotificationEngine:
+    @staticmethod
+    def create_whatsapp_link(phone: str, message: str) -> str:
+        encoded_msg = urllib.parse.quote(message)
+        clean_phone = re.sub(r'[^\d]', '', str(phone))
+        return f"https://wa.me/{clean_phone}?text={encoded_msg}"
+
+def generate_excel_download(df: pd.DataFrame) -> bytes:
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Project Plan Tasks')
+    return output.getvalue()
+
+def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    story = []
+    styles = getSampleStyleSheet()
+
+    def prepare_text(text):
+        try:
+            reshaped = arabic_reshaper.reshape(text)
+            return get_display(reshaped)
+        except Exception:
+            return text
+
+    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, alignment=1)
+    body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14, alignment=2)
+
+    story.append(Paragraph(prepare_text(f"خطة مشروع: {plan['project_name']}"), title_style))
+    story.append(Spacer(1, 15))
     
-    st.markdown(f"""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
-        html, body, [data-testid="stAppViewContainer"] {{
-            font-family: 'Cairo', sans-serif !important;
-            background-color: {bg_main} !important;
-            color: {text_color} !important;
-        }}
-        div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {{
-            background-color: #1e293b !important;
-            color: #ffffff !important;
-            border: 1px solid #3b82f6 !important;
-            border-radius: 8px !important;
-        }}
-        .badge-purple {{ background-color: #8B5CF6; color: white; padding: 4px 12px; border-radius: 10px; font-weight: bold; font-size: 12px; }}
-        .badge-green {{ background-color: #10B981; color: white; padding: 4px 12px; border-radius: 10px; font-weight: bold; font-size: 12px; }}
-        .metric-card {{
-            background-color: #1e293b;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 5px solid #3b82f6;
-            margin-bottom: 10px;
-        }}
-    </style>
+    info_text = f"المجال التقني: {plan['domain']} | الميزانية: ${plan['budget']} | المدة: {plan['target_days']} يوم"
+    story.append(Paragraph(prepare_text(info_text), body_style))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph(prepare_text("--- تفاصيل الخطة التنفيذية ---"), title_style))
+    for line in detailed_text.split("\n"):
+        if line.strip():
+            story.append(Paragraph(prepare_text(line.strip()), body_style))
+            story.append(Spacer(1, 4))
+
+    story.append(Spacer(1, 15))
+    story.append(Paragraph(prepare_text(f"التوقيع الرقمي HMAC-SHA512: {signature[:40]}..."), body_style))
+
+    doc.build(story)
+    return buffer.getvalue()
+
+def build_detailed_plan_text(plan: dict) -> str:
+    p_name = plan.get('project_name', 'المشروع')
+    domain = plan.get('domain', 'تقني')
+    budget = plan.get('budget', 0)
+    days = plan.get('target_days', 0)
+    
+    return f"""📌 **المستند التنفيذي والشامل لمشروع ({p_name})**
+
+### 1. نظرة عامة والأهداف التنفيذية:
+يهدف مشروع **{p_name}** إلى تقديم حل متكامل في قطاع **{domain}** بميزانية إجمالية قدرها **${budget:,}** ومدة إنجاز مقدرة بـ **{days} يوماً**.
+
+### 2. معمارية النظام والبنية البرمجية (System Architecture):
+* **تطوير الواجهات:** بناء مكونات UI خفيفة وسريعة التفاعل تضمن سلاسة الاستخدام.
+* **إدارة قواعد البيانات:** إعداد جداول منظمة تدعم العزل الآمن، مع الصلاحيات الدقيقة RLS.
+* **الخوادم وبوابات API:** إنشاء واجهات REST/tRPC مؤمنة بالتشفير والتحقق الذاتي.
+
+### 3. مراحل التنفيذ وجدول المهام (Milestones & Tasks):
+* **المرحلة الأولى - الهندسة والمعمارية:** تحليل المتطلبات وإعداد Schemas.
+* **المرحلة الثانية - تطوير Backend:** تجهيز قاعدة البيانات وبناء Business Logic.
+* **المرحلة الثالثة - Frontend & UI:** الربط التفاعلي للواجهات.
+* **المرحلة الرابعة - الاختبار والتكامل Deployment & QA:** اختبارات الأمان والرفع للإنتاج.
+
+### 4. معايير الجودة والأمان الرقمي:
+* تم توقيع هذه الخطة رقمياً باستخدام خوارزمية HMAC-SHA512 لضمان موثوقية التقديرات.
+"""
+
+# ==========================================
+# 3. AUTHENTICATION MODULE
+# ==========================================
+def render_auth_page():
+    st.markdown("<h1 style='text-align: center;'>🔐 بوابة الدخول | PHOENIX Enterprise</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى منصة مهنة الهندسية الذكية</p>", unsafe_allow_html=True)
+    st.write("<br>", unsafe_allow_html=True)
+
+    col_center, _ = st.columns([1, 0.01])
+    with col_center:
+        auth_tab1, auth_tab2 = st.tabs(["🔑 تسجيل الدخول (Sign In)", "✨ إنشاء حساب جديد (Sign Up)"])
+        
+        with auth_tab1:
+            with st.form("login_form"):
+                st.subheader("مرحباً بك مجدداً!")
+                email_input = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
+                password_input = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
+                
+                submit_login = st.form_submit_button("🚀 تسجيل الدخول", use_container_width=True)
+                
+                if submit_login:
+                    hashed_pw = SecurityEngine.hash_password(password_input)
+                    if email_input in st.session_state.user_db:
+                        user_data = st.session_state.user_db[email_input]
+                        if user_data['password_hash'] == hashed_pw:
+                            st.session_state.is_authenticated = True
+                            st.session_state.user = {
+                                'email': email_input,
+                                'username': user_data['username'],
+                                'credits': user_data['credits'],
+                                'role': user_data['role'],
+                                'is_subscribed': user_data['is_subscribed'],
+                                'subscription_type': user_data['subscription_type']
+                            }
+                            st.success(f"🎉 أهلاً بك مجدداً {user_data['username']}! جاري التوجيه...")
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.error("❌ كلمة المرور غير صحيحة.")
+                    else:
+                        st.error("❌ البريد الإلكتروني غير مسجل بالمنظومة.")
+
+        with auth_tab2:
+            with st.form("signup_form"):
+                st.subheader("انضم إلى منصة PHOENIX")
+                new_username = st.text_input("الاسم الكامل / اسم المهندس", placeholder="م. أياد فيصل")
+                new_email = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
+                new_password = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
+                confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="••••••••")
+                
+                submit_signup = st.form_submit_button("✨ إنشاء الحساب وتفعيل 5 نقاط هدية", use_container_width=True)
+                
+                if submit_signup:
+                    if not new_username or not new_email or not new_password:
+                        st.warning("⚠️ يرجى ملء كافة الحقول المطلوب.")
+                    elif new_password != confirm_password:
+                        st.error("❌ كلمة المرور وتأكيدها غير متطابقين.")
+                    elif len(new_password) < 6:
+                        st.error("❌ يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.")
+                    elif new_email in st.session_state.user_db:
+                        st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
+                    else:
+                        st.session_state.user_db[new_email] = {
+                            "password_hash": SecurityEngine.hash_password(new_password),
+                            "username": new_username,
+                            "role": "Free Trial",
+                            "credits": 5,
+                            "is_subscribed": False,
+                            "subscription_type": "Free Trial"
+                        }
+                        
+                        st.session_state.is_authenticated = True
+                        st.session_state.user = {
+                            'email': new_email,
+                            'username': new_username,
+                            'credits': 5,
+                            'role': "Free Trial",
+                            'is_subscribed': False,
+                            'subscription_type': "Free Trial"
+                        }
+                        st.balloons()
+                        st.success("🎉 تم إنشاء الحساب بنجاح وتم إضافة 5 نقاط مجانية لرصيدك!")
+                        time.sleep(1)
+                        st.rerun()
+
+if not st.session_state.is_authenticated:
+    render_auth_page()
+    st.stop()
+
+# ==========================================
+# 4. SIDEBAR
+# ==========================================
+with st.sidebar:
+    st.title("🛡️ PHOENIX AGENT")
+    st.markdown("<span class='badge-purple'>Enterprise Edition 2026</span>", unsafe_allow_html=True)
+    st.write("---")
+    
+    st.radio(
+        txt['lang_select'], 
+        ["العربية (Arabic)", "English"], 
+        index=0 if st.session_state.lang == 'ar' else 1,
+        key='lang_radio',
+        on_change=update_language
+    )
+    
+    st.radio(
+        txt['theme_select'], 
+        [txt['dark'], txt['light']], 
+        index=0 if st.session_state.theme == 'dark' else 1,
+        key='theme_radio',
+        on_change=update_theme
+    )
+    
+    st.write("---")
+    st.markdown(f"{txt['user']} **{st.session_state.user['username']}**")
+    
+    if st.session_state.user['is_subscribed']:
+        st.markdown(f"نوع الاشتراك: <span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
+        st.markdown(f"الرصيد المتاح: **غير محدود ♾️**")
+    else:
+        st.markdown(f"نوع الحساب: <span class='badge-purple'>تجريبي (5 نقاط هدية)</span>", unsafe_allow_html=True)
+        st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
+    
+    st.button(txt['logout_btn'], on_click=logout_user, use_container_width=True, type="secondary")
+
+    st.write("---")
+    st.markdown(f"### {txt['renew_title']}")
+    
+    if not st.session_state.user['is_subscribed']:
+        if st.button("🤖 الدفع الذكي والتفعيل السريع (AI Checkout)", type="primary", use_container_width=True):
+            AIPaymentAgent.execute_auto_checkout(
+                user_email=st.session_state.user['email'], 
+                user_name=st.session_state.user['username'], 
+                plan_type="monthly"
+            )
+    
+    # رابط مباشر افتراضي مسبق للتعبئة
+    default_prefilled = AIPaymentAgent.generate_prefilled_checkout_url(st.session_state.user['email'], st.session_state.user['username'], "monthly")
+    st.markdown(f'<a href="{default_prefilled}" target="_blank" class="checkout-btn">{txt["renew_btn"]}</a>', unsafe_allow_html=True)
+    
+    st.write("---")
+    st.subheader(txt['notify_settings'])
+    st.session_state.notify_whatsapp = st.text_input(txt['wa_phone'], value=st.session_state.notify_whatsapp)
+    st.session_state.notify_telegram = st.text_input(txt['tg_handle'], value=st.session_state.notify_telegram)
+
+# ==========================================
+# 5. MAIN DASHBOARD INTERFACE
+# ==========================================
+st.title(txt['title'])
+st.caption(txt['subtitle'])
+
+# AI Smart Payment Banner when credits reach 0
+if st.session_state.user['credits'] <= 0 and not st.session_state.user['is_subscribed']:
+    st.markdown("""
+    <div class="ai-payment-card">
+        <h3>🤖 تنبيه من وكيل الدفع الذكي (AI Payment Broker Agent)</h3>
+        <p>لقد نفدت نقاطك المجانية (0/5)! يمكنك السماح للذكاء الاصطناعي بتوليد رابط الدفع المعبأ آلياً ببياناتك وتوجيهك مباشرة للبوابة عبر Lemon Squeezy.</p>
+    </div>
     """, unsafe_allow_html=True)
-
-# =====================================================================
-# 6. APPLICATION CONTROLLER
-# =====================================================================
-def main():
-    init_session()
-    inject_custom_css()
-
-    # --- AUTHENTICATION SCREEN ---
-    if not st.session_state.authenticated:
-        st.markdown("<h1 style='text-align: center;'>🔐 منصة PHOENIX & MIHNA ENTERPRISE</h1>", unsafe_allow_html=True)
-        t_login, t_signup = st.tabs(["🔑 تسجيل الدخول", "📝 حساب جديد"])
-        
-        with t_login:
-            email = st.text_input("البريد الإلكتروني", key="l_email")
-            password = st.text_input("كلمة المرور", type="password", key="l_pass")
-            if st.button("تسجيل الدخول", type="primary", use_container_width=True):
-                user = CloudSQLUtils.get_user_by_email(email)
-                if user and VaultSecurity.verify_password(password, user["password"]):
-                    st.session_state.authenticated = True
-                    st.session_state.current_user = user
-                    st.session_state.current_user["email"] = email
-                    st.rerun()
-                else:
-                    st.error("بيانات الدخول غير صحيحة.")
-
-        with t_signup:
-            s_name = st.text_input("الاسم الكامل", key="s_name")
-            s_email = st.text_input("البريد الإلكتروني", key="s_email")
-            s_pass = st.text_input("كلمة المرور", type="password", key="s_pass")
-            if st.button("إنشاء حساب (5 نقاط مجانية)", use_container_width=True):
-                if s_name and s_email and s_pass:
-                    hashed = VaultSecurity.hash_password(s_pass)
-                    CloudSQLUtils.register_user(s_name, s_email, hashed, credits=5, plan_status="Free Trial")
-                    st.success("تم إنشاء الحساب بنجاح! قم بتسجيل الدخول الان.")
-        return
-
-    # --- MAIN DASHBOARD (AUTHENTICATED) ---
-    user = st.session_state.current_user
-
-    with st.sidebar:
-        st.title("🛡️ PHOENIX COMMAND")
-        st.caption(f"👤 {user.get('name')}")
-        st.caption(f"💳 الرصيد: {user.get('credits')} نقاط")
-        st.markdown(f"<span class='badge-purple'>{user.get('plan_status')}</span>", unsafe_allow_html=True)
-        st.divider()
-        
-        api_key = st.text_input("🔑 Gemini API Key", type="password", value=os.getenv("GEMINI_API_KEY", ""))
-        
-        st.divider()
-        st.subheader("⚙️ التنبيهات والإعدادات")
-        st.session_state.notify_whatsapp = st.text_input("📱 واتساب التنبيهات", value=st.session_state.notify_whatsapp)
-        st.session_state.notify_telegram = st.text_input("✈️ تليجرام التنبيهات", value=st.session_state.notify_telegram)
-        
-        if st.button("🚪 تسجيل الخروج", use_container_width=True):
-            st.session_state.authenticated = False
-            st.rerun()
-
-    st.title("🚀 وكيل مهنة PRO | PHOENIX Enterprise v8.5")
     
-    # NAVIGATION TABS (FULL CODE 2 STRUCTURE)
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "🏗️ بناء خطة مشروع", 
-        "📊 التحليلات الـ 5D المتقدمة", 
-        "✏️ محرر المهام المتقدم", 
-        "🤖 وكيل الدفع الذكي (Payment Agent)", 
-        "💳 الحساب والاشتراك"
-    ])
+    with st.expander("⚡ تنفيذ عملية الدفع والترقية الفورية عبر الذكاء الاصطناعي", expanded=True):
+        col_pay_ai1, col_pay_ai2 = st.columns(2)
+        with col_pay_ai1:
+            st.markdown("#### 💳 باقة Pro الشهري ($29)")
+            if st.button("🚀 تنفيذ الدفع الذكي والتفعيل فوراً (Pro)", type="primary", use_container_width=True):
+                AIPaymentAgent.execute_auto_checkout(
+                    user_email=st.session_state.user['email'], 
+                    user_name=st.session_state.user['username'], 
+                    plan_type="monthly"
+                )
+        with col_pay_ai2:
+            st.markdown("#### 👑 باقة Enterprise السنوية ($279)")
+            if st.button("💎 تنفيذ الدفع الذكي والتفعيل فوراً (Enterprise)", use_container_width=True):
+                AIPaymentAgent.execute_auto_checkout(
+                    user_email=st.session_state.user['email'], 
+                    user_name=st.session_state.user['username'], 
+                    plan_type="yearly"
+                )
 
-    # -----------------------------------------------------------------
-    # TAB 1: BUILD ARCHITECTURE PLAN (WITH QUICK TEMPLATES)
-    # -----------------------------------------------------------------
-    with tab1:
-        st.subheader("⚡ قوالب مشاريع سريعة (Quick Templates)")
-        col_t1, col_t2, col_t3 = st.columns(3)
-        
-        selected_template = None
-        if col_t1.button("🛒 متجر إلكتروني متكامل", use_container_width=True):
-            selected_template = {"name": "منصة تجارة إلكترونية", "budget": 8000, "days": 45, "tech": "React, Node.js, PostgreSQL", "desc": "متجر تجارة إلكترونية متعدد التجار مع بوابة دفع وتتبع طلبات."}
-        if col_t2.button("🎓 منصة تعليمية وتدريب", use_container_width=True):
-            selected_template = {"name": "نظام إدارة التعلم (LMS)", "budget": 6000, "days": 35, "tech": "Flutter, Supabase, WebRTC", "desc": "منصة كورسات تفاعلية وبث مباشر مع شهادات تلقائية."}
-        if col_t3.button("🛵 تطبيق توصيل وشحن", use_container_width=True):
-            selected_template = {"name": "منصة توصيل وشحن لوجستي", "budget": 12000, "days": 60, "tech": "Flutter, Go, Redis, Cloud SQL", "desc": "تطبيق شحن وتوصيل فوري مع تتبع مباشر عبر الخرائط GPS."}
+tab1, tab2, tab3, tab4 = st.tabs([txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4']])
 
-        st.divider()
+# ==========================================
+# TAB 1: بناء خطة مشروع
+# ==========================================
+with tab1:
+    st.subheader(txt['quick_templates'])
+    col_t1, col_t2, col_t3 = st.columns(3)
+    
+    col_t1.button(
+        txt['ecom'], 
+        use_container_width=True, 
+        on_click=apply_template, 
+        args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل")
+    )
+    col_t2.button(
+        txt['edu'], 
+        use_container_width=True, 
+        on_click=apply_template, 
+        args=("منصة تعليمية تتيح رفع الكورسات واختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية")
+    )
+    col_t3.button(
+        txt['delivery'], 
+        use_container_width=True, 
+        on_click=apply_template, 
+        args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع")
+    )
+
+    domain_options = ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
+    domain_idx = domain_options.index(st.session_state.form_domain) if st.session_state.form_domain in domain_options else 0
+
+    with st.form("project_form"):
         col1, col2 = st.columns(2)
         with col1:
-            p_name = st.text_input("اسم المشروع", value=selected_template['name'] if selected_template else "منصة إدارة المقاولات")
-            budget = st.number_input("الميزانية المقدرة ($)", value=selected_template['budget'] if selected_template else 5000)
+            project_name = st.text_input(txt['p_name'], key="form_pname")
+            domain = st.selectbox(txt['tech_domain'], domain_options, index=domain_idx, key="form_domain")
+            budget = st.number_input(txt['budget'], min_value=500, key="form_budget")
         with col2:
-            tech = st.text_input("المجال والتقنيات", value=selected_template['tech'] if selected_template else "Flutter, Node.js, Cloud SQL")
-            days = st.number_input("المدة الزمانية (أيام)", value=selected_template['days'] if selected_template else 30)
+            tech_stack = st.text_input(txt['tech_stack'], value="Flutter, Node.js, PostgreSQL, Supabase")
+            target_days = st.number_input(txt['target_days'], min_value=5, key="form_days")
+            risk_tolerance = st.select_slider(txt['risk_level'], options=["منخفض جداً", "متوسط", "عالي"])
             
-        scope = st.text_area("نطاق العمل تفصيلياً (Scope of Work)", value=selected_template['desc'] if selected_template else "بناء تطبيق للهواتف مع لوحة تحكم سحابية لإدارة المشاريع والتوقيع الرقمي.")
-
-        if st.button("🚀 توليد وتوقيع الخطة الهندسية عبر AI", type="primary", use_container_width=True):
-            if user.get("credits", 0) <= 0:
-                st.error("رصيدك غير كافٍ. يرجى الترقية لتوليد خطط جديدة.")
-            else:
-                with st.spinner("جاري التواصل مع محرك AI وتوقيع الخطة رقمياً..."):
-                    req = {"client": p_name, "budget": budget, "timeline": days, "tech": tech, "desc": scope}
-                    plan = PhoenixAI.generate_architecture(api_key, req, lang=st.session_state.lang)
-                    
-                    st.session_state.current_plan = plan
-                    user["credits"] -= 1
-                    CloudSQLUtils.update_user_credits(user.get("email"), user["credits"])
-                    st.success("✅ تم توليد وتوقيع الخطة المعمارية بنجاح!")
-                    st.rerun()
-
-        if st.session_state.current_plan:
-            plan = st.session_state.current_plan
-            st.divider()
-            st.markdown(f"### 📄 ملخص الخطة المعمارية: {plan.get('project_name')}")
-            st.info(f"🔒 **التوقيع الرقمي HMAC-SHA512:** `{plan.get('signature')}`")
-            st.write(f"**الملخص التنفيذي:** {plan.get('executive_summary')}")
-            st.dataframe(pd.DataFrame(plan.get("tasks", [])), use_container_width=True)
-
-    # -----------------------------------------------------------------
-    # TAB 2: ADVANCED 5D VISUAL ANALYTICS (FULL CODE 2 VISUALS)
-    # -----------------------------------------------------------------
-    with tab2:
-        if st.session_state.current_plan:
-            plan = st.session_state.current_plan
-            tasks = plan.get("tasks", [])
-            df = pd.DataFrame(tasks)
-
-            # TOP METRIC CARDS
-            m1, m2, m3, m4 = st.columns(4)
-            m1.markdown(f"<div class='metric-card'>💵 <b>إجمالي التكلفة:</b><br>${df['cost'].sum():,}</div>", unsafe_allow_html=True)
-            m2.markdown(f"<div class='metric-card'>⏱️ <b>إجمالي الأيام:</b><br>{df['days'].sum()} يوم</div>", unsafe_allow_html=True)
-            m3.markdown(f"<div class='metric-card'>🛡️ <b>مؤشر المخاطر:</b><br>{plan.get('risk_score')}%</div>", unsafe_allow_html=True)
-            m4.markdown(f"<div class='metric-card'>🎯 <b>نسبة الاعتمادية:</b><br>{plan.get('confidence_score')}%</div>", unsafe_allow_html=True)
-
-            st.divider()
-            c_r1, c_r2 = st.columns(2)
-            
-            with c_r1:
-                st.markdown("### 🕸️ تقييم أبعاد المشروع (5D Radar Risk)")
-                radar_categories = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
-                fig_radar = go.Figure(go.Scatterpolar(
-                    r=[80, 90, 85, 75, plan.get('risk_score', 20)],
-                    theta=radar_categories, fill='toself', line=dict(color='#8B5CF6')
-                ))
-                fig_radar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color="#ffffff"), height=320)
-                st.plotly_chart(fig_radar, use_container_width=True)
-
-            with c_r2:
-                st.markdown("### 🎯 مؤشر جدوى المشروع (Feasibility Gauge)")
-                fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number", value=plan.get('confidence_score', 90),
-                    gauge={'bar': {'color': "#10B981"}, 'axis': {'range': [0, 100]}}
-                ))
-                fig_gauge.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color="#ffffff"), height=320)
-                st.plotly_chart(fig_gauge, use_container_width=True)
-
-            c_r3, c_r4 = st.columns(2)
-            
-            with c_r3:
-                st.markdown("### ☀️ الهيكلية الموزعة للمهام (Sunburst Hierarchy)")
-                fig_sun = px.sunburst(df, path=['priority', 'task'], values='cost', color='cost', color_continuous_scale='Purples')
-                fig_sun.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color="#ffffff"), height=350)
-                st.plotly_chart(fig_sun, use_container_width=True)
-
-            with c_r4:
-                st.markdown("### 💧 تدفق تكاليف المراحل (Waterfall Cost Flow)")
-                fig_water = go.Figure(go.Waterfall(
-                    name="Cost Flow", orientation="v",
-                    measure=["relative"] * len(df),
-                    x=df['task'], textposition="outside",
-                    y=df['cost'], connector={"line": {"color": "rgb(63, 63, 63)"}}
-                ))
-                fig_water.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color="#ffffff"), height=350)
-                st.plotly_chart(fig_water, use_container_width=True)
-        else:
-            st.info("قم بتوليد خطة هندسية أولاً لعرض التحليلات الـ 5D.")
-
-    # -----------------------------------------------------------------
-    # TAB 3: TASK EDITOR & DUAL EXPORT (EXCEL / PDF)
-    # -----------------------------------------------------------------
-    with tab3:
-        if st.session_state.current_plan:
-            plan = st.session_state.current_plan
-            st.subheader("✏️ تعديل وتحديث مهام الخطة")
-            
-            edited_df = st.data_editor(
-                pd.DataFrame(plan.get("tasks", [])),
-                num_rows="dynamic",
-                use_container_width=True
-            )
-            
-            if st.button("💾 حفظ التعديلات وإعادة التوقيع الرقمي HMAC", use_container_width=True):
-                plan["tasks"] = edited_df.to_dict(orient='records')
-                plan["signature"] = VaultSecurity.sign_payload(plan)
-                st.session_state.current_plan = plan
-                st.success("✅ تم تحديث التوقيع الرقمي وتوثيق التعديلات بنجاح!")
-                st.rerun()
-
-            st.divider()
-            st.subheader("📥 تصدير التقارير الهندسية")
-            col_ex1, col_ex2 = st.columns(2)
-            col_ex1.download_button(
-                "📊 تصدير Excel مفصل",
-                ExportEngine.build_excel(plan.get("tasks", [])),
-                "Phoenix_Architecture_Tasks.xlsx",
-                use_container_width=True
-            )
-            col_ex2.download_button(
-                "📄 تصدير PDF عربي موثق",
-                ExportEngine.build_pdf(plan),
-                "Phoenix_Architecture_Report.pdf",
-                use_container_width=True
-            )
-        else:
-            st.info("لا توجد خطة معروضة للتعديل.")
-
-    # -----------------------------------------------------------------
-    # TAB 4: AI PAYMENT AGENT SIMULATOR (FROM CODE 2)
-    # -----------------------------------------------------------------
-    with tab4:
-        st.subheader("🤖 وكيل معالجة الدفع والاشتراكات الآلي (AI Payment Agent)")
-        st.caption("محاكاة واستقبال webhook الاشتراكات وتأكيد معاملات Lemon Squeezy تلقائياً.")
+        project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="اكتب تفاصيل ومتطلبات المشروع هنا...")
         
-        col_pay1, col_pay2 = st.columns(2)
-        with col_pay1:
-            pay_email = st.text_input("بريد المشترك للتفعيل", value=user.get("email"))
-            pay_plan = st.selectbox("باقة الترقية", ["Enterprise Monthly ($29)", "Enterprise Yearly ($279)"])
-            tx_id = st.text_input("معرف المعاملة (TxID)", value=f"TX-{secrets.token_hex(4).upper()}")
-            
-            if st.button("⚡ محاكاة استلام Webhook الدفع", use_container_width=True):
-                added_credits = 100 if "Monthly" in pay_plan else 1500
-                CloudSQLUtils.update_user_credits(pay_email, user.get("credits") + added_credits, new_status="Enterprise Pro")
+        submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
+        
+    if submit_btn:
+        if st.session_state.user['credits'] < 1 and not st.session_state.user['is_subscribed']:
+            st.error("❌ لقد استنفدت كافة نقاطك المجانية! يرجى تنفيذ الدفع الآلي بالذكاء الاصطناعي لتفعيل الحساب فورياً.")
+        elif not project_scope.strip():
+            st.warning("⚠️ يرجى تقديم نطاق العمل لتبدأ عملية التوليد.")
+        else:
+            with st.spinner("⏳ جاري توليد المهام والتوقيع الرقمي..."):
+                time.sleep(0.5)
                 
-                log_entry = {
-                    "time": datetime.datetime.now().strftime("%H:%M:%S"),
-                    "tx_id": tx_id,
-                    "email": pay_email,
-                    "plan": pay_plan,
-                    "status": "SUCCESS"
+                tasks = [
+                    {"id": 1, "task": "تحليل المتطلبات وتصميم المخططات Architecture", "days": max(1, int(target_days*0.15)), "cost": int(budget*0.15), "status": "مخطط"},
+                    {"id": 2, "task": "بناء قواعد البيانات وتأمين API Backend", "days": max(1, int(target_days*0.35)), "cost": int(budget*0.35), "status": "مخطط"},
+                    {"id": 3, "task": "تطوير واجهات المستخدم Frontend & UI Components", "days": max(1, int(target_days*0.30)), "cost": int(budget*0.30), "status": "مخطط"},
+                    {"id": 4, "task": "الاختبارات والتكامل Deployment & QA", "days": max(1, int(target_days*0.20)), "cost": int(budget*0.20), "status": "مخطط"},
+                ]
+                
+                plan_payload = {
+                    "project_name": project_name,
+                    "domain": domain,
+                    "budget": budget,
+                    "target_days": target_days,
+                    "risk": risk_tolerance,
+                    "tech": tech_stack,
+                    "tasks": tasks,
+                    "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M")
                 }
-                st.session_state.payment_logs.append(log_entry)
-                st.success(f"✅ تم تفعيل الاشتراك بنجاح للبريد {pay_email}! تمت إضافة {added_credits} نقطة.")
-                st.rerun()
+                
+                signature = SecurityEngine.generate_signature(plan_payload)
+                st.session_state.current_plan = plan_payload
+                st.session_state.plan_signature = signature
+                
+                if not st.session_state.user['is_subscribed']:
+                    st.session_state.user['credits'] -= 1
+                    if st.session_state.user['email'] in st.session_state.user_db:
+                        st.session_state.user_db[st.session_state.user['email']]['credits'] = st.session_state.user['credits']
+                
+                st.success("✅ تم توليد الخطة وتوقيعها رقمياً بنجاح!")
 
-        with col_pay2:
-            st.markdown("### 📬 سجل معالجات الدفع الفورية (Payment Logs)")
-            if st.session_state.payment_logs:
-                st.dataframe(pd.DataFrame(st.session_state.payment_logs), use_container_width=True)
+    if st.session_state.current_plan:
+        st.write("---")
+        col_sig1, col_sig2 = st.columns([3, 1])
+        with col_sig1:
+            st.info(f"{txt['digital_sig']}\n`{st.session_state.plan_signature}`")
+        with col_sig2:
+            is_valid = SecurityEngine.verify_signature(st.session_state.current_plan, st.session_state.plan_signature)
+            if is_valid:
+                st.markdown(f"<br><span class='badge-green'>{txt['sig_valid']}</span>", unsafe_allow_html=True)
             else:
-                st.info("لا توجد عمليات دفع مسجلة في الجلسة الحالية.")
+                st.markdown(f"<br><span class='badge-purple'>{txt['sig_invalid']}</span>", unsafe_allow_html=True)
 
-    # -----------------------------------------------------------------
-    # TAB 5: ACCOUNT & UPGRADE (CHECKOUT LINKS)
-    # -----------------------------------------------------------------
-    with tab5:
-        st.subheader("💳 ترقية الاشتراك والرصيد")
-        st.write("اختر الخطة المناسبة للانتقال مباشرة إلى بوابة الدفع المعتمدة:")
+        df_tasks = pd.DataFrame(st.session_state.current_plan['tasks'])
+        st.dataframe(df_tasks, use_container_width=True)
         
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            st.markdown(f'''
-            <div style="background-color:#1e293b; padding:20px; border-radius:10px; border:1px solid #3b82f6; text-align:center;">
-                <h3>🚀 الاشتراك الشهري</h3>
-                <h2>$29 <small>/ شهرياً</small></h2>
-                <p>100 نقطة توليد معمارية شهرياً + دعم كامل</p>
-                <a href="{PAYMENT_LINK_MONTHLY}" target="_blank" style="display:block; background:#2563eb; color:white; padding:12px; border-radius:8px; font-weight:bold; text-decoration:none;">ادفع الآن عبر Lemon Squeezy</a>
-            </div>
-            ''', unsafe_allow_html=True)
-            
-        with col_p2:
-            st.markdown(f'''
-            <div style="background-color:#1e293b; padding:20px; border-radius:10px; border:1px solid #8b5cf6; text-align:center;">
-                <h3>🏆 الاشتراك السنوي</h3>
-                <h2>$279 <small>/ سنوياً</small></h2>
-                <p>1500 نقطة توليد معمارية + أولوية الدعم والسيرفرات</p>
-                <a href="{PAYMENT_LINK_YEARLY}" target="_blank" style="display:block; background:#7c3aed; color:white; padding:12px; border-radius:8px; font-weight:bold; text-decoration:none;">ادفع الآن عبر Lemon Squeezy</a>
-            </div>
-            ''', unsafe_allow_html=True)
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            excel_bytes = generate_excel_download(df_tasks)
+            st.download_button(
+                label=txt['export_excel'],
+                data=excel_bytes,
+                file_name=f"{st.session_state.current_plan['project_name']}_Tasks.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                key="btn_dl_excel_tab1"
+            )
+        with col_dl2:
+            detailed_txt = build_detailed_plan_text(st.session_state.current_plan)
+            pdf_bytes = generate_pdf_plan(st.session_state.current_plan, st.session_state.plan_signature, detailed_txt)
+            st.download_button(
+                label=txt['export_pdf'],
+                data=pdf_bytes,
+                file_name=f"{st.session_state.current_plan['project_name']}_Plan.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key="btn_dl_pdf_tab1"
+            )
 
-if __name__ == "__main__":
-    main()
+        st.write("---")
+        col_n1, col_n2 = st.columns(2)
+        msg_body = f"🚀 Project Plan: {st.session_state.current_plan['project_name']}\n💰 Budget: ${st.session_state.current_plan['budget']}\n⏱️ Days: {st.session_state.current_plan['target_days']}\n🔑 Sig: {st.session_state.plan_signature[:20]}..."
+        wa_url = NotificationEngine.create_whatsapp_link(st.session_state.notify_whatsapp, msg_body)
+        
+        with col_n1:
+            st.markdown(f'<a href="{wa_url}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">{txt["send_wa"]}</a>', unsafe_allow_html=True)
+        with col_n2:
+            if st.button(txt['send_tg'], use_container_width=True, key="btn_tg_notify_tab1"):
+                st.success(f"✅ Notification dispatched to {st.session_state.notify_telegram}")
+
+# ==========================================
+# TAB 2: التحليلات التفاعلية الفائقة
+# ==========================================
+with tab2:
+    if not st.session_state.current_plan:
+        st.info("💡 قم بتوليد خطة مشروع أولاً من تبويب 'بناء خطة مشروع' لاستعراض التحليلات الهندسية المتقدمة.")
+    else:
+        plan = st.session_state.current_plan
+        df = pd.DataFrame(plan['tasks'])
+        
+        st.markdown("## 📊 لوحة القيادة الهندسية وتخيم الجودة والمخاطر")
+        st.caption("تحليل بصري متقدم للتكلفة، الأداء، المخاطر، والمسار الزمني الشامل لمشروعك.")
+        
+        daily_rate = int(plan['budget'] / max(1, plan['target_days']))
+        feasibility_score = min(98, max(65, int(100 - (plan['target_days'] / max(1, plan['budget'] / 100)) * 5)))
+        
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("💰 إجمالي الميزانية المعتمدة", f"${plan['budget']:,}")
+        m2.metric("⏱️ المدى الزمني الشامل", f"{plan['target_days']} يوم")
+        m3.metric("📈 التكلفة اليومية المستهدفة", f"${daily_rate:,}/يوم")
+        m4.metric("🛡️ مؤشر السلامة الهندسية", f"{feasibility_score}%", delta="ممتاز" if feasibility_score > 80 else "مقبول")
+        
+        st.progress(feasibility_score / 100)
+        st.write("---")
+        
+        col_c1, col_c2 = st.columns(2)
+        
+        with col_c1:
+            st.markdown("### 🍩 التحليل المالي الدائري المتداخل (Sunburst Hierarchy)")
+            labels = [plan['project_name']] + list(df['task'])
+            parents = [""] + [plan['project_name']] * len(df)
+            values = [plan['budget']] + list(df['cost'])
+            
+            fig_sunburst = go.Figure(go.Sunburst(
+                labels=labels,
+                parents=parents,
+                values=values,
+                branchvalues="total",
+                hovertemplate='<b>%{label}</b><br>المبلغ: $%{value:,}<br>النسبة: %{percentParent:.1%}',
+                marker=dict(colorscale='Blues', line=dict(color='#0E1117', width=1.5)),
+                textfont=dict(size=12, color='#FFFFFF')
+            ))
+            fig_sunburst.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=11),
+                height=350,
+                margin=dict(l=10, r=10, t=10, b=10)
+            )
+            st.plotly_chart(fig_sunburst, use_container_width=True)
+
+        with col_c2:
+            st.markdown("### 🎯 مؤشر الكفاءة والجاهزية الهندسية (Feasibility Gauge)")
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=feasibility_score,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "مؤشر ملاءمة الميزانية والوقت", 'font': {'size': 14, 'color': text_color}},
+                delta={'reference': 80, 'increasing': {'color': "#10B981"}},
+                gauge={
+                    'axis': {'range': [None, 100], 'tickwidth': 1, 'tickcolor': "#334155"},
+                    'bar': {'color': "#8B5CF6"},
+                    'bgcolor': "rgba(0,0,0,0)",
+                    'borderwidth': 2,
+                    'bordercolor': "#334155",
+                    'steps': [
+                        {'range': [0, 50], 'color': 'rgba(239, 68, 68, 0.3)'},
+                        {'range': [50, 75], 'color': 'rgba(245, 158, 11, 0.3)'},
+                        {'range': [75, 100], 'color': 'rgba(16, 185, 129, 0.3)'}
+                    ]
+                }
+            ))
+            fig_gauge.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=12),
+                height=350,
+                margin=dict(l=20, r=20, t=30, b=20)
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
+
+        st.write("---")
+
+        c_r1, c_r2 = st.columns(2)
+        with c_r1:
+            st.markdown("### 🕸️ تقييم أبعاد المشروع (5D Radar Risk Matrix)")
+            radar_categories = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
+            risk_score = 85 if plan.get('risk') == 'عالي' else (65 if plan.get('risk') == 'متوسط' else 45)
+            radar_values = [80, 95, 85, 90, risk_score]
+            
+            fig_radar = go.Figure()
+            fig_radar.add_trace(go.Scatterpolar(
+                r=radar_values,
+                theta=radar_categories,
+                fill='toself',
+                name='تقدير الأبعاد',
+                line=dict(color='#8B5CF6', width=3),
+                fillcolor='rgba(139, 92, 246, 0.35)'
+            ))
+            fig_radar.update_layout(
+                polar=dict(
+                    radialaxis=dict(visible=True, range=[0, 100], gridcolor='#334155'),
+                    angularaxis=dict(gridcolor='#334155')
+                ),
+                showlegend=False,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=12),
+                height=340,
+                margin=dict(l=40, r=40, t=30, b=30)
+            )
+            st.plotly_chart(fig_radar, use_container_width=True)
+
+        with c_r2:
+            st.markdown("### 🌊 التدفق المالي التراكمي (Waterfall Cost Flow)")
+            x_labels = list(df['task']) + ["الإجمالي النهائي"]
+            y_measures = ["relative"] * len(df) + ["total"]
+            y_values = list(df['cost']) + [0]
+            
+            fig_waterfall = go.Figure(go.Waterfall(
+                name="توزيع التكلفة",
+                orientation="v",
+                measure=y_measures,
+                x=x_labels,
+                textposition="outside",
+                text=[f"${c:,}" if c > 0 else f"${plan['budget']:,}" for c in y_values],
+                y=y_values,
+                connector={"line": {"color": "#64748B", "width": 2}},
+                decreasing={"marker": {"color": "#EF4444"}},
+                increasing={"marker": {"color": "#3B82F6"}},
+                totals={"marker": {"color": "#10B981"}}
+            ))
+            fig_waterfall.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color=text_color, size=11),
+                showlegend=False,
+                height=340,
+                margin=dict(l=20, r=20, t=30, b=30),
+                yaxis=dict(gridcolor='#334155')
+            )
+            st.plotly_chart(fig_waterfall, use_container_width=True)
+
+# ==========================================
+# TAB 3: محرر المهام وخطة المشروع
+# ==========================================
+with tab3:
+    st.subheader(txt['tab3'])
+    
+    if not st.session_state.current_plan:
+        st.warning("⚠️ لا توجد خطة حالية لتعديلها. قم بتوليد خطة من تبويب 'بناء خطة مشروع'.")
+    else:
+        edited_df = st.data_editor(
+            pd.DataFrame(st.session_state.current_plan['tasks']),
+            num_rows="dynamic",
+            use_container_width=True,
+            key="task_data_editor"
+        )
+        
+        if st.button(txt['save_re_sign'], use_container_width=True, key="btn_save_resign_tab3"):
+            updated_tasks = edited_df.to_dict(orient='records')
+            st.session_state.current_plan['tasks'] = updated_tasks
+            st.session_state.current_plan['budget'] = sum(int(item.get('cost', 0)) for item in updated_tasks)
+            st.session_state.current_plan['target_days'] = sum(int(item.get('days', 0)) for item in updated_tasks)
+            
+            new_sig = SecurityEngine.generate_signature(st.session_state.current_plan)
+            st.session_state.plan_signature = new_sig
+            st.success("✅ تم تحديث المهام وإعادة التوقيع الرقمي بنجاح!")
+            st.rerun()
+
+        st.write("---")
+        st.subheader(txt['detailed_plan'])
+        detailed_plan_text = build_detailed_plan_text(st.session_state.current_plan)
+        st.markdown(detailed_plan_text)
+        
+        st.write("---")
+        col_d1, col_d2 = st.columns(2)
+        with col_d1:
+            excel_bytes = generate_excel_download(edited_df)
+            st.download_button(
+                label=txt['export_excel'],
+                data=excel_bytes,
+                file_name=f"{st.session_state.current_plan['project_name']}_Tasks.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                key="btn_dl_excel_tab3"
+            )
+        with col_d2:
+            pdf_bytes = generate_pdf_plan(st.session_state.current_plan, st.session_state.plan_signature, detailed_plan_text)
+            st.download_button(
+                label=txt['export_pdf'],
+                data=pdf_bytes,
+                file_name=f"{st.session_state.current_plan['project_name']}_Plan.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key="btn_dl_pdf_tab3"
+            )
+
+# ==========================================
+# TAB 4: إدارة الحساب والاشتراكات
+# ==========================================
+with tab4:
+    st.subheader("💳 إدارة الحساب وبوابة الدفع بالذكاء الاصطناعي")
+    st.caption("مركز المعاملات الفورية والمشفرة مع معالجة الذكاء الاصطناعي.")
+    
+    col_stat1, col_stat2 = st.columns([2, 1])
+    with col_stat1:
+        st.info(f"👤 **المستخدم الحساب:** {st.session_state.user['username']} ({st.session_state.user.get('email', 'حساب مؤقت')})\n\n💳 **الرصيد المتاح:** {st.session_state.user['credits']} نقطة.")
+    with col_stat2:
+        if st.session_state.user['credits'] > 0 and not st.session_state.user['is_subscribed']:
+            st.markdown("<span class='badge-green'>🎁 الفترة التجريبية نشطة</span>", unsafe_allow_html=True)
+        elif st.session_state.user['is_subscribed']:
+            st.markdown("<span class='badge-gold'>👑 اشتراك مدفوع نشط</span>", unsafe_allow_html=True)
+
+    st.write("---")
+    
+    st.markdown("### 🤖 مركز معالجة الدفع المعبأ آلياً (AI Prefilled Instant Checkout)")
+    col_aip1, col_aip2 = st.columns(2)
+    with col_aip1:
+        if st.button("⚡ تنفيذ الدفع والترقية لـ Pro ($29)", use_container_width=True, type="primary"):
+            AIPaymentAgent.execute_auto_checkout(
+                user_email=st.session_state.user['email'], 
+                user_name=st.session_state.user['username'], 
+                plan_type="monthly"
+            )
+            
+    with col_aip2:
+        if st.button("👑 تنفيذ الدفع والترقية لـ Enterprise ($279)", use_container_width=True):
+            AIPaymentAgent.execute_auto_checkout(
+                user_email=st.session_state.user['email'], 
+                user_name=st.session_state.user['username'], 
+                plan_type="yearly"
+            )
+
+    st.write("---")
+    
+    # توليد الروابط المعبأة آلياً لكروت الخطط
+    monthly_prefilled_url = AIPaymentAgent.generate_prefilled_checkout_url(
+        user_email=st.session_state.user['email'], 
+        user_name=st.session_state.user['username'], 
+        plan_type="monthly"
+    )
+    yearly_prefilled_url = AIPaymentAgent.generate_prefilled_checkout_url(
+        user_email=st.session_state.user['email'], 
+        user_name=st.session_state.user['username'], 
+        plan_type="yearly"
+    )
+
+    col_p1, col_p2, col_p3 = st.columns(3)
+    
+    with col_p1:
+        st.markdown("""
+        <div class="pricing-card">
+            <h3>🎁 التجريبي المجاني</h3>
+            <h2>$0 <small>/ للأبد</small></h2>
+            <hr>
+            <p>✔ <b>5 نقاط مجانية</b> عند التسجيل</p>
+            <p>✔ توليد خطط هندسية موثقة</p>
+            <p>✔ التوقيع الرقمي HMAC-SHA512</p>
+            <p>✔ تصدير ملفات Excel & PDF</p>
+            <hr>
+            <p><i>مفعل تلقائياً لكل مستخدم جديد</i></p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_p2:
+        st.markdown(f"""
+        <div class="pricing-card-highlight">
+            <span class="badge-purple">الأكثر شعبية 🚀</span>
+            <h3>⚡ الاشتراك الشهري Pro</h3>
+            <h2>$29 <small>/ شهرياً</small></h2>
+            <hr>
+            <p>✔ <b>توليد خطط غير محدود</b></p>
+            <p>✔ تحليلات هندسية فائقة ومتقدمة</p>
+            <p>✔ تصدير تقارير موثقة بلا حدود</p>
+            <p>✔ ربط الإشعارات التلقائية الفورية</p>
+            <hr>
+            <a href="{monthly_prefilled_url}" target="_blank" class="checkout-btn">🚀 اشتراك معبأ آلياً (Pro)</a>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_p3:
+        st.markdown(f"""
+        <div class="pricing-card">
+            <span class="badge-gold">خصم 20% 🏆</span>
+            <h3>👑 اشتراك المؤسسات السنوي</h3>
+            <h2>$279 <small>/ سنوياً</small></h2>
+            <hr>
+            <p>✔ <b>جميع ميزات باقة Pro</b></p>
+            <p>✔ دعم فني وتصميم خاص</p>
+            <p>✔ تخصيص القوالب ومعمارية النظام</p>
+            <p>✔ إمكانية الربط التلقائي عبر API</p>
+            <hr>
+            <a href="{yearly_prefilled_url}" target="_blank" class="checkout-btn-yearly">💎 اشتراك معبأ آلياً (Enterprise)</a>
+        </div>
+        """, unsafe_allow_html=True)
