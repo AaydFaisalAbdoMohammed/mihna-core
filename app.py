@@ -45,7 +45,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Engine Initialization
+# Engine Initialization مع إضافة connect_timeout لمنع الشاشة الحمراء وتعليق الاتصال
 @st.cache_resource
 def init_db_engine():
     encoded_pass = quote_plus(DB_PASS)
@@ -55,9 +55,13 @@ def init_db_engine():
     else:
         db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         
-    engine_obj = sqlalchemy.create_engine(db_url, pool_pre_ping=True)
+    engine_obj = sqlalchemy.create_engine(
+        db_url, 
+        pool_pre_ping=True,
+        connect_args={'connect_timeout': 5}  # حد أقصى 5 ثوانٍ للاتصال لتجنب التعليق
+    )
     
-    # التأكد من وجود جدول المستخدمين تلقائياً دون الحاجة لإعادة إنشائه يدوياً
+    # التأكد من وجود جدول المستخدمين تلقائياً عند نوتج اتصال ناجح
     try:
         with engine_obj.connect() as conn:
             conn.execute(text("""
@@ -71,10 +75,10 @@ def init_db_engine():
                 );
             """))
             conn.commit()
+            return engine_obj
     except Exception as e:
-        pass
-        
-    return engine_obj
+        print(f"Database Connection Warning: {e}")
+        return None
 
 try:
     engine = init_db_engine()
@@ -460,7 +464,7 @@ def build_detailed_plan_text(plan: dict) -> str:
 """
 
 # ==========================================
-# 3. AUTHENTICATION MODULE (POSTGRESQL CONNECTED)
+# 3. AUTHENTICATION MODULE (WITH TIMEOUT HANDLER)
 # ==========================================
 def render_auth_page():
     st.markdown("<h1 style='text-align: center;'>🔐 بوابة الدخول | PHOENIX Enterprise</h1>", unsafe_allow_html=True)
@@ -480,40 +484,43 @@ def render_auth_page():
                 submit_login = st.form_submit_button("🚀 تسجيل الدخول", use_container_width=True)
                 
                 if submit_login:
-                    hashed_pw = SecurityEngine.hash_password(password_input)
-                    try:
-                        with engine.connect() as conn:
-                            result = conn.execute(
-                                text("SELECT email, password_hash, full_name, role FROM users WHERE email = :email"),
-                                {"email": email_input}
-                            ).fetchone()
+                    if engine is None:
+                        st.error("⚠️ تعذر الاتصال بقاعدة البيانات حالياً (Connection Timeout). يرجى مراجعة إعدادات Authorized Networks في Google Cloud SQL.")
+                    else:
+                        hashed_pw = SecurityEngine.hash_password(password_input)
+                        try:
+                            with engine.connect() as conn:
+                                result = conn.execute(
+                                    text("SELECT email, password_hash, full_name, role FROM users WHERE email = :email"),
+                                    {"email": email_input}
+                                ).fetchone()
 
-                        if result:
-                            db_email = result[0]
-                            db_pw_hash = result[1]
-                            db_name = result[2]
-                            db_role = result[3]
+                            if result:
+                                db_email = result[0]
+                                db_pw_hash = result[1]
+                                db_name = result[2]
+                                db_role = result[3]
 
-                            if db_pw_hash == hashed_pw:
-                                is_sub = "Enterprise" in str(db_role) or "Pro" in str(db_role)
-                                st.session_state.is_authenticated = True
-                                st.session_state.user = {
-                                    'email': db_email,
-                                    'username': db_name or "مهندس مهنة",
-                                    'credits': 9999 if is_sub else 5,
-                                    'role': db_role or "Free Trial",
-                                    'is_subscribed': is_sub,
-                                    'subscription_type': db_role or "Free Trial"
-                                }
-                                st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}! جاري التوجيه...")
-                                time.sleep(0.5)
-                                st.rerun()
+                                if db_pw_hash == hashed_pw:
+                                    is_sub = "Enterprise" in str(db_role) or "Pro" in str(db_role)
+                                    st.session_state.is_authenticated = True
+                                    st.session_state.user = {
+                                        'email': db_email,
+                                        'username': db_name or "مهندس مهنة",
+                                        'credits': 9999 if is_sub else 5,
+                                        'role': db_role or "Free Trial",
+                                        'is_subscribed': is_sub,
+                                        'subscription_type': db_role or "Free Trial"
+                                    }
+                                    st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}! جاري التوجيه...")
+                                    time.sleep(0.5)
+                                    st.rerun()
+                                else:
+                                    st.error("❌ كلمة المرور غير صحيحة.")
                             else:
-                                st.error("❌ كلمة المرور غير صحيحة.")
-                        else:
-                            st.error("❌ البريد الإلكتروني غير مسجل بالمنظومة.")
-                    except Exception as err:
-                        st.error(f"❌ تعذر الاتصال بقاعدة البيانات: {str(err)}")
+                                st.error("❌ البريد الإلكتروني غير مسجل بالمنظومة.")
+                        except Exception as err:
+                            st.error(f"⚠️ تعذر الاتصال بقاعدة البيانات: {str(err)}")
 
         with auth_tab2:
             with st.form("signup_form"):
@@ -533,46 +540,49 @@ def render_auth_page():
                     elif len(new_password) < 6:
                         st.error("❌ يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.")
                     else:
-                        try:
-                            with engine.connect() as conn:
-                                existing_user = conn.execute(
-                                    text("SELECT email FROM users WHERE email = :email"),
-                                    {"email": new_email}
-                                ).fetchone()
+                        if engine is None:
+                            st.error("⚠️ فشل الاتصال بقاعدة البيانات (Connection Timeout). يرجى التأكد من إضافة IP السيرفر في Google Cloud SQL Authorized Networks.")
+                        else:
+                            try:
+                                with engine.connect() as conn:
+                                    existing_user = conn.execute(
+                                        text("SELECT email FROM users WHERE email = :email"),
+                                        {"email": new_email}
+                                    ).fetchone()
 
-                                if existing_user:
-                                    st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
-                                else:
-                                    hashed_new_pw = SecurityEngine.hash_password(new_password)
-                                    conn.execute(
-                                        text("""
-                                            INSERT INTO users (email, password_hash, full_name, role)
-                                            VALUES (:email, :password_hash, :full_name, :role)
-                                        """),
-                                        {
-                                            "email": new_email,
-                                            "password_hash": hashed_new_pw,
-                                            "full_name": new_username,
-                                            "role": "Free Trial"
+                                    if existing_user:
+                                        st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
+                                    else:
+                                        hashed_new_pw = SecurityEngine.hash_password(new_password)
+                                        conn.execute(
+                                            text("""
+                                                INSERT INTO users (email, password_hash, full_name, role)
+                                                VALUES (:email, :password_hash, :full_name, :role)
+                                            """),
+                                            {
+                                                "email": new_email,
+                                                "password_hash": hashed_new_pw,
+                                                "full_name": new_username,
+                                                "role": "Free Trial"
+                                            }
+                                        )
+                                        conn.commit()
+
+                                        st.session_state.is_authenticated = True
+                                        st.session_state.user = {
+                                            'email': new_email,
+                                            'username': new_username,
+                                            'credits': 5,
+                                            'role': "Free Trial",
+                                            'is_subscribed': False,
+                                            'subscription_type': "Free Trial"
                                         }
-                                    )
-                                    conn.commit()
-
-                                    st.session_state.is_authenticated = True
-                                    st.session_state.user = {
-                                        'email': new_email,
-                                        'username': new_username,
-                                        'credits': 5,
-                                        'role': "Free Trial",
-                                        'is_subscribed': False,
-                                        'subscription_type': "Free Trial"
-                                    }
-                                    st.balloons()
-                                    st.success("🎉 تم إنشاء الحساب وحفظ البيانات بنجاح في Cloud SQL!")
-                                    time.sleep(1)
-                                    st.rerun()
-                        except Exception as err:
-                            st.error(f"❌ فشل إنشاء الحساب في قاعدة البيانات: {str(err)}")
+                                        st.balloons()
+                                        st.success("🎉 تم إنشاء الحساب وحفظ البيانات بنجاح في Cloud SQL!")
+                                        time.sleep(1)
+                                        st.rerun()
+                            except Exception as err:
+                                st.error(f"⚠️ تعذر الاتصال بالسيرفر حالياً: {str(err)}")
 
 if not st.session_state.is_authenticated:
     render_auth_page()
