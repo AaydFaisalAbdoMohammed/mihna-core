@@ -8,6 +8,8 @@ google-cloud-storage
 pyautogen
 
 # --- Database & Backend ---
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
 supabase>=2.0.0
 mysql-connector-python>=8.0.0
 
