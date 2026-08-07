@@ -12,6 +12,8 @@ import urllib.parse
 import os
 import re
 import io
+import sqlalchemy
+from sqlalchemy import text
 
 # ReportLab & Arabic reshaper imports for clean PDF generation
 from reportlab.lib.pagesizes import letter
@@ -21,12 +23,17 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 
 # ==========================================
-# 1. CONFIGURATION & STATE INITIALIZATION
+# 1. DATABASE & CONFIGURATION SETUP
 # ==========================================
 APP_TITLE = "PHOENIX & MIHNA AGENT PRO - ENTERPRISE"
 PAYMENT_LINK_MONTHLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly"
 PAYMENT_LINK_YEARLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly"
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_DEFAULT")
+
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@!")
+DB_NAME = os.getenv("DB_NAME", "postgres")
+INSTANCE_CONN = os.getenv("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
 
 st.set_page_config(
     page_title="وكيل مهنة PRO | Enterprise Plan Builder",
@@ -35,18 +42,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# In-memory Mock Database for Accounts
-if 'user_db' not in st.session_state:
-    st.session_state.user_db = {
-        "eng.ayad@phoenix.com": {
-            "password_hash": hashlib.sha256("123456".encode()).hexdigest(),
-            "username": "Eng. Ayad",
-            "role": "Enterprise Pro",
-            "credits": 9999,
-            "is_subscribed": True,
-            "subscription_type": "Enterprise Yearly"
-        }
-    }
+# Engine Initialization
+@st.cache_resource
+def init_db_engine():
+    # التحقق مما إذا كان التطبيق يعمل داخل بيئة Cloud Run مع Unix Socket
+    if os.path.exists(f"/cloudsql/{INSTANCE_CONN}"):
+        db_url = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
+    else:
+        # الاتصال المحلي عبر TCP أو Fallback
+        db_url = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@127.0.0.1:5432/{DB_NAME}"
+    return sqlalchemy.create_engine(db_url, pool_pre_ping=True)
+
+try:
+    engine = init_db_engine()
+except Exception as e:
+    engine = None
 
 # Persistent Session State Setup
 def init_default_session():
@@ -235,7 +245,6 @@ class AIPaymentAgent:
     """وكيل الدفع بالذكاء الاصطناعي لمعالجة الدفع تلقائياً وإصدار إشعارات Lemon Squeezy عبر البريد الإلكتروني"""
     @staticmethod
     def inspect_payment_method(user_email: str) -> dict:
-        """قراءة وفحص وسائل الدفع المسجلة والمتاحة للمستخدم"""
         return {
             "email": user_email,
             "payment_method": "Credit Card / Apple Pay (Auto-Detected Saved Method)",
@@ -277,11 +286,17 @@ class AIPaymentAgent:
         st.session_state.user['credits'] = 9999
         st.session_state.user['subscription_type'] = plan_name
         
-        if user_email in st.session_state.user_db:
-            st.session_state.user_db[user_email]['is_subscribed'] = True
-            st.session_state.user_db[user_email]['role'] = f"Enterprise ({plan_name})"
-            st.session_state.user_db[user_email]['credits'] = 9999
-            st.session_state.user_db[user_email]['subscription_type'] = plan_name
+        # تحديث حالة الاشتراك في PostgreSQL
+        if engine:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text("UPDATE users SET role = :role WHERE email = :email"),
+                        {"role": f"Enterprise ({plan_name})", "email": user_email}
+                    )
+                    conn.commit()
+            except Exception as e:
+                pass
 
         order_id = f"LS-ORD-{hashlib.md5(str(time.time()).encode()).hexdigest()[:8].upper()}"
         email_payload = {
@@ -347,9 +362,6 @@ def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
     doc.build(story)
     return buffer.getvalue()
 
-# ==========================================
-# الدالة المحدثة للخطة النصية الشاملة والموسعة
-# ==========================================
 def build_detailed_plan_text(plan: dict) -> str:
     p_name = plan.get('project_name', 'المشروع')
     domain = plan.get('domain', 'تقني')
@@ -359,7 +371,6 @@ def build_detailed_plan_text(plan: dict) -> str:
     risk = plan.get('risk', 'متوسط')
     tasks = plan.get('tasks', [])
     
-    # 1. الحسابات الهندسية والمالية الدقيقة
     working_hours_per_day = 8
     total_man_hours = days * working_hours_per_day
     daily_rate = budget / max(1, days)
@@ -372,7 +383,6 @@ def build_detailed_plan_text(plan: dict) -> str:
     cloud_infra_cost = budget * 0.08
     dev_labor_cost = effective_operational_budget - cloud_infra_cost
     
-    # 2. بناء الجدول النصي التفصيلي للمهام والمعالم الرئيسية
     tasks_breakdown_str = ""
     for idx, t in enumerate(tasks, 1):
         t_cost = float(t.get('cost', 0))
@@ -391,7 +401,6 @@ def build_detailed_plan_text(plan: dict) -> str:
 * 📌 **الحالة التنفيذية:** {t.get('status', 'مخطط')}
 """
 
-    # 3. صياغة الخطة الهندسية التنفيذية الموسعة
     return f"""📌 **المستند التنفيذي والتفصيلي لمشروع ({p_name})**
 *تاريخ التوليد التلقائي: {plan.get('generated_at', datetime.now().strftime('%Y-%m-%d'))}*
 
@@ -431,11 +440,11 @@ def build_detailed_plan_text(plan: dict) -> str:
 
 ### 5. مصفوفة المخاطر وضمان الجودة والأمان الرقمي (Quality Assurance & Security Controls)
 * **التوقيع الرقمي والتأكيد المشفر:** تم توقيع هذه الخطة رقمياً باستخدام خوارزمية **HMAC-SHA512** لمنع أي تلاعب بالتقديرات المالية أو الزمنية.
-* **إدارة السلامة:** ضمان تطبيق أقصى معايير السلامة البرمجية واختبارات الضغط (Load Testing) قبل الإطلاق النهائي.
+* **إدارة السلامة:** ضمان تطبيق أقصى معايير السلامة البرمجية وااختبارات الضغط (Load Testing) قبل الإطلاق النهائي.
 """
 
 # ==========================================
-# 3. AUTHENTICATION MODULE
+# 3. AUTHENTICATION MODULE (POSTGRESQL CONNECTED)
 # ==========================================
 def render_auth_page():
     st.markdown("<h1 style='text-align: center;'>🔐 بوابة الدخول | PHOENIX Enterprise</h1>", unsafe_allow_html=True)
@@ -456,25 +465,40 @@ def render_auth_page():
                 
                 if submit_login:
                     hashed_pw = SecurityEngine.hash_password(password_input)
-                    if email_input in st.session_state.user_db:
-                        user_data = st.session_state.user_db[email_input]
-                        if user_data['password_hash'] == hashed_pw:
-                            st.session_state.is_authenticated = True
-                            st.session_state.user = {
-                                'email': email_input,
-                                'username': user_data['username'],
-                                'credits': user_data['credits'],
-                                'role': user_data['role'],
-                                'is_subscribed': user_data['is_subscribed'],
-                                'subscription_type': user_data['subscription_type']
-                            }
-                            st.success(f"🎉 أهلاً بك مجدداً {user_data['username']}! جاري التوجيه...")
-                            time.sleep(0.5)
-                            st.rerun()
+                    try:
+                        with engine.connect() as conn:
+                            result = conn.execute(
+                                text("SELECT email, password_hash, full_name, role FROM users WHERE email = :email"),
+                                {"email": email_input}
+                            ).fetchone()
+
+                        if result:
+                            # القراءة بالتركيب المرن لتعامل PostgreSQL مع أسماء الأعمدة
+                            db_email = result[0]
+                            db_pw_hash = result[1]
+                            db_name = result[2]
+                            db_role = result[3]
+
+                            if db_pw_hash == hashed_pw:
+                                is_sub = "Enterprise" in str(db_role) or "Pro" in str(db_role)
+                                st.session_state.is_authenticated = True
+                                st.session_state.user = {
+                                    'email': db_email,
+                                    'username': db_name or "مهندس مهنة",
+                                    'credits': 9999 if is_sub else 5,
+                                    'role': db_role or "Free Trial",
+                                    'is_subscribed': is_sub,
+                                    'subscription_type': db_role or "Free Trial"
+                                }
+                                st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}! جاري التوجيه...")
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.error("❌ كلمة المرور غير صحيحة.")
                         else:
-                            st.error("❌ كلمة المرور غير صحيحة.")
-                    else:
-                        st.error("❌ البريد الإلكتروني غير مسجل بالمنظومة.")
+                            st.error("❌ البريد الإلكتروني غير مسجل بالمنظومة.")
+                    except Exception as err:
+                        st.error(f"❌ تعذر الاتصال بقاعدة البيانات: {str(err)}")
 
         with auth_tab2:
             with st.form("signup_form"):
@@ -493,31 +517,48 @@ def render_auth_page():
                         st.error("❌ كلمة المرور وتأكيدها غير متطابقين.")
                     elif len(new_password) < 6:
                         st.error("❌ يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.")
-                    elif new_email in st.session_state.user_db:
-                        st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
                     else:
-                        st.session_state.user_db[new_email] = {
-                            "password_hash": SecurityEngine.hash_password(new_password),
-                            "username": new_username,
-                            "role": "Free Trial",
-                            "credits": 5,
-                            "is_subscribed": False,
-                            "subscription_type": "Free Trial"
-                        }
-                        
-                        st.session_state.is_authenticated = True
-                        st.session_state.user = {
-                            'email': new_email,
-                            'username': new_username,
-                            'credits': 5,
-                            'role': "Free Trial",
-                            'is_subscribed': False,
-                            'subscription_type': "Free Trial"
-                        }
-                        st.balloons()
-                        st.success("🎉 تم إنشاء الحساب بنجاح وتم إضافة 5 نقاط مجانية لرصيدك!")
-                        time.sleep(1)
-                        st.rerun()
+                        try:
+                            with engine.connect() as conn:
+                                existing_user = conn.execute(
+                                    text("SELECT email FROM users WHERE email = :email"),
+                                    {"email": new_email}
+                                ).fetchone()
+
+                                if existing_user:
+                                    st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
+                                else:
+                                    hashed_new_pw = SecurityEngine.hash_password(new_password)
+                                    # الإدخال المباشر وتأكيد العملية بواسطة COMMIT
+                                    conn.execute(
+                                        text("""
+                                            INSERT INTO users (email, password_hash, full_name, role)
+                                            VALUES (:email, :password_hash, :full_name, :role)
+                                        """),
+                                        {
+                                            "email": new_email,
+                                            "password_hash": hashed_new_pw,
+                                            "full_name": new_username,
+                                            "role": "Free Trial"
+                                        }
+                                    )
+                                    conn.commit()
+
+                                    st.session_state.is_authenticated = True
+                                    st.session_state.user = {
+                                        'email': new_email,
+                                        'username': new_username,
+                                        'credits': 5,
+                                        'role': "Free Trial",
+                                        'is_subscribed': False,
+                                        'subscription_type': "Free Trial"
+                                    }
+                                    st.balloons()
+                                    st.success("🎉 تم إنشاء الحساب وحفظ البيانات بنجاح في Cloud SQL!")
+                                    time.sleep(1)
+                                    st.rerun()
+                        except Exception as err:
+                            st.error(f"❌ فشل إنشاء الحساب في قاعدة البيانات: {str(err)}")
 
 if not st.session_state.is_authenticated:
     render_auth_page()
@@ -690,8 +731,6 @@ with tab1:
                 
                 if not st.session_state.user['is_subscribed']:
                     st.session_state.user['credits'] -= 1
-                    if st.session_state.user['email'] in st.session_state.user_db:
-                        st.session_state.user_db[st.session_state.user['email']]['credits'] = st.session_state.user['credits']
                 
                 st.success("✅ تم توليد الخطة وتوقيعها رقمياً بنجاح!")
 
