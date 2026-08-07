@@ -9,6 +9,7 @@ import hmac
 import time
 from datetime import datetime
 import urllib.parse
+from urllib.parse import quote_plus
 import os
 import re
 import io
@@ -33,6 +34,8 @@ SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_DEF
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@!")
 DB_NAME = os.getenv("DB_NAME", "postgres")
+DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+DB_PORT = os.getenv("DB_PORT", "5432")
 INSTANCE_CONN = os.getenv("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
 
 st.set_page_config(
@@ -45,12 +48,16 @@ st.set_page_config(
 # Engine Initialization
 @st.cache_resource
 def init_db_engine():
+    # 💡 تشفير كلمة المرور لتفادي أخطاء الرموز الخاصة مثل (! @ # $ %)
+    encoded_pass = quote_plus(DB_PASS)
+    
     # التحقق مما إذا كان التطبيق يعمل داخل بيئة Cloud Run مع Unix Socket
     if os.path.exists(f"/cloudsql/{INSTANCE_CONN}"):
-        db_url = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
+        db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
     else:
-        # الاتصال المحلي عبر TCP أو Fallback
-        db_url = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@127.0.0.1:5432/{DB_NAME}"
+        # الاتصال عبر TCP مع إمكانية استخدام IP السحابي المباشر عبر DB_HOST
+        db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        
     return sqlalchemy.create_engine(db_url, pool_pre_ping=True)
 
 try:
@@ -473,7 +480,6 @@ def render_auth_page():
                             ).fetchone()
 
                         if result:
-                            # القراءة بالتركيب المرن لتعامل PostgreSQL مع أسماء الأعمدة
                             db_email = result[0]
                             db_pw_hash = result[1]
                             db_name = result[2]
@@ -529,7 +535,6 @@ def render_auth_page():
                                     st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
                                 else:
                                     hashed_new_pw = SecurityEngine.hash_password(new_password)
-                                    # الإدخال المباشر وتأكيد العملية بواسطة COMMIT
                                     conn.execute(
                                         text("""
                                             INSERT INTO users (email, password_hash, full_name, role)
