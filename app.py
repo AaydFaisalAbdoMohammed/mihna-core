@@ -48,17 +48,33 @@ st.set_page_config(
 # Engine Initialization
 @st.cache_resource
 def init_db_engine():
-    # 💡 تشفير كلمة المرور لتفادي أخطاء الرموز الخاصة مثل (! @ # $ %)
     encoded_pass = quote_plus(DB_PASS)
     
-    # التحقق مما إذا كان التطبيق يعمل داخل بيئة Cloud Run مع Unix Socket
     if os.path.exists(f"/cloudsql/{INSTANCE_CONN}"):
         db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
     else:
-        # الاتصال عبر TCP مع إمكانية استخدام IP السحابي المباشر عبر DB_HOST
         db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
         
-    return sqlalchemy.create_engine(db_url, pool_pre_ping=True)
+    engine_obj = sqlalchemy.create_engine(db_url, pool_pre_ping=True)
+    
+    # التأكد من وجود جدول المستخدمين تلقائياً دون الحاجة لإعادة إنشائه يدوياً
+    try:
+        with engine_obj.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    full_name VARCHAR(255),
+                    role VARCHAR(100) DEFAULT 'Free Trial',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.commit()
+    except Exception as e:
+        pass
+        
+    return engine_obj
 
 try:
     engine = init_db_engine()
@@ -107,11 +123,6 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_budget = budget
     st.session_state.form_days = days
     st.session_state.form_pname = pname
-
-def logout_user():
-    st.session_state.clear()
-    init_default_session()
-    st.rerun()
 
 # Translations Dictionary
 T = {
@@ -249,7 +260,6 @@ class SecurityEngine:
         return hmac.compare_digest(expected_sig, signature)
 
 class AIPaymentAgent:
-    """وكيل الدفع بالذكاء الاصطناعي لمعالجة الدفع تلقائياً وإصدار إشعارات Lemon Squeezy عبر البريد الإلكتروني"""
     @staticmethod
     def inspect_payment_method(user_email: str) -> dict:
         return {
@@ -293,7 +303,6 @@ class AIPaymentAgent:
         st.session_state.user['credits'] = 9999
         st.session_state.user['subscription_type'] = plan_name
         
-        # تحديث حالة الاشتراك في PostgreSQL
         if engine:
             try:
                 with engine.connect() as conn:
@@ -340,12 +349,12 @@ def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
     story = []
     styles = getSampleStyleSheet()
 
-    def prepare_text(text):
+    def prepare_text(text_val):
         try:
-            reshaped = arabic_reshaper.reshape(text)
+            reshaped = arabic_reshaper.reshape(text_val)
             return get_display(reshaped)
         except Exception:
-            return text
+            return text_val
 
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=16, alignment=1)
     body_style = ParagraphStyle('BodyStyle', parent=styles['Normal'], fontSize=10, leading=14, alignment=2)
@@ -603,7 +612,10 @@ with st.sidebar:
         st.markdown(f"نوع الحساب: <span class='badge-purple'>تجريبي (5 نقاط هدية)</span>", unsafe_allow_html=True)
         st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
     
-    st.button(txt['logout_btn'], on_click=logout_user, use_container_width=True, type="secondary")
+    if st.button(txt['logout_btn'], use_container_width=True, type="secondary"):
+        st.session_state.clear()
+        init_default_session()
+        st.rerun()
 
     st.write("---")
     st.markdown(f"### {txt['renew_title']}")
@@ -1022,7 +1034,6 @@ with tab4:
             time.sleep(1)
             st.rerun()
 
-    # عرض البريد الوارد المباشر من Lemon Squeezy
     if st.session_state.get('payment_notifications'):
         st.write("---")
         st.markdown("### 📬 صندوق الإشعارات الواردة من Lemon Squeezy (Email Inbox)")
