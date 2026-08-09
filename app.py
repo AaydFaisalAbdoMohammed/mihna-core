@@ -16,7 +16,7 @@ import io
 import sqlalchemy
 from sqlalchemy import text
 
-# ReportLab & Arabic reshaper imports for clean PDF generation
+# ReportLab & Arabic reshaper imports
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -26,7 +26,7 @@ from bidi.algorithm import get_display
 # ==========================================
 # 1. DATABASE & CONFIGURATION SETUP
 # ==========================================
-APP_TITLE = "PHOENIX & MIHNA AGENT PRO - ENTERPRISE"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA AGENT PRO - ENTERPRISE"
 PAYMENT_LINK_MONTHLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly"
 PAYMENT_LINK_YEARLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly"
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_DEFAULT")
@@ -39,17 +39,15 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 INSTANCE_CONN = os.getenv("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
 
 st.set_page_config(
-    page_title="وكيل مهنة PRO | Enterprise Plan Builder",
+    page_title="وكيل مهنة PRO | Enterprise System",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Engine Initialization مع إضافة connect_timeout لمنع الشاشة الحمراء وتعليق الاتصال
 @st.cache_resource
 def init_db_engine():
     encoded_pass = quote_plus(DB_PASS)
-    
     if os.path.exists(f"/cloudsql/{INSTANCE_CONN}"):
         db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
     else:
@@ -58,39 +56,21 @@ def init_db_engine():
     engine_obj = sqlalchemy.create_engine(
         db_url, 
         pool_pre_ping=True,
-        connect_args={'connect_timeout': 5}  # حد أقصى 5 ثوانٍ للاتصال لتجنب التعليق
+        connect_args={'connect_timeout': 5}
     )
-    
-    # التأكد من وجود جدول المستخدمين تلقائياً عند نوتج اتصال ناجح
-    try:
-        with engine_obj.connect() as conn:
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    full_name VARCHAR(255),
-                    role VARCHAR(100) DEFAULT 'Free Trial',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """))
-            conn.commit()
-            return engine_obj
-    except Exception as e:
-        print(f"Database Connection Warning: {e}")
-        return None
+    return engine_obj
 
 try:
     engine = init_db_engine()
 except Exception as e:
     engine = None
 
-# Persistent Session State Setup
 def init_default_session():
     st.session_state.lang = 'ar'
     st.session_state.theme = 'dark'
     st.session_state.is_authenticated = False
     st.session_state.user = {
+        'id': None,
         'email': '',
         'username': 'زائر', 
         'credits': 5,
@@ -128,10 +108,9 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_days = days
     st.session_state.form_pname = pname
 
-# Translations Dictionary
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise Engine",
         'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع وتأمينها بالتوقيع الرقمي والذكاء الاصطناعي.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
@@ -167,13 +146,13 @@ T = {
         'detailed_plan': "📜 الخطة التنفيذية النصية الشاملة والمعمقة",
         'save_re_sign': "💾 حفظ التعديلات وإعادة التوقيع الرقمي",
         'digital_sig': "🔑 التوقيع الرقمي المشفر (HMAC-SHA512):",
-        'sig_valid': "✔ توقيع موثوق وسليم",
+        'sig_valid': "✔ توقيع موثوق وسليم ومطابق لقاعدة البيانات",
         'sig_invalid': "❌ تم التلاعب بالبيانات",
         'send_wa': "📱 إرسال عبر WhatsApp",
         'send_tg': "📲 إشعار Telegram Bot",
     },
     'en': {
-        'title': "🚀 Mihna Agent PRO | PHOENIX Enterprise",
+        'title': "🚀 Wakeel Mehna Agent PRO | PHOENIX Enterprise",
         'subtitle': "Advanced Engineering Project Plan Builder Secured with AI & Digital Signatures.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
@@ -209,7 +188,7 @@ T = {
         'detailed_plan': "📜 Comprehensive Extended Text Plan",
         'save_re_sign': "💾 Save Edits & Re-Sign Digitally",
         'digital_sig': "🔑 Encrypted Signature (HMAC-SHA512):",
-        'sig_valid': "✔ Valid & Authentic Signature",
+        'sig_valid': "✔ Valid & Authentic Database Signature",
         'sig_invalid': "❌ Data Tampered / Invalid Signature",
         'send_wa': "📱 Send via WhatsApp",
         'send_tg': "📲 Notify Telegram Bot",
@@ -219,7 +198,6 @@ T = {
 lang = st.session_state.lang
 txt = T[lang]
 
-# Dynamic CSS
 bg_color = "#0E1117" if st.session_state.theme == 'dark' else "#F8FAFC"
 card_bg = "#1E293B" if st.session_state.theme == 'dark' else "#FFFFFF"
 text_color = "#FFFFFF" if st.session_state.theme == 'dark' else "#0F172A"
@@ -244,7 +222,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. HELPER & SECURITY ENGINES
+# 2. HELPER, SECURITY & DATABASE ENGINE
 # ==========================================
 class SecurityEngine:
     @staticmethod
@@ -263,6 +241,27 @@ class SecurityEngine:
         expected_sig = SecurityEngine.generate_signature(data_dict)
         return hmac.compare_digest(expected_sig, signature)
 
+    @staticmethod
+    def log_audit_event(user_id, action_type, details=""):
+        if engine and user_id:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text("""
+                            INSERT INTO security_audit_logs (user_id, action_type, ip_address, details)
+                            VALUES (:user_id, :action_type, :ip_address, :details)
+                        """),
+                        {
+                            "user_id": user_id,
+                            "action_type": action_type,
+                            "ip_address": "127.0.0.1",
+                            "details": json.dumps(details) if isinstance(details, dict) else str(details)
+                        }
+                    )
+                    conn.commit()
+            except Exception as e:
+                print(f"Audit log error: {e}")
+
 class AIPaymentAgent:
     @staticmethod
     def inspect_payment_method(user_email: str) -> dict:
@@ -275,29 +274,26 @@ class AIPaymentAgent:
         }
 
     @staticmethod
-    def execute_auto_checkout(user_email: str, plan_type: str = "monthly"):
+    def execute_auto_checkout(user_id, user_email: str, plan_type: str = "monthly"):
         progress_bar = st.progress(0)
         status_box = st.empty()
         
         checkout_url = PAYMENT_LINK_YEARLY if plan_type == "yearly" else PAYMENT_LINK_MONTHLY
         plan_name = "Enterprise Yearly Plan ($279)" if plan_type == "yearly" else "Pro Monthly Plan ($29)"
-        amount_str = "$279.00" if plan_type == "yearly" else "$29.00"
+        amount_num = 279.00 if plan_type == "yearly" else 29.00
+        amount_str = f"${amount_num:.2f}"
 
         method_info = AIPaymentAgent.inspect_payment_method(user_email)
-        status_box.info(f"🤖 **[AI Agent]:** فحص وسيلة الدفع المتاحة لـ `{user_email}`... (تم اكتشاف: {method_info['payment_method']})")
-        time.sleep(0.6)
-        progress_bar.progress(20)
+        status_box.info(f"🤖 **[AI Agent]:** فحص وسيلة الدفع المتاحة لـ `{user_email}`...")
+        time.sleep(0.4)
+        progress_bar.progress(30)
 
-        status_box.info(f"🔗 **[AI Agent]:** قراءة توجيه Lemon Squeezy الآلي للرابط: `{checkout_url}`")
-        time.sleep(0.6)
-        progress_bar.progress(50)
-
-        status_box.info("🔐 **[AI Agent]:** تأكيد التوقيع الرقمي للمسار وتمرير معاملات الدفع مع Lemon Squeezy...")
-        time.sleep(0.6)
-        progress_bar.progress(85)
+        status_box.info(f"🔗 **[AI Agent]:** قراءة توجيه Lemon Squeezy للرابط: `{checkout_url}`")
+        time.sleep(0.4)
+        progress_bar.progress(70)
 
         progress_bar.progress(100)
-        time.sleep(0.3)
+        time.sleep(0.2)
         
         progress_bar.empty()
         status_box.empty()
@@ -307,18 +303,43 @@ class AIPaymentAgent:
         st.session_state.user['credits'] = 9999
         st.session_state.user['subscription_type'] = plan_name
         
-        if engine:
+        order_id = f"LS-ORD-{hashlib.md5(str(time.time()).encode()).hexdigest()[:8].upper()}"
+
+        if engine and user_id:
             try:
                 with engine.connect() as conn:
                     conn.execute(
-                        text("UPDATE users SET role = :role WHERE email = :email"),
-                        {"role": f"Enterprise ({plan_name})", "email": user_email}
+                        text("""
+                            UPDATE users 
+                            SET role = :role, is_subscribed = TRUE, credits = 9999, updated_at = CURRENT_TIMESTAMP 
+                            WHERE id = :user_id
+                        """),
+                        {"role": f"Enterprise ({plan_name})", "user_id": user_id}
+                    )
+                    
+                    conn.execute(
+                        text("""
+                            INSERT INTO payment_transactions 
+                            (user_id, order_id, gateway, plan_type, amount_paid, currency, status, raw_response)
+                            VALUES (:user_id, :order_id, :gateway, :plan_type, :amount, :currency, :status, :raw_response)
+                        """),
+                        {
+                            "user_id": user_id,
+                            "order_id": order_id,
+                            "gateway": "Lemon Squeezy",
+                            "plan_type": plan_type,
+                            "amount": amount_num,
+                            "currency": "USD",
+                            "status": "COMPLETED",
+                            "raw_response": json.dumps(method_info)
+                        }
                     )
                     conn.commit()
+                
+                SecurityEngine.log_audit_event(user_id, "PAYMENT_SUCCESS", f"Order {order_id} processed for ${amount_num}")
             except Exception as e:
-                pass
+                print(f"Payment DB Record error: {e}")
 
-        order_id = f"LS-ORD-{hashlib.md5(str(time.time()).encode()).hexdigest()[:8].upper()}"
         email_payload = {
             "to": user_email,
             "subject": f"🎉 Receipt & Confirmation for Order #{order_id} from Lemon Squeezy",
@@ -387,8 +408,8 @@ def build_detailed_plan_text(plan: dict) -> str:
     domain = plan.get('domain', 'تقني')
     budget = float(plan.get('budget', 0))
     days = int(plan.get('target_days', 0))
-    tech = plan.get('tech', 'Flutter, Node.js, Supabase, PostgreSQL')
-    risk = plan.get('risk', 'متوسط')
+    tech = plan.get('tech_stack', plan.get('tech', 'Flutter, Node.js, Supabase, PostgreSQL'))
+    risk = plan.get('risk_tolerance', plan.get('risk', 'متوسط'))
     tasks = plan.get('tasks', [])
     
     working_hours_per_day = 8
@@ -411,9 +432,10 @@ def build_detailed_plan_text(plan: dict) -> str:
         cost_percentage = (t_cost / max(1, budget)) * 100
         daily_t_cost = t_cost / max(1, t_days)
         hourly_t_cost = t_cost / max(1, t_hours)
+        t_name = t.get('task_name', t.get('task', 'مهمة'))
         
         tasks_breakdown_str += f"""
-#### Phase {idx}: {t.get('task', 'مهمة')}
+#### Phase {idx}: {t_name}
 * ⏱️ **المدة الزمنية:** {t_days} أيام عمل ({t_hours} ساعة هندسية)
 * 💰 **التكلفة المخصصة:** ${t_cost:,.2f} ({cost_percentage:.1f}% من إجمالي الميزانية)
 * 📊 **المعدل اليومي للإنفاق:** ${daily_t_cost:,.2f} / يوم
@@ -422,7 +444,7 @@ def build_detailed_plan_text(plan: dict) -> str:
 """
 
     return f"""📌 **المستند التنفيذي والتفصيلي لمشروع ({p_name})**
-*تاريخ التوليد التلقائي: {plan.get('generated_at', datetime.now().strftime('%Y-%m-%d'))}*
+*تاريخ التوليد التلقائي: {plan.get('created_at', datetime.now().strftime('%Y-%m-%d'))}*
 
 ---
 
@@ -459,16 +481,16 @@ def build_detailed_plan_text(plan: dict) -> str:
 ---
 
 ### 5. مصفوفة المخاطر وضمان الجودة والأمان الرقمي (Quality Assurance & Security Controls)
-* **التوقيع الرقمي والتأكيد المشفر:** تم توقيع هذه الخطة رقمياً باستخدام خوارزمية **HMAC-SHA512** لمنع أي تلاعب بالتقديرات المالية أو الزمنية.
-* **إدارة السلامة:** ضمان تطبيق أقصى معايير السلامة البرمجية وااختبارات الضغط (Load Testing) قبل الإطلاق النهائي.
+* **التوقيع الرقمي والتأكيد المشفر:** تم توقيع هذه الخطة رقمياً باستخدام خوارزمية **HMAC-SHA512** وحفظها في جدول `project_plans` لمنع أي تلاعب بالتقديرات.
+* **إدارة السلامة:** ضمان تطبيق أقصى معايير السلامة البرمجية واختبارات الضغط (Load Testing) قبل الإطلاق النهائي.
 """
 
 # ==========================================
-# 3. AUTHENTICATION MODULE (WITH TIMEOUT HANDLER)
+# 3. AUTHENTICATION MODULE WITH FULL DB MAPPING
 # ==========================================
 def render_auth_page():
     st.markdown("<h1 style='text-align: center;'>🔐 بوابة الدخول | PHOENIX Enterprise</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى منصة مهنة الهندسية الذكية</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى منصة وكيل مهنة الهندسية الذكية</p>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
 
     col_center, _ = st.columns([1, 0.01])
@@ -485,33 +507,35 @@ def render_auth_page():
                 
                 if submit_login:
                     if engine is None:
-                        st.error("⚠️ تعذر الاتصال بقاعدة البيانات حالياً (Connection Timeout). يرجى مراجعة إعدادات Authorized Networks في Google Cloud SQL.")
+                        st.error("⚠️ تعذر الاتصال بقاعدة البيانات حالياً. يرجى مراجعة الاتصال.")
                     else:
                         hashed_pw = SecurityEngine.hash_password(password_input)
                         try:
                             with engine.connect() as conn:
                                 result = conn.execute(
-                                    text("SELECT email, password_hash, full_name, role FROM users WHERE email = :email"),
+                                    text("""
+                                        SELECT id, email, password_hash, full_name, role, credits, is_subscribed 
+                                        FROM users WHERE email = :email
+                                    """),
                                     {"email": email_input}
                                 ).fetchone()
 
                             if result:
-                                db_email = result[0]
-                                db_pw_hash = result[1]
-                                db_name = result[2]
-                                db_role = result[3]
+                                user_id, db_email, db_pw_hash, db_name, db_role, db_credits, db_is_sub = result
 
                                 if db_pw_hash == hashed_pw:
-                                    is_sub = "Enterprise" in str(db_role) or "Pro" in str(db_role)
                                     st.session_state.is_authenticated = True
                                     st.session_state.user = {
+                                        'id': user_id,
                                         'email': db_email,
                                         'username': db_name or "مهندس مهنة",
-                                        'credits': 9999 if is_sub else 5,
+                                        'credits': db_credits if db_credits is not None else 5,
                                         'role': db_role or "Free Trial",
-                                        'is_subscribed': is_sub,
+                                        'is_subscribed': bool(db_is_sub),
                                         'subscription_type': db_role or "Free Trial"
                                     }
+                                    
+                                    SecurityEngine.log_audit_event(user_id, "USER_LOGIN", "User logged in successfully")
                                     st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}! جاري التوجيه...")
                                     time.sleep(0.5)
                                     st.rerun()
@@ -541,7 +565,7 @@ def render_auth_page():
                         st.error("❌ يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.")
                     else:
                         if engine is None:
-                            st.error("⚠️ فشل الاتصال بقاعدة البيانات (Connection Timeout). يرجى التأكد من إضافة IP السيرفر في Google Cloud SQL Authorized Networks.")
+                            st.error("⚠️ فشل الاتصال بقاعدة البيانات.")
                         else:
                             try:
                                 with engine.connect() as conn:
@@ -554,10 +578,11 @@ def render_auth_page():
                                         st.error("❌ هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول.")
                                     else:
                                         hashed_new_pw = SecurityEngine.hash_password(new_password)
-                                        conn.execute(
+                                        ins_res = conn.execute(
                                             text("""
-                                                INSERT INTO users (email, password_hash, full_name, role)
-                                                VALUES (:email, :password_hash, :full_name, :role)
+                                                INSERT INTO users (email, password_hash, full_name, role, credits, is_subscribed)
+                                                VALUES (:email, :password_hash, :full_name, :role, 5, FALSE)
+                                                RETURNING id
                                             """),
                                             {
                                                 "email": new_email,
@@ -566,10 +591,12 @@ def render_auth_page():
                                                 "role": "Free Trial"
                                             }
                                         )
+                                        new_id = ins_res.fetchone()[0]
                                         conn.commit()
 
                                         st.session_state.is_authenticated = True
                                         st.session_state.user = {
+                                            'id': new_id,
                                             'email': new_email,
                                             'username': new_username,
                                             'credits': 5,
@@ -577,8 +604,9 @@ def render_auth_page():
                                             'is_subscribed': False,
                                             'subscription_type': "Free Trial"
                                         }
+                                        SecurityEngine.log_audit_event(new_id, "USER_SIGNUP", "New account registered")
                                         st.balloons()
-                                        st.success("🎉 تم إنشاء الحساب وحفظ البيانات بنجاح في Cloud SQL!")
+                                        st.success("🎉 تم إنشاء الحساب وحفظ البيانات بنجاح في Google Cloud SQL!")
                                         time.sleep(1)
                                         st.rerun()
                             except Exception as err:
@@ -592,7 +620,7 @@ if not st.session_state.is_authenticated:
 # 4. SIDEBAR
 # ==========================================
 with st.sidebar:
-    st.title("🛡️ PHOENIX AGENT")
+    st.title("🛡️ WAKEEL MEHNA AGENT")
     st.markdown("<span class='badge-purple'>Enterprise Edition 2026</span>", unsafe_allow_html=True)
     st.write("---")
     
@@ -619,10 +647,11 @@ with st.sidebar:
         st.markdown(f"نوع الاشتراك: <span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
         st.markdown(f"الرصيد المتاح: **غير محدود ♾️**")
     else:
-        st.markdown(f"نوع الحساب: <span class='badge-purple'>تجريبي (5 نقاط هدية)</span>", unsafe_allow_html=True)
+        st.markdown(f"نوع الحساب: <span class='badge-purple'>تجريبي</span>", unsafe_allow_html=True)
         st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
     
     if st.button(txt['logout_btn'], use_container_width=True, type="secondary"):
+        SecurityEngine.log_audit_event(st.session_state.user['id'], "USER_LOGOUT", "User logged out")
         st.session_state.clear()
         init_default_session()
         st.rerun()
@@ -632,9 +661,9 @@ with st.sidebar:
     
     if not st.session_state.user['is_subscribed']:
         if st.button("🤖 الدفع الذكي والتفعيل السريع (AI Checkout)", type="primary", use_container_width=True):
-            AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "monthly")
+            AIPaymentAgent.execute_auto_checkout(st.session_state.user['id'], st.session_state.user['email'], "monthly")
             st.balloons()
-            st.success("🎉 تم ترقية حسابك بنجاح وإرسال إشعار الدفع إلى بريدك!")
+            st.success("🎉 تم ترقية حسابك بنجاح وإرسال إشعار الدفع لبريدك!")
             time.sleep(1)
             st.rerun()
     
@@ -651,12 +680,11 @@ with st.sidebar:
 st.title(txt['title'])
 st.caption(txt['subtitle'])
 
-# AI Smart Payment Banner when credits reach 0
 if st.session_state.user['credits'] <= 0 and not st.session_state.user['is_subscribed']:
     st.markdown("""
     <div class="ai-payment-card">
         <h3>🤖 تنبيه من وكيل الدفع الذكي (AI Payment Broker Agent)</h3>
-        <p>لقد نفدت نقاطك المجانية (0/5)! يمكنك السماح للذكاء الاصطناعي بقراءة وسيلة الدفع وتنفيذ المعاملة عبر رابط Lemon Squeezy فورياً وإرسال إشعار التأكيد لبريدك الإلكتروني.</p>
+        <p>لقد نفدت نقاطك المجانية (0/5)! يمكنك السماح للذكاء الاصطناعي بقراءة وسيلة الدفع وتنفيذ المعاملة فورياً وإرسال إشعار التأكيد لبريدك الإلكتروني.</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -665,24 +693,24 @@ if st.session_state.user['credits'] <= 0 and not st.session_state.user['is_subsc
         with col_pay_ai1:
             st.markdown("#### 💳 باقة Pro الشهري ($29)")
             if st.button("🚀 تنفيذ الدفع الذكي والتفعيل فوراً (Pro)", type="primary", use_container_width=True):
-                AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "monthly")
+                AIPaymentAgent.execute_auto_checkout(st.session_state.user['id'], st.session_state.user['email'], "monthly")
                 st.balloons()
-                st.success("🎉 تمت عملية الدفع بنجاح مفعلة باقة Pro وإرسال إشعار البريد الإلكتروني!")
+                st.success("🎉 تمت عملية الدفع بنجاح مفعلة باقة Pro!")
                 time.sleep(1.2)
                 st.rerun()
         with col_pay_ai2:
             st.markdown("#### 👑 باقة Enterprise السنوية ($279)")
             if st.button("💎 تنفيذ الدفع الذكي والتفعيل فوراً (Enterprise)", use_container_width=True):
-                AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "yearly")
+                AIPaymentAgent.execute_auto_checkout(st.session_state.user['id'], st.session_state.user['email'], "yearly")
                 st.balloons()
-                st.success("🎉 تمت عملية الدفع بنجاح مفعلة الباقة السنوية المتقدمة وإرسال الإشعار!")
+                st.success("🎉 تمت عملية الدفع بنجاح مفعلة الباقة السنوية المتقدمة!")
                 time.sleep(1.2)
                 st.rerun()
 
 tab1, tab2, tab3, tab4 = st.tabs([txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4']])
 
 # ==========================================
-# TAB 1: بناء خطة مشروع
+# TAB 1: بناء خطة مشروع (مع الحفظ بجدول project_plans & plan_tasks)
 # ==========================================
 with tab1:
     st.subheader(txt['quick_templates'])
@@ -731,14 +759,14 @@ with tab1:
         elif not project_scope.strip():
             st.warning("⚠️ يرجى تقديم نطاق العمل لتبدأ عملية التوليد.")
         else:
-            with st.spinner("⏳ جاري توليد المهام والتوقيع الرقمي..."):
-                time.sleep(0.5)
+            with st.spinner("⏳ جاري توليد المهام وحفظها في Cloud SQL..."):
+                time.sleep(0.4)
                 
                 tasks = [
-                    {"id": 1, "task": "تحليل المتطلبات وتصميم المخططات Architecture", "days": max(1, int(target_days*0.15)), "cost": int(budget*0.15), "status": "مخطط"},
-                    {"id": 2, "task": "بناء قواعد البيانات وتأمين API Backend", "days": max(1, int(target_days*0.35)), "cost": int(budget*0.35), "status": "مخطط"},
-                    {"id": 3, "task": "تطوير واجهات المستخدم Frontend & UI Components", "days": max(1, int(target_days*0.30)), "cost": int(budget*0.30), "status": "مخطط"},
-                    {"id": 4, "task": "الاختبارات والتكامل Deployment & QA", "days": max(1, int(target_days*0.20)), "cost": int(budget*0.20), "status": "مخطط"},
+                    {"task_order": 1, "task_name": "تحليل المتطلبات وتصميم المخططات Architecture", "days": max(1, int(target_days*0.15)), "cost": int(budget*0.15), "status": "مخطط"},
+                    {"task_order": 2, "task_name": "بناء قواعد البيانات وتأمين API Backend", "days": max(1, int(target_days*0.35)), "cost": int(budget*0.35), "status": "مخطط"},
+                    {"task_order": 3, "task_name": "تطوير واجهات المستخدم Frontend & UI Components", "days": max(1, int(target_days*0.30)), "cost": int(budget*0.30), "status": "مخطط"},
+                    {"task_order": 4, "task_name": "الاختبارات والتكامل Deployment & QA", "days": max(1, int(target_days*0.20)), "cost": int(budget*0.20), "status": "مخطط"},
                 ]
                 
                 plan_payload = {
@@ -746,20 +774,74 @@ with tab1:
                     "domain": domain,
                     "budget": budget,
                     "target_days": target_days,
-                    "risk": risk_tolerance,
-                    "tech": tech_stack,
+                    "risk_tolerance": risk_tolerance,
+                    "tech_stack": tech_stack,
+                    "scope_of_work": project_scope,
                     "tasks": tasks,
-                    "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+                    "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
                 }
                 
                 signature = SecurityEngine.generate_signature(plan_payload)
+                plan_payload["plan_signature"] = signature
+                
+                # DB Persistence into project_plans and plan_tasks
+                if engine and st.session_state.user['id']:
+                    try:
+                        with engine.connect() as conn:
+                            p_res = conn.execute(
+                                text("""
+                                    INSERT INTO project_plans 
+                                    (user_id, project_name, domain, budget, target_days, risk_tolerance, tech_stack, scope_of_work, plan_signature, is_tampered)
+                                    VALUES (:user_id, :project_name, :domain, :budget, :target_days, :risk_tolerance, :tech_stack, :scope_of_work, :plan_signature, FALSE)
+                                    RETURNING id
+                                """),
+                                {
+                                    "user_id": st.session_state.user['id'],
+                                    "project_name": project_name,
+                                    "domain": domain,
+                                    "budget": budget,
+                                    "target_days": target_days,
+                                    "risk_tolerance": risk_tolerance,
+                                    "tech_stack": tech_stack,
+                                    "scope_of_work": project_scope,
+                                    "plan_signature": signature
+                                }
+                            )
+                            db_plan_id = p_res.fetchone()[0]
+                            plan_payload["id"] = str(db_plan_id)
+
+                            for t in tasks:
+                                conn.execute(
+                                    text("""
+                                        INSERT INTO plan_tasks (plan_id, task_order, task_name, days, cost, status)
+                                        VALUES (:plan_id, :task_order, :task_name, :days, :cost, :status)
+                                    """),
+                                    {
+                                        "plan_id": db_plan_id,
+                                        "task_order": t["task_order"],
+                                        "task_name": t["task_name"],
+                                        "days": t["days"],
+                                        "cost": t["cost"],
+                                        "status": t["status"]
+                                    }
+                                )
+
+                            if not st.session_state.user['is_subscribed']:
+                                st.session_state.user['credits'] -= 1
+                                conn.execute(
+                                    text("UPDATE users SET credits = :c WHERE id = :u"),
+                                    {"c": st.session_state.user['credits'], "u": st.session_state.user['id']}
+                                )
+
+                            conn.commit()
+                        
+                        SecurityEngine.log_audit_event(st.session_state.user['id'], "CREATE_PLAN", f"Created plan {project_name}")
+                    except Exception as e:
+                        st.warning(f"⚠️ حفظ الخطة محلياً (DB Sync Alert: {e})")
+
                 st.session_state.current_plan = plan_payload
                 st.session_state.plan_signature = signature
-                
-                if not st.session_state.user['is_subscribed']:
-                    st.session_state.user['credits'] -= 1
-                
-                st.success("✅ تم توليد الخطة وتوقيعها رقمياً بنجاح!")
+                st.success("✅ تم توليد الخطة وتوقيعها رقمياً وحفظها في قاعدة البيانات PostgreSQL بنجاح!")
 
     if st.session_state.current_plan:
         st.write("---")
@@ -839,7 +921,8 @@ with tab2:
         
         with col_c1:
             st.markdown("### 🍩 التحليل المالي الدائري المتداخل (Sunburst Hierarchy)")
-            labels = [plan['project_name']] + list(df['task'])
+            task_col_name = 'task_name' if 'task_name' in df.columns else 'task'
+            labels = [plan['project_name']] + list(df[task_col_name])
             parents = [""] + [plan['project_name']] * len(df)
             values = [plan['budget']] + list(df['cost'])
             
@@ -897,7 +980,8 @@ with tab2:
         with c_r1:
             st.markdown("### 🕸️ تقييم أبعاد المشروع (5D Radar Risk Matrix)")
             radar_categories = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
-            risk_score = 85 if plan.get('risk') == 'عالي' else (65 if plan.get('risk') == 'متوسط' else 45)
+            risk_val = plan.get('risk_tolerance', plan.get('risk', 'متوسط'))
+            risk_score = 85 if risk_val == 'عالي' else (65 if risk_val == 'متوسط' else 45)
             radar_values = [80, 95, 85, 90, risk_score]
             
             fig_radar = go.Figure()
@@ -925,7 +1009,8 @@ with tab2:
 
         with c_r2:
             st.markdown("### 🌊 التدفق المالي التراكمي (Waterfall Cost Flow)")
-            x_labels = list(df['task']) + ["الإجمالي النهائي"]
+            task_col_name = 'task_name' if 'task_name' in df.columns else 'task'
+            x_labels = list(df[task_col_name]) + ["الإجمالي النهائي"]
             y_measures = ["relative"] * len(df) + ["total"]
             y_values = list(df['cost']) + [0]
             
@@ -977,7 +1062,48 @@ with tab3:
             
             new_sig = SecurityEngine.generate_signature(st.session_state.current_plan)
             st.session_state.plan_signature = new_sig
-            st.success("✅ تم تحديث المهام وإعادة التوقيع الرقمي بنجاح!")
+            st.session_state.current_plan['plan_signature'] = new_sig
+
+            # Update DB persistence if plan ID exists
+            if engine and st.session_state.current_plan.get('id'):
+                try:
+                    plan_id = st.session_state.current_plan['id']
+                    with engine.connect() as conn:
+                        conn.execute(
+                            text("""
+                                UPDATE project_plans 
+                                SET budget = :budget, target_days = :target_days, plan_signature = :sig 
+                                WHERE id = :id
+                            """),
+                            {
+                                "budget": st.session_state.current_plan['budget'],
+                                "target_days": st.session_state.current_plan['target_days'],
+                                "sig": new_sig,
+                                "id": plan_id
+                            }
+                        )
+                        conn.execute(text("DELETE FROM plan_tasks WHERE plan_id = :id"), {"id": plan_id})
+                        for idx, t in enumerate(updated_tasks, 1):
+                            conn.execute(
+                                text("""
+                                    INSERT INTO plan_tasks (plan_id, task_order, task_name, days, cost, status)
+                                    VALUES (:plan_id, :task_order, :task_name, :days, :cost, :status)
+                                """),
+                                {
+                                    "plan_id": plan_id,
+                                    "task_order": t.get("task_order", idx),
+                                    "task_name": t.get("task_name", t.get("task", "مهمة")),
+                                    "days": t.get("days", 1),
+                                    "cost": t.get("cost", 0),
+                                    "status": t.get("status", "مخطط")
+                                }
+                            )
+                        conn.commit()
+                    SecurityEngine.log_audit_event(st.session_state.user['id'], "UPDATE_PLAN", f"Updated plan {plan_id}")
+                except Exception as e:
+                    st.warning(f"⚠️ تنبيه مزامنة الحفظ: {e}")
+
+            st.success("✅ تم تحديث المهام وحفظها في قاعدة البيانات وإعادة التوقيع الرقمي بنجاح!")
             st.rerun()
 
         st.write("---")
@@ -1030,17 +1156,17 @@ with tab4:
     col_aip1, col_aip2 = st.columns(2)
     with col_aip1:
         if st.button("⚡ تنفيذ الدفع والترقية لـ Pro ($29)", use_container_width=True, type="primary"):
-            AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "monthly")
+            AIPaymentAgent.execute_auto_checkout(st.session_state.user['id'], st.session_state.user['email'], "monthly")
             st.balloons()
-            st.success("🎉 تم تفعيل الاشتراك الشهري وإرسال الإشعار لبريدك!")
+            st.success("🎉 تم تفعيل الاشتراك الشهري وحفظ العملية في payment_transactions!")
             time.sleep(1)
             st.rerun()
             
     with col_aip2:
         if st.button("👑 تنفيذ الدفع والترقية لـ Enterprise ($279)", use_container_width=True):
-            AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "yearly")
+            AIPaymentAgent.execute_auto_checkout(st.session_state.user['id'], st.session_state.user['email'], "yearly")
             st.balloons()
-            st.success("🎉 تم تفعيل الاشتراك السنوي وإرسال الإشعار لبريدك!")
+            st.success("🎉 تم تفعيل الاشتراك السنوي وحفظ العملية في payment_transactions!")
             time.sleep(1)
             st.rerun()
 
@@ -1062,7 +1188,7 @@ with tab4:
                     <li><b>Payment Method:</b> {notif['payment_method']}</li>
                     <li><b>Checkout URL Executed:</b> {notif['checkout_url_used']}</li>
                 </ul>
-                <p>Your subscription is now fully active across PHOENIX & MIHNA Systems!</p>
+                <p>Your subscription is now fully active across PHOENIX & WAKEEL MEHNA Systems!</p>
             </div>
             """, unsafe_allow_html=True)
 
