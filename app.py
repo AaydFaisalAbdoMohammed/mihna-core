@@ -32,9 +32,10 @@ PAYMENT_LINK_YEARLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e65
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_DEFAULT")
 
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@!")
+# تحديث كلمة المرور وتشفيها للتعامل مع الرمز الخاص %
+RAW_DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@%")
 DB_NAME = os.getenv("DB_NAME", "postgres")
-DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+DB_HOST = os.getenv("DB_HOST", "34.93.187.161")
 DB_PORT = os.getenv("DB_PORT", "5432")
 INSTANCE_CONN = os.getenv("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
 
@@ -47,7 +48,7 @@ st.set_page_config(
 
 @st.cache_resource
 def init_db_engine():
-    encoded_pass = quote_plus(DB_PASS)
+    encoded_pass = quote_plus(RAW_DB_PASS)
     if os.path.exists(f"/cloudsql/{INSTANCE_CONN}"):
         db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
     else:
@@ -56,7 +57,8 @@ def init_db_engine():
     engine_obj = sqlalchemy.create_engine(
         db_url, 
         pool_pre_ping=True,
-        connect_args={'connect_timeout': 5}
+        pool_recycle=1800,
+        connect_args={'connect_timeout': 15}
     )
     return engine_obj
 
@@ -507,7 +509,7 @@ def render_auth_page():
                 
                 if submit_login:
                     if engine is None:
-                        st.error("⚠️ تعذر الاتصال بقاعدة البيانات حالياً. يرجى مراجعة الاتصال.")
+                        st.error("⚠️ تعذر الاتصال بقاعدة البيانات حالياً. يرجى التحقق من فتح IP الخادم وإعدادات الشبكة.")
                     else:
                         hashed_pw = SecurityEngine.hash_password(password_input)
                         try:
@@ -544,7 +546,7 @@ def render_auth_page():
                             else:
                                 st.error("❌ البريد الإلكتروني غير مسجل بالمنظومة.")
                         except Exception as err:
-                            st.error(f"⚠️ تعذر الاتصال بقاعدة البيانات: {str(err)}")
+                            st.error("⚠️ فشل الاتصال بقاعدة البيانات. تأكد من فتح IP الخادم في Google Cloud SQL Authorized Networks.")
 
         with auth_tab2:
             with st.form("signup_form"):
@@ -565,7 +567,7 @@ def render_auth_page():
                         st.error("❌ يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.")
                     else:
                         if engine is None:
-                            st.error("⚠️ فشل الاتصال بقاعدة البيانات.")
+                            st.error("⚠️ فشل الاتصال بقاعدة البيانات. يرجى مراجعة إعدادات الاتصال.")
                         else:
                             try:
                                 with engine.connect() as conn:
@@ -610,7 +612,7 @@ def render_auth_page():
                                         time.sleep(1)
                                         st.rerun()
                             except Exception as err:
-                                st.error(f"⚠️ تعذر الاتصال بالسيرفر حالياً: {str(err)}")
+                                st.error("⚠️ تعذر الاتصال بالسيرفر حالياً. يرجى التأكد من إضافة IP المنصة إلى Authorized Networks في Google Cloud.")
 
 if not st.session_state.is_authenticated:
     render_auth_page()
@@ -710,7 +712,7 @@ if st.session_state.user['credits'] <= 0 and not st.session_state.user['is_subsc
 tab1, tab2, tab3, tab4 = st.tabs([txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4']])
 
 # ==========================================
-# TAB 1: بناء خطة مشروع (مع الحفظ بجدول project_plans & plan_tasks)
+# TAB 1: بناء خطة مشروع
 # ==========================================
 with tab1:
     st.subheader(txt['quick_templates'])
@@ -837,7 +839,7 @@ with tab1:
                         
                         SecurityEngine.log_audit_event(st.session_state.user['id'], "CREATE_PLAN", f"Created plan {project_name}")
                     except Exception as e:
-                        st.warning(f"⚠️ حفظ الخطة محلياً (DB Sync Alert: {e})")
+                        st.warning(f"⚠️ تنبيه مزامنة الحفظ: {e}")
 
                 st.session_state.current_plan = plan_payload
                 st.session_state.plan_signature = signature
@@ -1064,7 +1066,6 @@ with tab3:
             st.session_state.plan_signature = new_sig
             st.session_state.current_plan['plan_signature'] = new_sig
 
-            # Update DB persistence if plan ID exists
             if engine and st.session_state.current_plan.get('id'):
                 try:
                     plan_id = st.session_state.current_plan['id']
