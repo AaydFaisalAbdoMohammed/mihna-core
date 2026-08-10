@@ -83,16 +83,22 @@ PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestor
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
 
+
 # PostgreSQL / Cloud SQL Parameters
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@%")
 DB_NAME = os.getenv("DB_NAME", "postgres")
-DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+
+# تم تحديث الـ DB_HOST إلى العنوان الخارجي (Public IP) الخاص بقاعدة البيانات
+DB_HOST = os.getenv("DB_HOST", "34.93.187.161")
 DB_PORT = os.getenv("DB_PORT", "5432")
+
+# اسم معرّف الاتصال المباشر لـ Cloud SQL
 INSTANCE_CONN = os.getenv("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
 
 # Local SQLite Fallback File
 SQLITE_DB_FILE = "phoenix_app_data.db"
+
 
 # =====================================================================
 # 2. FULL HYBRID DATABASE ENGINE (PostgreSQL Cloud SQL 7-Tables Schema + SQLite)
