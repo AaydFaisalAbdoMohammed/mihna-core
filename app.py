@@ -755,9 +755,9 @@ class PhoenixAI:
             }
         
         avg_price = np.mean([f['suggested_price'] for f in feedbacks if f['suggested_price'] > 0]) if feedbacks else 29
-        avg_rating = np.mean([f['rating'] for f in feedbacks]) if feedbacks else 4.5
+        avg_rating = np.mean([f['rating'] for f in feedbacks if f.get('rating') is not None]) if feedbacks else 4.5
         
-        features = [f['requested_feature'] for f in feedbacks if f['requested_feature']]
+        features = [f['requested_feature'] for f in feedbacks if f.get('requested_feature')]
         feature_counts = pd.Series(features).value_counts().to_dict() if features else {}
         top_features = list(feature_counts.keys())[:3] if feature_counts else ["تكامل تلقائي مع Cloud SQL", "تخزين الخطط مؤمنة", "دعم الدفع المحلي"]
         
@@ -1226,6 +1226,7 @@ def main():
         .ai-payment-card {{ background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #6366F1; border-radius: 16px; padding: 24px; color: #FFFFFF; margin-bottom: 24px; }}
         .feedback-card {{ background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border: 1px solid #3B82F6; border-radius: 14px; padding: 20px; color: #F8FAFC; margin-bottom: 15px; }}
         .stat-card-box {{ background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 10px; }}
+        .user-feedback-item {{ background: rgba(15, 23, 42, 0.8); border-right: 4px solid #F59E0B; border-radius: 8px; padding: 14px; margin-bottom: 12px; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -1314,7 +1315,7 @@ def main():
         st.subheader(txt['quick_templates'])
         col_t1, col_t2, col_t3 = st.columns(3)
         col_t1.button(txt['ecom'], use_container_width=True, on_click=apply_template, args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل"))
-        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات واختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
+        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات وااختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
         col_t3.button(txt['delivery'], use_container_width=True, on_click=apply_template, args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع"))
 
         domain_options = ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
@@ -1526,7 +1527,7 @@ def main():
             st.markdown(build_detailed_plan_text(st.session_state.current_plan))
 
     # =====================================================================
-    # TAB 4: FEEDBACK LOOP & DYNAMIC PRICING ENGINE
+    # TAB 4: FEEDBACK LOOP & DYNAMIC PRICING ENGINE (تحديث نظام التقييم بالنجوم الحية)
     # =====================================================================
     with tab4:
         st.subheader("🔄 نظام التغذية الراجعة المغلقة والتكيّف السعري (AI Closed-Loop Feedback)")
@@ -1536,9 +1537,17 @@ def main():
 
         with col_fb1:
             st.markdown("### 📝 شاركنا رأيك (واربح 1 نقطة مجانية أوتوماتيكياً)")
+            
+            # التقييم التفاعلي المباشر بالنجوم بدلاً من شريط السحب
+            st.markdown("**تقييمك الكلي للمنصة (حدد عدد النجوم):**")
+            stars_selection = st.feedback("stars")
+            rating_stars = (stars_selection + 1) if stars_selection is not None else 5
+            
+            star_display = "🌟" * rating_stars
+            st.caption(f"التقييم المختار: **{star_display}** ({rating_stars} من 5 نجوم)")
+
             with st.form("feedback_form"):
-                rating = st.slider("تقييمك الكلي للمنصة (1 إلى 5)", 1, 5, 5)
-                suggested_p = st.number_input("ما هو السعر الشهري العادل بالدولار هذه الخدمة؟ ($)", min_value=5, max_value=200, value=29)
+                suggested_p = st.number_input("ما هو السعر الشهري العادل بالدولار لهذه الخدمة؟ ($)", min_value=5, max_value=200, value=29)
                 req_feature = st.selectbox("ما هي الميزة الأكثر أهمية التي ترغب بإضافتها؟", [
                     "تصدير تقارير احترافية بالعربية PDF",
                     "ربط أوتوماتيكي مع Cloud SQL و Cloud Run",
@@ -1546,17 +1555,17 @@ def main():
                     "تكامل مع الذكاء الاصطناعي المباشر Gemini Pro",
                     "إدارة الميزانية المتعددة للعملات"
                 ])
-                comments = st.text_area("ملاحظات إضافية أو مقترحات لتطوير المنصة")
+                comments = st.text_area("ملاحظات إضافية أو مقترحات لتطوير المنصة", placeholder="اكتب تعليقك وطموحك للمنصة هنا...")
                 submit_fb = st.form_submit_button("🚀 إرسال التغذية الراجعة وتحديث النظام")
 
                 if submit_fb:
-                    if HybridDatabaseEngine.save_feedback(st.session_state.user['email'], rating, suggested_p, req_feature, comments):
+                    if HybridDatabaseEngine.save_feedback(st.session_state.user['email'], rating_stars, suggested_p, req_feature, comments):
                         new_c = st.session_state.user['credits'] + 1
                         HybridDatabaseEngine.update_credits(st.session_state.user['email'], new_c)
                         st.session_state.user['credits'] = new_c
                         
                         st.balloons()
-                        st.success("🎉 شكراً لك! تم إضافة 1 نقطة مجانية إلى حسابك وتم تحديث معايير التسعير أوتوماتيكياً بناءً على مدخلاتك.")
+                        st.success("🎉 شكراً لك! تم إضافة 1 نقطة مجانية إلى حسابك وحفظ التقييم بـ 5 نجوم والتعليق كاملاً!")
                         time.sleep(1)
                         st.rerun()
 
@@ -1575,10 +1584,24 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
-            st.markdown("#### 💬 سجل آراء العملاء الحية (Live Stream):")
+            st.markdown("#### 💬 سجل آراء جميع العملاء الحية (Live Stream):")
             if feedbacks:
-                for f in feedbacks[:3]:
-                    st.markdown(f"⭐ **{f['rating']}/5** | البريد: `{f['user_email']}` | السعر المقترح: **${f['suggested_price']}**\n> *الميزة المطلوبة:* {f['requested_feature']}")
+                for f in feedbacks:
+                    stars_count = f.get('rating', 5) or 5
+                    stars_str = "🌟" * stars_count
+                    comment_text = f.get('comments', '') or "لا توجد ملاحظات إضافية."
+                    
+                    st.markdown(f"""
+                    <div class="user-feedback-item">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <b>👤 البريد: <code>{f['user_email']}</code></b>
+                            <span style="font-size: 16px;">{stars_str} ({stars_count}/5)</span>
+                        </div>
+                        <p style="margin-top: 6px; margin-bottom: 4px;">💵 <b>السعر المقترح:</b> ${f['suggested_price']} | 💡 <b>الميزة المطلوبة:</b> {f['requested_feature']}</p>
+                        <p style="color: #94A3B8; font-style: italic; margin-bottom: 0;">💬 <b>التعليق:</b> {comment_text}</p>
+                        <small style="color: #64748B;">📅 التاريخ: {f.get('created_at', 'مؤخراً')}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
                 st.info("لا توجد تقييمات سابقة بعد. كن أول من يشارك رأيه!")
 
