@@ -85,7 +85,7 @@ SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENT
 
 # PostgreSQL / Cloud SQL Parameters
 DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@!")
+DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@%")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = os.getenv("DB_PORT", "5432")
