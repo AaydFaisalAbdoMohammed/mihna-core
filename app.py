@@ -82,8 +82,8 @@ PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestor
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
 
-# APP BASE URL FOR QR CODES (معالجة رابط Google Cloud Run الصحيح)
-APP_BASE_URL = os.getenv("APP_URL", "https://mihna-core-ay-254326589332.asia-south1.run.app")
+# APP BASE URL FOR QR CODES (تحديث الرابط الصحيح والمباشر لـ Google Cloud Run)
+APP_BASE_URL = os.getenv("APP_URL", "https://mihna-core-50335759464.asia-south1.run.app")
 
 # OWNER EMAIL (CEO & SYSTEM OWNER)
 SUPER_ADMIN_EMAIL = "eng.alhiadri2021@gmail.com"
@@ -1154,8 +1154,9 @@ def render_auth_page():
                 st.markdown("### 📲 امسح الـ QR للتسجيل السريع")
                 st.caption("للحملات الإعلانية والجوال: امسح الرمز للتوجيه الفوري وإنشاء حساب جديد")
                 
-                # إصلاح الرابط المباشر الصحيح بالكامل لمنع خطأ SSL الشهادة
-                signup_url = f"{APP_BASE_URL}?mode=signup"
+                # بناء الرابط الفعلي المباشر بدون أخطاء SSL أو 404
+                clean_base_url = APP_BASE_URL.rstrip('/')
+                signup_url = f"{clean_base_url}/?mode=signup"
                 qr_bytes = generate_qr_code_image(signup_url)
                 if qr_bytes:
                     st.image(qr_bytes, width=180, caption="امسح الرمز للكاميرا")
