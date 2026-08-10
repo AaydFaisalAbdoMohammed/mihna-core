@@ -249,7 +249,7 @@ class HybridDatabaseEngine:
                 hashed_p = hashlib.sha256("123456".encode()).hexdigest()
                 cursor.execute(
                     "INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    ("AYAD FAISAL (CEO & Owner)", SUPER_ADMIN_EMAIL, hashed_p, 99999, "Enterprise Owner / Super Admin", 1, 1)
+                    ("Alex Sterling (CEO & Owner)", SUPER_ADMIN_EMAIL, hashed_p, 99999, "Enterprise Owner / Super Admin", 1, 1)
                 )
             conn.commit()
             conn.close()
@@ -678,7 +678,7 @@ class PhoenixAI:
             {"id": 1, "task": "تحليل المتطلبات وتصميم المعمارية HLD/LLD", "days": max(1, int(d*0.15)), "cost": int(b*0.15), "status": "مخطط", "priority": "High"},
             {"id": 2, "task": "بناء قواعد البيانات وتأمين APIs RLS Backend", "days": max(1, int(d*0.35)), "cost": int(b*0.35), "status": "مخطط", "priority": "High"},
             {"id": 3, "task": "تطوير واجهات المستخدم Frontend & UI Components", "days": max(1, int(d*0.30)), "cost": int(b*0.30), "status": "مخطط", "priority": "Medium"},
-            {"id": 4, "task": "الاختبارات الشاملة QA & Cloud Deployment", "days": max(1, int(d*0.20)), "cost": int(b*0.20), "status": "مخطط", "priority": "Low"}
+            {"id": 4, "task": "الااختبارات الشاملة QA & Cloud Deployment", "days": max(1, int(d*0.20)), "cost": int(b*0.20), "status": "مخطط", "priority": "Low"}
         ]
         
         tech_list = [t.strip() for t in req['tech_stack'].split(",")] if isinstance(req['tech_stack'], str) else req['tech_stack']
@@ -1164,7 +1164,7 @@ def render_auth_page():
         with signup_tab_container:
             with st.form("signup_form"):
                 st.subheader("انضم إلى منصة PHOENIX Enterprise")
-                new_username = st.text_input("الاسم الكامل", placeholder="م. أياد فيصل")
+                new_username = st.text_input("الاسم الكامل", placeholder="Alex Sterling")
                 new_email = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
                 new_password = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
                 confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="••••••••")
@@ -1656,7 +1656,7 @@ def main():
     if is_ceo_owner:
         with tab_admin:
             st.subheader("👑 لوحة قيادة الإدارة العليا والمالك (CEO Control Center)")
-            st.caption(f"مرحباً بك يا مهندس أياد! هذه الصفحة مخفية عن جميع المستخدمين العاديين وتظهر فقط لـ `{SUPER_ADMIN_EMAIL}` والمشرفين المعتمدين.")
+            st.caption(f"مرحباً بك! هذه الصفحة مخفية عن جميع المستخدمين العاديين وتظهر فقط لـ `{SUPER_ADMIN_EMAIL}` والمشرفين المعتمدين.")
 
             all_users = HybridDatabaseEngine.get_all_users_admin()
             total_users_count = len(all_users)
