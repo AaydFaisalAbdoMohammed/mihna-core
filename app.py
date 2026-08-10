@@ -3,11 +3,11 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v12.0 - ULTIMATE SaaS
+© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.0 - ULTIMATE SaaS
 محرك معالجة البيانات الهجين المتكامل (PostgreSQL Cloud SQL / SQLite) المعتمد على
 جميع جداول الـ Schema السبعة، الذكاء الاصطناعي (Gemini)، التوقيع الرقمي (HMAC-SHA512)،
-نظام التغذية الراجعة الذكي، التحليلات الهندسية 6D، حساب أجور الكوادر والمتخصصين،
-وسجلات الأمان وتدقيق المبيعات.
+لوحة قيادة المدراء المتقدمة (Admin Dashboard)، مولد الـ QR Code للتسجيل السريع،
+التحليلات الهندسية 6D المقسمة بمؤشرات نصف دائرية ملونة، وحساب أجور الكوادر والمتخصصين.
 ===============================================================================
 """
 
@@ -41,12 +41,6 @@ except ImportError:
     BCRYPT_AVAILABLE = False
 
 try:
-    import pymysql
-    PYMYSQL_AVAILABLE = True
-except ImportError:
-    PYMYSQL_AVAILABLE = False
-
-try:
     import sqlalchemy
     from sqlalchemy import text
     SQLALCHEMY_AVAILABLE = True
@@ -60,9 +54,14 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
 
 try:
-    from reportlab.lib.pagesizes import A4, letter
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib import colors
+    import qrcode
+    QRCODE_AVAILABLE = True
+except ImportError:
+    QRCODE_AVAILABLE = False
+
+try:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     REPORTLAB_AVAILABLE = True
 except ImportError:
@@ -78,22 +77,20 @@ except ImportError:
 # =====================================================================
 # 1. CONFIGURATION & SETTINGS
 # =====================================================================
-APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v12.0"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.0"
 PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly")
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
 
+# OWNER EMAIL (CEO & SYSTEM OWNER)
+SUPER_ADMIN_EMAIL = "eng.alhiadri2021@gmail.com"
 
 # PostgreSQL / Cloud SQL Parameters
 DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@%")
 DB_NAME = os.getenv("DB_NAME", "postgres")
-
-# تم تحديث الـ DB_HOST إلى العنوان الخارجي (Public IP) الخاص بقاعدة البيانات
 DB_HOST = os.getenv("DB_HOST", "34.93.187.161")
 DB_PORT = os.getenv("DB_PORT", "5432")
-
-# اسم معرّف الاتصال المباشر لـ Cloud SQL
 INSTANCE_CONN = os.getenv("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
 
 # Local SQLite Fallback File
@@ -101,7 +98,7 @@ SQLITE_DB_FILE = "phoenix_app_data.db"
 
 
 # =====================================================================
-# 2. FULL HYBRID DATABASE ENGINE (PostgreSQL Cloud SQL 7-Tables Schema + SQLite)
+# 2. FULL HYBRID DATABASE ENGINE (Cloud SQL 7-Tables Schema + Admins)
 # =====================================================================
 class HybridDatabaseEngine:
     _sqlalchemy_engine = None
@@ -125,7 +122,7 @@ class HybridDatabaseEngine:
 
     @classmethod
     def init_db(cls):
-        """تهيئة الجداول السبعة كاملة في قاعدة بيانات PostgreSQL و SQLite"""
+        """تهيئة الجداول السبعة وجدول المشرفين الخاص في PostgreSQL و SQLite"""
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
@@ -140,6 +137,7 @@ class HybridDatabaseEngine:
                             role VARCHAR(100) DEFAULT 'Free Trial',
                             credits INT DEFAULT 5,
                             is_subscribed INT DEFAULT 0,
+                            is_admin INT DEFAULT 0,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
@@ -174,7 +172,7 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    # 4. projects (Legacy/Summary Store)
+                    # 4. projects
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS projects (
                             id SERIAL PRIMARY KEY,
@@ -230,11 +228,11 @@ class HybridDatabaseEngine:
             except Exception as e:
                 logging.error(f"PostgreSQL Full Schema Init Warning: {e}")
 
-        # التهيئة المحلية بـ SQLite للمجافاة الحية
+        # Local SQLite Fallback
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
-            cursor.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, full_name TEXT, role TEXT DEFAULT 'Free Trial', credits INTEGER DEFAULT 5, is_subscribed INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, full_name TEXT, role TEXT DEFAULT 'Free Trial', credits INTEGER DEFAULT 5, is_subscribed INTEGER DEFAULT 0, is_admin INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS project_plans (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, project_name TEXT, domain TEXT, budget REAL, target_days INTEGER, risk_tolerance TEXT, tech_stack TEXT, scope_of_work TEXT, plan_signature TEXT, is_tampered INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS plan_tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, plan_id INTEGER, task_order INTEGER, task_name TEXT, days INTEGER, cost REAL, status TEXT DEFAULT 'مخطط', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS projects (id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, project_name TEXT, summary TEXT, budget_range TEXT, tech_stack TEXT, payload TEXT, signature TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
@@ -242,13 +240,13 @@ class HybridDatabaseEngine:
             cursor.execute('''CREATE TABLE IF NOT EXISTS payment_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT UNIQUE, gateway TEXT, plan_type TEXT, amount_paid REAL, currency TEXT DEFAULT 'USD', status TEXT, raw_response TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS security_audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action_type TEXT, ip_address TEXT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
 
-            admin_email = "eng.alhiadri2020@gmail.com"
-            cursor.execute("SELECT email FROM users WHERE email = ?", (admin_email,))
+            # Seed Super Admin
+            cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL,))
             if not cursor.fetchone():
                 hashed_p = hashlib.sha256("123456".encode()).hexdigest()
                 cursor.execute(
-                    "INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed) VALUES (?, ?, ?, ?, ?, ?)",
-                    ("AYAD FAISAL ABDO MOHAMMED", admin_email, hashed_p, 9999, "Enterprise Pro Owner", 1)
+                    "INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    ("AYAD FAISAL (CEO & Owner)", SUPER_ADMIN_EMAIL, hashed_p, 99999, "Enterprise Owner / Super Admin", 1, 1)
                 )
             conn.commit()
             conn.close()
@@ -263,11 +261,11 @@ class HybridDatabaseEngine:
             try:
                 with pg_engine.connect() as conn:
                     res = conn.execute(
-                        text("SELECT id, email, password_hash, full_name, role, credits, is_subscribed FROM users WHERE email = :email"),
+                        text("SELECT id, email, password_hash, full_name, role, credits, is_subscribed, is_admin FROM users WHERE email = :email"),
                         {"email": email_clean}
                     ).fetchone()
                     if res:
-                        return {"id": res[0], "email": res[1], "password_hash": res[2], "full_name": res[3], "role": res[4], "credits": res[5], "is_subscribed": res[6]}
+                        return {"id": res[0], "email": res[1], "password_hash": res[2], "full_name": res[3], "role": res[4], "credits": res[5], "is_subscribed": res[6], "is_admin": res[7]}
             except Exception: pass
 
         try:
@@ -279,7 +277,11 @@ class HybridDatabaseEngine:
             conn.close()
             if row:
                 d = dict(row)
-                return {"id": d["id"], "email": d["email"], "password_hash": d["password_hash"], "full_name": d["full_name"], "role": d["role"], "credits": d["credits"], "is_subscribed": d["is_subscribed"]}
+                return {
+                    "id": d["id"], "email": d["email"], "password_hash": d["password_hash"],
+                    "full_name": d["full_name"], "role": d["role"], "credits": d["credits"],
+                    "is_subscribed": d["is_subscribed"], "is_admin": d.get("is_admin", 0)
+                }
         except Exception: pass
         return None
 
@@ -287,14 +289,16 @@ class HybridDatabaseEngine:
     def register_user(cls, full_name: str, email: str, password_hash: str) -> bool:
         email_clean = email.strip().lower()
         success = False
+        is_admin_flag = 1 if email_clean == SUPER_ADMIN_EMAIL else 0
+        role_flag = "Enterprise Owner / Super Admin" if is_admin_flag else "Free Trial"
 
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
                 with pg_engine.connect() as conn:
                     res = conn.execute(
-                        text("INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed) VALUES (:fn, :em, :ph, 5, 'Free Trial', 0) RETURNING id"),
-                        {"fn": full_name, "em": email_clean, "ph": password_hash}
+                        text("INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (:fn, :em, :ph, 5, :rl, 0, :ia) RETURNING id"),
+                        {"fn": full_name, "em": email_clean, "ph": password_hash, "rl": role_flag, "ia": is_admin_flag}
                     ).fetchone()
                     conn.commit()
                     if res:
@@ -305,7 +309,7 @@ class HybridDatabaseEngine:
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed) VALUES (?, ?, ?, 5, 'Free Trial', 0)", (full_name, email_clean, password_hash))
+            cursor.execute("INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (?, ?, ?, 5, ?, 0, ?)", (full_name, email_clean, password_hash, role_flag, is_admin_flag))
             uid = cursor.lastrowid
             conn.commit()
             conn.close()
@@ -315,6 +319,44 @@ class HybridDatabaseEngine:
             logging.error(f"SQLite Register Error: {e}")
 
         return success
+
+    @classmethod
+    def add_admin_privilege(cls, target_email: str) -> bool:
+        """إضافة صلاحية مشرف جديد بواسطة مالك النظام"""
+        target_clean = target_email.strip().lower()
+        pg_engine = cls.get_sqlalchemy_engine()
+        if pg_engine:
+            try:
+                with pg_engine.connect() as conn:
+                    conn.execute(text("UPDATE users SET is_admin = 1, role = 'Enterprise Admin Supervisor' WHERE email = :email"), {"email": target_clean})
+                    conn.commit()
+            except Exception: pass
+
+        try:
+            conn = sqlite3.connect(SQLITE_DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET is_admin = 1, role = 'Enterprise Admin Supervisor' WHERE email = ?", (target_clean,))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception:
+            return False
+
+    @classmethod
+    def get_all_users_admin(cls) -> list:
+        """جلب جميع المستخدمين للوحة قيادة المدير"""
+        users = []
+        try:
+            conn = sqlite3.connect(SQLITE_DB_FILE)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, full_name, email, role, credits, is_subscribed, is_admin, created_at FROM users ORDER BY created_at DESC")
+            rows = cursor.fetchall()
+            conn.close()
+            for r in rows:
+                users.append(dict(r))
+        except Exception: pass
+        return users
 
     @classmethod
     def update_user_subscription(cls, email: str, role: str, credits: int = 9999) -> bool:
@@ -367,7 +409,6 @@ class HybridDatabaseEngine:
 
     @classmethod
     def save_project_plan_full(cls, plan_json: dict, user_email: str) -> bool:
-        """حفظ متزامن في جداول project_plans, plan_tasks, و projects السبعة"""
         user = cls.get_user(user_email)
         user_id = user['id'] if user else 1
         p_name = plan_json.get('project_name', 'مشروع جديد')
@@ -380,7 +421,6 @@ class HybridDatabaseEngine:
         sig = plan_json.get('signature', '')
         tasks = plan_json.get('tasks', [])
 
-        # 1. حفظ في project_plans & plan_tasks (PostgreSQL)
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
@@ -398,7 +438,6 @@ class HybridDatabaseEngine:
                                         VALUES (:pid, :ord, :tn, :ds, :cs, :st)"""),
                                 {"pid": plan_id, "ord": idx, "tn": t.get('task'), "ds": t.get('days'), "cs": t.get('cost'), "st": t.get('status', 'مخطط')}
                             )
-                    # حفظ التلخيص الفوري في جدول projects للتناغم
                     conn.execute(
                         text("""INSERT INTO projects (user_email, project_name, summary, budget_range, tech_stack, payload, signature)
                                 VALUES (:em, :pn, :sm, :bg, :tc, :pl, :sg)"""),
@@ -408,7 +447,6 @@ class HybridDatabaseEngine:
             except Exception as e:
                 logging.error(f"PG Full Plan Save Warning: {e}")
 
-        # 2. حفظ متزامن في SQLite
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
@@ -565,7 +603,7 @@ class HybridDatabaseEngine:
 HybridDatabaseEngine.init_db()
 
 # =====================================================================
-# 3. SECURITY ENGINE (HMAC-SHA512 & Hashing)
+# 3. SECURITY ENGINE & UTILITIES
 # =====================================================================
 class SecurityEngine:
     @staticmethod
@@ -598,7 +636,7 @@ class SecurityEngine:
         return hmac.compare_digest(expected_sig, signature)
 
 # =====================================================================
-# 4. AI ARCHITECTURE & SPECIALIST COST ALLOCATION ENGINE
+# 4. AI ARCHITECTURE & SPECIALIST PAYROLL ENGINE
 # =====================================================================
 class PhoenixAI:
     @staticmethod
@@ -660,11 +698,9 @@ class PhoenixAI:
 
     @staticmethod
     def calculate_specialists_breakdown(budget: float, target_days: int, domain: str) -> list:
-        """خوارزمية هندسية احترافية لحساب المتخصصين والكوادر والرواتب الهندسية بدقة الساعات"""
         total_man_hours = target_days * 8
-        dev_budget = budget * 0.75  # 75% من الميزانية مخصصة لأجور الكوادر المتخصصة
+        dev_budget = budget * 0.75
 
-        # توزيع النسب الفنية للكوادر بناءً على مجال المشروع
         if "ذكاء" in domain or "SaaS" in domain:
             roles_ratio = [
                 {"role": "مهندس المعمارية والذكاء الاصطناعي (AI/Cloud Architect)", "ratio": 0.25, "icon": "🧠"},
@@ -754,27 +790,22 @@ class AIPaymentAgent:
         amount_str = f"${amount_num:.2f}"
 
         method_info = AIPaymentAgent.inspect_payment_method(user_email)
-        status_box.info(f"🤖 **[AI Agent]:** فحص وسيلة الدفع المتاحة لـ `{user_email}`... (تم اكتشاف: {method_info['payment_method']})")
+        status_box.info(f"🤖 **[AI Agent]:** فحص وسيلة الدفع المتاحة لـ `{user_email}`...")
         time.sleep(0.4)
-        progress_bar.progress(25)
+        progress_bar.progress(30)
 
-        status_box.info(f"🔗 **[AI Agent]:** قراءة توجيه Lemon Squeezy الآلي للرابط: `{checkout_url}`")
+        status_box.info(f"🔗 **[AI Agent]:** قراءة توجيه Lemon Squeezy الآلي...")
         time.sleep(0.4)
-        progress_bar.progress(60)
+        progress_bar.progress(70)
 
-        status_box.info("🔐 **[AI Agent]:** تأكيد التوقيع الرقمي للمسار وحفظ العملية بجدول payment_transactions...")
+        status_box.info("🔐 **[AI Agent]:** تأكيد التوقيع الرقمي ومزامنة الاشتراك...")
         time.sleep(0.4)
-        progress_bar.progress(90)
-
         progress_bar.progress(100)
-        time.sleep(0.2)
         
         progress_bar.empty()
         status_box.empty()
 
         order_id = f"LS-ORD-{hashlib.md5(str(time.time()).encode()).hexdigest()[:8].upper()}"
-        
-        # حفظ المعاملة المالية في الجدول الخامس والسابع
         HybridDatabaseEngine.update_user_subscription(user_email, role=f"Enterprise ({plan_name})", credits=9999)
         HybridDatabaseEngine.record_payment_transaction(user_email, order_id, "Lemon Squeezy", plan_type, amount_num, method_info)
 
@@ -794,7 +825,7 @@ class AIPaymentAgent:
         st.session_state.payment_notifications.insert(0, email_payload)
 
 # =====================================================================
-# 5. NOTIFICATION ENGINE & EXPORT UTILITIES
+# 5. NOTIFICATION & EXPORT & QR UTILITIES
 # =====================================================================
 class NotificationEngine:
     @staticmethod
@@ -802,6 +833,18 @@ class NotificationEngine:
         encoded_msg = urllib.parse.quote(message)
         clean_phone = re.sub(r'[^\d]', '', str(phone))
         return f"https://wa.me/{clean_phone}?text={encoded_msg}"
+
+def generate_qr_code_image(target_url: str) -> bytes:
+    """توليد صورة QR Code برابط التسجيل المباشر للحملات الإعلانية"""
+    if QRCODE_AVAILABLE:
+        qr = qrcode.QRCode(version=1, box_size=8, border=2)
+        qr.add_data(target_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#1E293B", back_color="#FFFFFF")
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return buf.getvalue()
+    return b""
 
 def generate_excel_download(df: pd.DataFrame) -> bytes:
     output = io.BytesIO()
@@ -854,7 +897,6 @@ def generate_pdf_plan(plan: dict, signature: str, detailed_text: str) -> bytes:
     return buffer.getvalue()
 
 def build_detailed_plan_text(plan: dict) -> str:
-    """بناء النص التفصيلي الفائق مع حساب الكوادر المتخصصة بكل دقة"""
     p_name = plan.get('project_name', 'المشروع')
     domain = plan.get('domain', 'تقني')
     budget = float(plan.get('budget', 0))
@@ -875,7 +917,6 @@ def build_detailed_plan_text(plan: dict) -> str:
     cloud_infra_cost = budget * 0.10
     dev_labor_cost = effective_operational_budget - cloud_infra_cost
 
-    # حساب الكوادر والمتخصصين
     specialists = PhoenixAI.calculate_specialists_breakdown(budget, days, domain)
     specialists_str = ""
     for s in specialists:
@@ -909,7 +950,7 @@ def build_detailed_plan_text(plan: dict) -> str:
 ---
 
 ### 1. نظرة عامة والأهداف التنفيذية (Executive Summary & KPIs)
-يهدف مشروع **{p_name}** إلى تقديم حل سحابي برميجي فائق الأداء في قطاع **{domain}**، معتمداً على بيئة العمل والتقنيات: **({tech})**.
+يهدف مشروع **{p_name}** إلى تقديم حل سحابي برمجي فائق الأداء في قطاع **{domain}**، معتمداً على البيئة والتقنيات: **({tech})**.
 * **الميزانية الكلية (Total Budget):** `${budget:,.2f}`
 * **المدى الزمني المستهدف (Timeline):** `{days}` يوماً تقويمياً.
 * **مستوى تحمل المخاطر (Risk Profile):** `{risk}`.
@@ -917,13 +958,13 @@ def build_detailed_plan_text(plan: dict) -> str:
 ---
 
 ### 2. توزيع الكوادر والتخصصات الهندسية وأجورهم (Engineering Specialists & Payroll Allocation)
-تم استخدام خوارزمية **Phoenix Resource Allocation Engine** لتحديد الكوادر الدقيقة المطلوبة لتنفيذ المشروع وحساب أجورهم بالكامل:
+تم استخدام خوارزمية **Phoenix Resource Allocation Engine** لتحديد الكوادر الدقيقة المطلوبة وحساب أجورهم:
 {specialists_str}
 
 ---
 
 ### 3. الحسابات المالية والهندسية التفصيلية (Precise Cost & Time Allocation)
-* ⏳ **إجمالي الساعات الهندسية (Total Man-Hours):** `{total_man_hours:,}` ساعة عمل (مبنية على {working_hours_per_day} ساعات/يوم).
+* ⏳ **إجمالي الساعات الهندسية (Total Man-Hours):** `{total_man_hours:,}` ساعة عمل ({working_hours_per_day} ساعات/يوم).
 * 💵 **معدل التكلفة اليومي الكلي:** `${daily_rate:,.2f}` / يوم.
 * ⏱️ **معدل تكلفة الساعة الهندسية:** `${hourly_rate:,.2f}` / ساعة.
 * 🛡️ **احتياطي الطوارئ والمخاطر ({contingency_rate*100:.0f}% Risk Reserve):** `${contingency_amount:,.2f}`.
@@ -938,9 +979,33 @@ def build_detailed_plan_text(plan: dict) -> str:
 ---
 
 ### 5. مصفوفة الأمان والتوقيع الرقمي المشفر (Digital HMAC Signature)
-* **التوقيع الرقمي:** تم توقيع هذه الخطة رسمياً وحفظها في قاعدة بيانات Cloud SQL مع إتاحة التحقق من عدم التلاعب.
-* **تشفير HMAC-SHA512:** المفتاح المعتمد للتحقق هو المفتاح السري المعتمد في المؤسسة.
+* **التوقيع الرقمي:** تم توقيع هذه الخطة رسمياً وحفظها في قاعدة بيانات Cloud SQL.
+* **تشفير HMAC-SHA512:** المعيار السري المعتمد في المؤسسة.
 """
+
+def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str = "", suffix: str = "", max_val: float = 100):
+    """رسم مؤشر نصف دائري ملون فائق الوضوح مخصص لكل متغيّر"""
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=val,
+        number={'prefix': prefix, 'suffix': suffix, 'font': {'size': 26, 'color': color}},
+        title={'text': title, 'font': {'size': 14, 'color': '#94A3B8'}},
+        gauge={
+            'shape': "angular",
+            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#475569"},
+            'bar': {'color': color, 'thickness': 0.75},
+            'bgcolor': "rgba(15, 23, 42, 0.6)",
+            'bordercolor': "rgba(255,255,255,0.1)",
+        }
+    ))
+    fig.update_layout(
+        height=180,
+        margin=dict(l=15, r=15, t=30, b=10),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color="#FFFFFF")
+    )
+    return fig
 
 # =====================================================================
 # 6. UI & APPLICATION ENGINE
@@ -950,7 +1015,7 @@ def init_session():
     if 'theme' not in st.session_state: st.session_state.theme = 'dark'
     if 'is_authenticated' not in st.session_state: st.session_state.is_authenticated = False
     if 'user' not in st.session_state:
-        st.session_state.user = {'email': '', 'username': 'زائر', 'credits': 5, 'role': 'Free Trial', 'is_subscribed': False}
+        st.session_state.user = {'email': '', 'username': 'زائر', 'credits': 5, 'role': 'Free Trial', 'is_subscribed': False, 'is_admin': False}
     if 'current_plan' not in st.session_state: st.session_state.current_plan = None
     if 'plan_signature' not in st.session_state: st.session_state.plan_signature = None
     if 'notify_whatsapp' not in st.session_state: st.session_state.notify_whatsapp = "+967700000000"
@@ -964,7 +1029,7 @@ def init_session():
 
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v12.0",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.0",
         'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، وتأمين البيانات بـ Cloud SQL و HMAC-SHA512.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
@@ -976,6 +1041,7 @@ T = {
         'tab1': "🏗️ بناء الخطة والكوادر", 'tab2': "📊 التحليلات التفاعلية 6D",
         'tab3': "✏️ محرر المهام والتقرير النصي", 'tab4': "🔄 التغذية الراجعة والتكيّف السعري",
         'tab5': "💳 الحساب والاشتراكات", 'tab6': "🗄️ أرشفة Cloud SQL (7-Tables Schema)",
+        'tab_admin': "👑 لوحة الإدارة العليا (CEO Panel)",
         'quick_templates': "⚡ قوالب جاهزة للبدء السريع",
         'ecom': "🛒 متجر إلكتروني", 'edu': "🎓 منصة تعليمية", 'delivery': "🚗 تطبيق توصيل",
         'p_name': "اسم المشروع", 'tech_domain': "المجال التقني", 'budget': "الميزانية التقديرية ($)",
@@ -989,7 +1055,7 @@ T = {
         'send_wa': "📱 إرسال عبر WhatsApp", 'send_tg': "📲 إشعار Telegram Bot",
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v12.0",
+        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.0",
         'subtitle': "Advanced Engineering Project Plan Builder & Specialist Payroll Engine Secured with Cloud SQL & HMAC-SHA512.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
@@ -1001,6 +1067,7 @@ T = {
         'tab1': "🏗️ Build Plan & Payroll", 'tab2': "📊 Advanced 6D Analytics",
         'tab3': "✏️ Task Editor & Text Plan", 'tab4': "🔄 Feedback & Pricing",
         'tab5': "💳 Account & Subscriptions", 'tab6': "🗄️ Cloud SQL 7-Tables Archive",
+        'tab_admin': "👑 CEO & Admin Panel",
         'quick_templates': "⚡ Quick Start Templates",
         'ecom': "🛒 E-Commerce App", 'edu': "🎓 E-Learning Platform", 'delivery': "🚗 Delivery App",
         'p_name': "Project Name", 'tech_domain': "Technical Domain", 'budget': "Estimated Budget ($)",
@@ -1035,31 +1102,46 @@ def render_auth_page():
     st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى المنصة الهندسية الذكية</p>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
 
+    # التحقق من معاملات URL الموجهة من الإعلانات
+    query_params = st.query_params
+    default_tab = 1 if query_params.get("mode") == "signup" else 0
+
     col_center, _ = st.columns([1, 0.01])
     with col_center:
         auth_tab1, auth_tab2 = st.tabs(["🔑 تسجيل الدخول", "✨ حساب جديد (5 محاولات مجانية)"])
         
         with auth_tab1:
-            with st.form("login_form"):
-                st.subheader("مرحباً بك مجدداً!")
-                email_input = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
-                password_input = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
-                submit_login = st.form_submit_button("🚀 تسجيل الدخول", use_container_width=True)
-                
-                if submit_login:
-                    u = HybridDatabaseEngine.get_user(email_input)
-                    if u and SecurityEngine.verify_password(password_input, u["password_hash"]):
-                        st.session_state.is_authenticated = True
-                        st.session_state.user = {
-                            'email': u['email'], 'username': u['full_name'] or "مهندس مهنة",
-                            'credits': u['credits'], 'role': u['role'], 'is_subscribed': bool(u['is_subscribed'])
-                        }
-                        HybridDatabaseEngine.log_audit(u['id'], "LOGIN_SUCCESS", "User logged in.")
-                        st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}!")
-                        time.sleep(0.5)
-                        st.rerun()
-                    else:
-                        st.error("❌ بيانات الدخول غير صحيحة.")
+            col_l1, col_l2 = st.columns([1.5, 1])
+            with col_l1:
+                with st.form("login_form"):
+                    st.subheader("مرحباً بك مجدداً!")
+                    email_input = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
+                    password_input = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
+                    submit_login = st.form_submit_button("🚀 تسجيل الدخول", use_container_width=True)
+                    
+                    if submit_login:
+                        u = HybridDatabaseEngine.get_user(email_input)
+                        if u and SecurityEngine.verify_password(password_input, u["password_hash"]):
+                            st.session_state.is_authenticated = True
+                            st.session_state.user = {
+                                'email': u['email'], 'username': u['full_name'] or "مهندس مهنة",
+                                'credits': u['credits'], 'role': u['role'], 'is_subscribed': bool(u['is_subscribed']),
+                                'is_admin': bool(u['is_admin']) or (u['email'] == SUPER_ADMIN_EMAIL)
+                            }
+                            HybridDatabaseEngine.log_audit(u['id'], "LOGIN_SUCCESS", "User logged in.")
+                            st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}!")
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.error("❌ بيانات الدخول غير صحيحة.")
+
+            with col_l2:
+                st.markdown("### 📲 امسح الـ QR للتسجيل السريع")
+                st.caption("للحملات الإعلانية والجوال: امسح الرمز للتوجيه الفوري وإنشاء حساب جديد")
+                signup_url = "https://ia-south1.run.app/?mode=signup"
+                qr_bytes = generate_qr_code_image(signup_url)
+                if qr_bytes:
+                    st.image(qr_bytes, width=180, caption="امسح الرمز للكاميرا")
 
         with auth_tab2:
             with st.form("signup_form"):
@@ -1082,10 +1164,12 @@ def render_auth_page():
                         else:
                             hashed_p = SecurityEngine.hash_password(new_password)
                             if HybridDatabaseEngine.register_user(new_username, new_email, hashed_p):
+                                is_super = (new_email == SUPER_ADMIN_EMAIL)
                                 st.session_state.is_authenticated = True
                                 st.session_state.user = {
                                     'email': new_email, 'username': new_username, 'credits': 5,
-                                    'role': "Free Trial", 'is_subscribed': False
+                                    'role': "Enterprise Owner / Super Admin" if is_super else "Free Trial",
+                                    'is_subscribed': False, 'is_admin': is_super
                                 }
                                 st.balloons()
                                 st.success("🎉 تم إنشاء الحساب وحفظ البيانات في قاعدة البيانات بنجاح!")
@@ -1105,6 +1189,7 @@ def main():
         st.session_state.user['credits'] = fresh_u['credits']
         st.session_state.user['role'] = fresh_u['role']
         st.session_state.user['is_subscribed'] = bool(fresh_u['is_subscribed'])
+        st.session_state.user['is_admin'] = bool(fresh_u['is_admin']) or (fresh_u['email'] == SUPER_ADMIN_EMAIL)
 
     lang = st.session_state.lang
     txt = T[lang]
@@ -1122,13 +1207,13 @@ def main():
         .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; }}
         .ai-payment-card {{ background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #6366F1; border-radius: 16px; padding: 24px; color: #FFFFFF; margin-bottom: 24px; }}
         .feedback-card {{ background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border: 1px solid #3B82F6; border-radius: 14px; padding: 20px; color: #F8FAFC; margin-bottom: 15px; }}
-        .email-notification-box {{ background-color: #022C22; border: 1px solid #10B981; border-radius: 12px; padding: 16px; color: #ECFDF5; margin: 10px 0; font-family: monospace; }}
+        .stat-card-box {{ background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 10px; }}
     </style>
     """, unsafe_allow_html=True)
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v12.0</span>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v13.0</span>", unsafe_allow_html=True)
         st.divider()
 
         st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
@@ -1192,9 +1277,17 @@ def main():
                 st.balloons()
                 st.rerun()
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
-    ])
+    # تحديد التبويبات بناءً على صلاحيات الإدارة العليا للمالك فقط
+    is_ceo_owner = (st.session_state.user['email'] == SUPER_ADMIN_EMAIL) or st.session_state.user['is_admin']
+    
+    if is_ceo_owner:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
+            txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
+        ])
+    else:
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
+        ])
 
     # =====================================================================
     # TAB 1: BUILD PROJECT PLAN & SPECIALIST PAYROLL
@@ -1235,8 +1328,6 @@ def main():
                         "target_days": target_days, "tech_stack": tech_stack, "scope": project_scope, "risk": risk_tolerance
                     }
                     plan = PhoenixAI.generate_architecture(req, api_key=gemini_key)
-                    
-                    # حفظ متكامل في جداول Schema السبعة
                     HybridDatabaseEngine.save_project_plan_full(plan, st.session_state.user['email'])
 
                     if not st.session_state.user['is_subscribed']:
@@ -1260,7 +1351,6 @@ def main():
                 else:
                     st.markdown(f"<br><span class='badge-purple'>{txt['sig_invalid']}</span>", unsafe_allow_html=True)
 
-            # عرض جدول الكوادر والمتخصصين المطلوبين للمشروع
             st.markdown("### 👥 الكوادر والمتخصصون المطلوبون وأجورهم المخصصة (Specialist Payroll & Hours)")
             specs = PhoenixAI.calculate_specialists_breakdown(
                 st.session_state.current_plan['budget'],
@@ -1297,7 +1387,7 @@ def main():
                     st.success(f"✅ تم إرسال التنبيه إلى {st.session_state.notify_telegram}")
 
     # =====================================================================
-    # TAB 2: ADVANCED 6D INTERACTIVE ANALYTICS
+    # TAB 2: ADVANCED 6D INTERACTIVE ANALYTICS (HALF-DOUGHNUT GAUGES)
     # =====================================================================
     with tab2:
         if not st.session_state.current_plan:
@@ -1306,75 +1396,91 @@ def main():
             plan = st.session_state.current_plan
             df = pd.DataFrame(plan.get('tasks', []))
             
-            st.markdown("## 📊 لوحة القيادة الهندسية وتقييم الجودة والمخاطر 6D الشاملة")
-            daily_rate = int(float(plan['budget']) / max(1, int(plan['target_days'])))
-            feasibility_score = min(98, max(65, int(100 - (int(plan['target_days']) / max(1, float(plan['budget']) / 100)) * 5)))
+            p_budget = float(plan['budget'])
+            p_days = int(plan['target_days'])
+            p_hours = p_days * 8
+            daily_cost = p_budget / max(1, p_days)
+            
+            # حساب نسبة النجاح والفشل الذكية
+            risk_val = plan.get('risk', 'متوسط')
+            risk_penalty = 20 if risk_val == "عالي" else (10 if risk_val == "متوسط" else 5)
+            budget_efficiency = min(100, max(40, int((p_budget / (p_days * 100)) * 50)))
+            success_rate = min(98, max(55, int(budget_efficiency + (40 - risk_penalty))))
+            failure_rate = round(100.0 - success_rate, 1)
+            tech_readiness = 92.5 if "PostgreSQL" in str(plan.get('tech_stack')) else 84.0
 
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("💰 الميزانية المعتمدة", f"${plan['budget']:,}")
-            m2.metric("⏱️ المدى الزمني", f"{plan['target_days']} يوم")
-            m3.metric("📈 التكلفة اليومية", f"${daily_rate:,}/يوم")
-            m4.metric("🛡️ السلامة الهندسية", f"{feasibility_score}%", delta="ممتاز" if feasibility_score > 80 else "مقبول")
+            st.markdown("## 📊 لوحة القيادة الهندسية وتفصيل الجودة والمخاطر 6D")
+            st.caption("رسومات نص دائرية ومؤشرات تفاعلية ملونة تشرح التكلفة، الأيام، الساعات، نسبة النجاح، والمخاطر لكل مشروع بدقة متناهية.")
 
-            st.progress(feasibility_score / 100)
+            # --- الصف الأول للمؤشرات النصف دائرية (Donut Gauges Row 1) ---
+            g_col1, g_col2, g_col3 = st.columns(3)
+            with g_col1:
+                fig1 = create_half_doughnut_gauge(daily_cost, "💰 التكلفة اليومية الكلية", "#3B82F6", prefix="$", suffix="/يوم", max_val=daily_cost*2)
+                st.plotly_chart(fig1, use_container_width=True)
+            with g_col2:
+                fig2 = create_half_doughnut_gauge(p_hours, "⏱️ إجمالي ساعات العمل الهندسية", "#8B5CF6", suffix=" ساعة", max_val=p_hours*1.5)
+                st.plotly_chart(fig2, use_container_width=True)
+            with g_col3:
+                fig3 = create_half_doughnut_gauge(p_days, "📅 الأيام التقويمية المستهدفة", "#06B6D4", suffix=" يوم", max_val=p_days*1.5)
+                st.plotly_chart(fig3, use_container_width=True)
+
+            # --- الصف الثاني للمؤشرات النصف دائرية (Donut Gauges Row 2) ---
+            g_col4, g_col5, g_col6 = st.columns(3)
+            with g_col4:
+                fig4 = create_half_doughnut_gauge(success_rate, "🌟 نسبة النجاح المتوقعة للمشروع", "#10B981", suffix="%")
+                st.plotly_chart(fig4, use_container_width=True)
+            with g_col5:
+                fig5 = create_half_doughnut_gauge(failure_rate, "⚠️ نسبة المخاطر والفشل المحتملة", "#EF4444", suffix="%")
+                st.plotly_chart(fig5, use_container_width=True)
+            with g_col6:
+                fig6 = create_half_doughnut_gauge(tech_readiness, "🛡️ جاهزية البنية والتكتم الأمني", "#F59E0B", suffix="%")
+                st.plotly_chart(fig6, use_container_width=True)
+
             st.divider()
 
+            # --- البطاقات التفصيلية الشاملة لجميع المتطلبات والكوادر ---
+            st.markdown("### 📝 المتطلبات التفصيلية والشرح المباشر للمشروع")
+            col_desc1, col_desc2 = st.columns(2)
+
+            with col_desc1:
+                st.markdown(f"""
+                <div class="stat-card-box" style="text-align: right;">
+                    <h4 style="color: #60A5FA;">💵 تفاصيل توزيع الميزانية والأيام</h4>
+                    <p>• <b>الميزانية الإجمالية:</b> ${p_budget:,.2f}</p>
+                    <p>• <b>معدل الإنفاق اليومي:</b> ${daily_cost:,.2f} / يوم عمل</p>
+                    <p>• <b>معدل التكلفة للساعة:</b> ${(p_budget / max(1, p_hours)):,.2f} / ساعة</p>
+                    <p>• <b>احتياطي الطوارئ الموصى به:</b> ${(p_budget * 0.1):,.2f} (10%)</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col_desc2:
+                st.markdown(f"""
+                <div class="stat-card-box" style="text-align: right;">
+                    <h4 style="color: #34D399;">🧠 تقييم فرصة النجاح والمخاطر</h4>
+                    <p>• <b>احتمالية النجاح التنفيذي:</b> <span style="color: #10B981; font-weight: bold;">{success_rate}%</span></p>
+                    <p>• <b>مستوى تحمل المخاطرة:</b> {plan.get('risk', 'متوسط')}</p>
+                    <p>• <b>توصية النظام الأمني:</b> تفعيل HMAC Signature وتأمين جداول RLS في Cloud SQL.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.divider()
             col_c1, col_c2 = st.columns(2)
             with col_c1:
-                st.markdown("### 🍩 1. التحليل المالي المتداخل (Sunburst)")
+                st.markdown("### 🍩 التحليل المالي المتداخل (Sunburst)")
                 labels = [plan['project_name']] + list(df['task'])
                 parents = [""] + [plan['project_name']] * len(df)
                 values = [plan['budget']] + list(df['cost'])
                 fig_sunburst = go.Figure(go.Sunburst(labels=labels, parents=parents, values=values, branchvalues="total", marker=dict(colorscale='Blues')))
-                fig_sunburst.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=350)
+                fig_sunburst.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=320)
                 st.plotly_chart(fig_sunburst, use_container_width=True)
 
             with col_c2:
-                st.markdown("### 🎯 2. مؤشر الجاهزية الهندسية (Gauge)")
-                fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number", value=feasibility_score,
-                    title={'text': "مؤشر التواؤم المالي والزمني"},
-                    gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "#8B5CF6"}}
-                ))
-                fig_gauge.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=350)
-                st.plotly_chart(fig_gauge, use_container_width=True)
-
-            st.divider()
-            c_r1, c_r2 = st.columns(2)
-            with c_r1:
-                st.markdown("### 🕸️ 3. تقييم الأبعاد (5D Radar Risk Matrix)")
+                st.markdown("### 🕸️ تقييم الأبعاد (5D Radar Risk Matrix)")
                 radar_cats = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
                 radar_vals = [80, 95, 85, 90, 70]
                 fig_radar = go.Figure(go.Scatterpolar(r=radar_vals, theta=radar_cats, fill='toself', line=dict(color='#8B5CF6')))
-                fig_radar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=340)
+                fig_radar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=320)
                 st.plotly_chart(fig_radar, use_container_width=True)
-
-            with c_r2:
-                st.markdown("### 🌊 4. التدفق المالي التراكمي (Waterfall Flow)")
-                fig_waterfall = go.Figure(go.Waterfall(
-                    measure=["relative"] * len(df) + ["total"],
-                    x=list(df['task']) + ["الإجمالي"],
-                    y=list(df['cost']) + [0],
-                    connector={"line": {"color": "#64748B"}}
-                ))
-                fig_waterfall.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=340)
-                st.plotly_chart(fig_waterfall, use_container_width=True)
-
-            st.divider()
-            st.markdown("### 📈 5 & 6. البعد السادس: مؤشر رضا وملاءمة السوق المستهدف")
-            fb_list = HybridDatabaseEngine.get_all_feedback()
-            adapted = PhoenixAI.analyze_feedback_and_adapt_pricing(fb_list)
-
-            col_fb_m1, col_fb_m2 = st.columns(2)
-            with col_fb_m1:
-                feat_names = adapted["top_requested_features"]
-                feat_scores = [95, 88, 82][:len(feat_names)]
-                fig_feat = px.bar(x=feat_scores, y=feat_names, orientation='h', labels={'x':'نسبة الطلب %', 'y':'الميزة'}, title="أكثر الميزات طلباً من العملاء")
-                fig_feat.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=250)
-                st.plotly_chart(fig_feat, use_container_width=True)
-            with col_fb_m2:
-                st.metric("🌟 مؤشر ملاءمة المنتج للسوق (PMF)", f"{adapted['market_satisfaction_score']}%", "مستند على ردود حقيقية")
-                st.info(f"💡 **توصية الذكاء الاصطناعي:** السعر الشهري العادل حالياً هو **${adapted['recommended_monthly']}/شهرياً**.")
 
     # =====================================================================
     # TAB 3: TASK EDITOR & DETAILED PLAN
@@ -1437,7 +1543,7 @@ def main():
                         st.rerun()
 
         with col_fb2:
-            st.markdown("### 🏆 لوحة إثبات احتياج السوق وقوة التكيف (For Judges)")
+            st.markdown("### 🏆 لوحة إثبات احتياج السوق وقوة التكيف")
             feedbacks = HybridDatabaseEngine.get_all_feedback()
             adapted = PhoenixAI.analyze_feedback_and_adapt_pricing(feedbacks)
 
@@ -1502,6 +1608,59 @@ def main():
             st.dataframe(pd.DataFrame(saved_projs), use_container_width=True)
         else:
             st.info("لا توجد مشاريع محفوظة حالياً.")
+
+    # =====================================================================
+    # TAB ADMIN: CEO CONTROL PANEL (Visible ONLY to Owner & Assigned Admins)
+    # =====================================================================
+    if is_ceo_owner:
+        with tab_admin:
+            st.subheader("👑 لوحة قيادة الإدارة العليا والمالك (CEO Control Center)")
+            st.caption(f"مرحباً بك يا مهندس أياد! هذه الصفحة مخفية عن جميع المستخدمين العاديين وتظهر فقط لـ `{SUPER_ADMIN_EMAIL}` والمشرفين المعتمدين.")
+
+            all_users = HybridDatabaseEngine.get_all_users_admin()
+            total_users_count = len(all_users)
+            subscribed_count = len([u for u in all_users if u['is_subscribed']])
+            admin_supervisors_count = len([u for u in all_users if u.get('is_admin')])
+
+            m_adm1, m_adm2, m_adm3, m_adm4 = st.columns(4)
+            m_adm1.metric("👥 إجمالي المستخدمين المسجلين", total_users_count)
+            m_adm2.metric("💳 عدد الاشتراكات المدفوعة", subscribed_count)
+            m_adm3.metric("👑 المشرفين المعتمدين", admin_supervisors_count)
+            m_adm4.metric("📈 نسبة التحويل للاشتراك", f"{round((subscribed_count/max(1, total_users_count))*100, 1)}%")
+
+            st.divider()
+
+            # قسم تعيين مشرف جديد
+            st.markdown("### 🔑 تعيين وإضافة مشرف جديد (Grant Supervisor Admin Privilege)")
+            col_add_adm1, col_add_adm2 = st.columns([2, 1])
+            with col_add_adm1:
+                target_admin_email = st.text_input("أدخل البريد الإلكتروني للمستخدم لترقيته إلى مشرف", placeholder="supervisor@domain.com").lower().strip()
+            with col_add_adm2:
+                st.write("<br>", unsafe_allow_html=True)
+                if st.button("✨ تفعيل صلاحية المشرف", type="primary", use_container_width=True):
+                    if target_admin_email:
+                        if HybridDatabaseEngine.add_admin_privilege(target_admin_email):
+                            st.success(f"✅ تم منح صلاحيات المشرف بنجاح لـ `{target_admin_email}`!")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error("❌ فشل العثور على البريد الإلكتروني في قاعدة البيانات.")
+
+            st.divider()
+
+            # جدول كامل يوضح جميع المستخدمين واشتراكاتهم ورغباتهم
+            st.markdown("### 📋 سجل جميع المستخدمين واشتراكاتهم الحية")
+            if all_users:
+                df_admin_users = pd.DataFrame(all_users)
+                st.dataframe(df_admin_users[["id", "full_name", "email", "role", "credits", "is_subscribed", "is_admin", "created_at"]], use_container_width=True)
+
+            st.markdown("### 💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)")
+            admin_fb = HybridDatabaseEngine.get_all_feedback()
+            if admin_fb:
+                df_admin_fb = pd.DataFrame(admin_fb)
+                st.dataframe(df_admin_fb[["user_email", "rating", "suggested_price", "requested_feature", "comments", "created_at"]], use_container_width=True)
+            else:
+                st.info("لا توجد طلبات مدخلة حتى الآن.")
 
 if __name__ == "__main__":
     main()
