@@ -3,7 +3,7 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.0 - ULTIMATE SaaS
+© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.1 - ULTIMATE SaaS
 محرك معالجة البيانات الهجين المتكامل (PostgreSQL Cloud SQL / SQLite) المعتمد على
 جميع جداول الـ Schema السبعة، الذكاء الاصطناعي (Gemini)، التوقيع الرقمي (HMAC-SHA512)،
 لوحة قيادة المدراء المتقدمة (Admin Dashboard)، مولد الـ QR Code للتسجيل السريع،
@@ -77,10 +77,13 @@ except ImportError:
 # =====================================================================
 # 1. CONFIGURATION & SETTINGS
 # =====================================================================
-APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.0"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.1"
 PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly")
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
+
+# APP BASE URL FOR QR CODES (معالجة رابط Google Cloud Run الصحيح)
+APP_BASE_URL = os.getenv("APP_URL", "https://mihna-core-ay-254326589332.asia-south1.run.app")
 
 # OWNER EMAIL (CEO & SYSTEM OWNER)
 SUPER_ADMIN_EMAIL = "eng.alhiadri2021@gmail.com"
@@ -707,7 +710,7 @@ class PhoenixAI:
                 {"role": "مطور خلفية النظم (Senior Backend Engineer)", "ratio": 0.25, "icon": "⚙️"},
                 {"role": "مطور واجهات المستخدم (Frontend/Mobile Engineer)", "ratio": 0.20, "icon": "💻"},
                 {"role": "مصمم تجربة وواجهة المستخدم (UI/UX Designer)", "ratio": 0.12, "icon": "🎨"},
-                {"role": "مهندس جودة واختبار الأمان (QA & Security Engineer)", "ratio": 0.10, "icon": "🛡️"},
+                {"role": "مهندس جودة وااختبار الأمان (QA & Security Engineer)", "ratio": 0.10, "icon": "🛡️"},
                 {"role": "مدير المشروع الهندسي (Agile Project Manager)", "ratio": 0.08, "icon": "📊"}
             ]
         else:
@@ -1029,7 +1032,7 @@ def init_session():
 
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.0",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.1",
         'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، وتأمين البيانات بـ Cloud SQL و HMAC-SHA512.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
@@ -1055,7 +1058,7 @@ T = {
         'send_wa': "📱 إرسال عبر WhatsApp", 'send_tg': "📲 إشعار Telegram Bot",
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.0",
+        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.1",
         'subtitle': "Advanced Engineering Project Plan Builder & Specialist Payroll Engine Secured with Cloud SQL & HMAC-SHA512.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
@@ -1102,15 +1105,27 @@ def render_auth_page():
     st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى المنصة الهندسية الذكية</p>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
 
-    # التحقق من معاملات URL الموجهة من الإعلانات
+    # التحقق من معاملات URL الموجهة من الإعلانات للتحويل التلقائي لإنشاء الحساب
     query_params = st.query_params
-    default_tab = 1 if query_params.get("mode") == "signup" else 0
+    is_signup_mode = query_params.get("mode") == "signup"
 
     col_center, _ = st.columns([1, 0.01])
     with col_center:
-        auth_tab1, auth_tab2 = st.tabs(["🔑 تسجيل الدخول", "✨ حساب جديد (5 محاولات مجانية)"])
+        # إصلاح وتضمين اختيار التبويب الديناميكي بالمعاملات
+        tab_login_title = "🔑 تسجيل الدخول"
+        tab_signup_title = "✨ حساب جديد (5 محاولات مجانية)"
         
-        with auth_tab1:
+        # تحويل الترتيب التلقائي عند مسح الـ QR للذهاب لإنشاء حساب مباشر
+        if is_signup_mode:
+            auth_tabs = st.tabs([tab_signup_title, tab_login_title])
+            signup_tab_container = auth_tabs[0]
+            login_tab_container = auth_tabs[1]
+        else:
+            auth_tabs = st.tabs([tab_login_title, tab_signup_title])
+            login_tab_container = auth_tabs[0]
+            signup_tab_container = auth_tabs[1]
+
+        with login_tab_container:
             col_l1, col_l2 = st.columns([1.5, 1])
             with col_l1:
                 with st.form("login_form"):
@@ -1138,12 +1153,14 @@ def render_auth_page():
             with col_l2:
                 st.markdown("### 📲 امسح الـ QR للتسجيل السريع")
                 st.caption("للحملات الإعلانية والجوال: امسح الرمز للتوجيه الفوري وإنشاء حساب جديد")
-                signup_url = "https://ia-south1.run.app/?mode=signup"
+                
+                # إصلاح الرابط المباشر الصحيح بالكامل لمنع خطأ SSL الشهادة
+                signup_url = f"{APP_BASE_URL}?mode=signup"
                 qr_bytes = generate_qr_code_image(signup_url)
                 if qr_bytes:
                     st.image(qr_bytes, width=180, caption="امسح الرمز للكاميرا")
 
-        with auth_tab2:
+        with signup_tab_container:
             with st.form("signup_form"):
                 st.subheader("انضم إلى منصة PHOENIX Enterprise")
                 new_username = st.text_input("الاسم الكامل", placeholder="م. أياد فيصل")
@@ -1213,7 +1230,7 @@ def main():
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v13.0</span>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v13.1</span>", unsafe_allow_html=True)
         st.divider()
 
         st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
