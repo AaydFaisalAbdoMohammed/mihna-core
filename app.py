@@ -393,7 +393,8 @@ def render_engineering_tab(txt):
                 col_img, col_analysis = st.columns([1, 1])
                 
                 with col_img:
-                    st.image(uploaded_file, caption="الرفع الميداني الحالي", use_column_width=True)
+                    # FIX: Use use_container_width=True instead of deprecated use_column_width=True
+                    st.image(uploaded_file, caption="الرفع الميداني الحالي", use_container_width=True)
                     img_bytes = uploaded_file.getvalue()
                     
                 with col_analysis:
