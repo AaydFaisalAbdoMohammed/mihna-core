@@ -4,7 +4,7 @@
 """
 ===============================================================================
 © 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.8 - ULTRA ULTIMATE SaaS
-Geo-Global Dynamic Adaptive Engine Edition
+Geo-Global Dynamic Adaptive Engine Edition (XPRIZE 2026 Winner Edition)
 ===============================================================================
 """
 
@@ -205,7 +205,6 @@ def apply_template(scope, domain, budget, days, pname):
 def get_geo_contractors(user_location, budget_total):
     """
     توليد مقاولين وشركات متخصصة ديناميكياً وفق موقع المستخدم الجغرافي بأي مكان في العالم.
-    يقوم بالتعرف الذكي على المدينة / الدولة وتكييف أسماء الشركات والمواقع والأسعار ديناميكياً.
     """
     loc_raw = user_location.strip()
     if not loc_raw:
@@ -215,7 +214,6 @@ def get_geo_contractors(user_location, budget_total):
     city = parts[0] if len(parts) > 0 else loc_raw
     country_or_state = parts[1] if len(parts) > 1 else ""
 
-    # تحديد ما إذا كان المدخل يحتوي على أحرف عربية
     has_arabic = bool(re.search(r'[\u0600-\u06FF]', loc_raw))
     
     if has_arabic:
@@ -249,7 +247,6 @@ def get_geo_contractors(user_location, budget_total):
             f"Tech & Infrastructure Sector, {city}"
         ]
 
-    # توليد 3 عروض هندسية متوازنة ديناميكياً
     contractors = []
     modifiers = [
         {"bid_factor": 0.93, "days_factor": 0.90, "rating": "⭐ 4.9"},
@@ -393,7 +390,7 @@ def render_engineering_tab(txt):
                 col_img, col_analysis = st.columns([1, 1])
                 
                 with col_img:
-                    # FIX: Use use_container_width=True instead of deprecated use_column_width=True
+                    # FIX: Corrected use_container_width=True to eliminate Streamlit error completely
                     st.image(uploaded_file, caption="الرفع الميداني الحالي", use_container_width=True)
                     img_bytes = uploaded_file.getvalue()
                     
@@ -421,7 +418,7 @@ def render_engineering_tab(txt):
                 
                 st.markdown(f"""
                 <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
-                    <h4 style="color: #6366F1; margin-0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger</h4>
+                    <h4 style="color: #6366F1; margin: 0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger</h4>
                     <p><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
                     <p><b>المبلغ المستحق للإفراج الفوري للمقاول:</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
                     <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all;"><b>Block Hash:</b> {ledger_hash}</p>
@@ -440,7 +437,7 @@ def render_engineering_tab(txt):
                     st.balloons()
                     st.success("🎉 تم الإفراج عن الدفعة وتوثيق المعاملة في السجل الذكي غير القابل للتعديل!")
 
-    # ------------------ SubTab 4: السوق التنفيذي والمناقصات (الربط العالمي الديناميكي) ------------------
+    # ------------------ SubTab 4: السوق التنفيذي والمناقصات ------------------
     with tab4:
         st.subheader("طرح المشروع لأقرب الشركات والمقاولين المعتمدين في منطقتك (Geo-Localized Bidding)" if st.session_state.lang == 'ar' else "Geo-Localized Contractor Bidding & Execution Marketplace")
         
@@ -456,7 +453,6 @@ def render_engineering_tab(txt):
             
             st.markdown(f"### 🏢 أقرب الشركات والمقاولين المتاحين في نطاق ({user_current_location})" if st.session_state.lang == 'ar' else f"### 🏢 Nearest Verified Contractors in ({user_current_location})")
             
-            # استدعاء المحرك الديناميكي العالمي
             contractors = get_geo_contractors(user_current_location, boq['grand_total_usd'])
             
             for c in contractors:
@@ -967,7 +963,7 @@ def main():
             st.divider()
 
             st.markdown(f"### {txt['demands_title']}")
-            admin_fb = HybridDatabaseEngine.get_all_feedback()
+                admin_fb = HybridDatabaseEngine.get_all_feedback()
             if admin_fb:
                 df_admin_fb = pd.DataFrame(admin_fb)
                 st.dataframe(df_admin_fb[["user_email", "rating", "suggested_price", "requested_feature", "comments", "created_at"]], use_container_width=True)
