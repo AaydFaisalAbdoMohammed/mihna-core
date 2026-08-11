@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-===============================================================================
-DATABASE MODULE: Hybrid PostgreSQL (Cloud SQL) + SQLite Fallback
-7-Tables Schema: users, project_plans, plan_tasks, projects, feedback, payment_transactions, security_audit_logs
-===============================================================================
-"""
-
 import os
 import json
 import sqlite3
 import logging
-import datetime
 from urllib.parse import quote_plus
-
 import streamlit as st
+
+from utils import SecurityEngine
 
 try:
     import sqlalchemy
@@ -24,25 +17,27 @@ try:
 except ImportError:
     SQLALCHEMY_AVAILABLE = False
 
-from utils import get_env_or_secret, SecurityEngine
+SUPER_ADMIN_EMAIL = "eng.alhiadri2021@gmail.com"
 
+def get_env_or_secret(key, default_val=""):
+    if key in os.environ:
+        return os.environ[key]
+    try:
+        if hasattr(st, "secrets") and key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return default_val
 
-# =====================================================================
-# CONFIGURATION (from environment or secrets)
-# =====================================================================
 DB_USER = get_env_or_secret("DB_USER", "postgres")
 DB_PASS = get_env_or_secret("DB_PASSWORD", "101519Ayad@%")
 DB_NAME = get_env_or_secret("DB_NAME", "postgres")
 DB_HOST = get_env_or_secret("DB_HOST", "34.93.187.161")
 DB_PORT = get_env_or_secret("DB_PORT", "5432")
 INSTANCE_CONN = get_env_or_secret("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
+
 SQLITE_DB_FILE = "phoenix_app_data.db"
-SUPER_ADMIN_EMAIL = "eng.alhiadri2021@gmail.com"
 
-
-# =====================================================================
-# HYBRID DATABASE ENGINE
-# =====================================================================
 class HybridDatabaseEngine:
     _sqlalchemy_engine = None
 
@@ -159,12 +154,14 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
+                    
                     hashed_p = SecurityEngine.hash_password("123456")
                     conn.execute(text("""
                         INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin)
                         VALUES (:fn, :em, :ph, 99999, 'Enterprise Owner / Super Admin', 1, 1)
                         ON CONFLICT (email) DO UPDATE SET is_admin = 1, role = 'Enterprise Owner / Super Admin';
                     """), {"fn": "Alex Sterling (CEO & Owner)", "em": SUPER_ADMIN_EMAIL.lower().strip(), "ph": hashed_p})
+                    
                     conn.commit()
             except Exception as e:
                 logging.error(f"PostgreSQL Full Schema Init Warning: {e}")
@@ -179,6 +176,7 @@ class HybridDatabaseEngine:
             cursor.execute('''CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, rating INTEGER, suggested_price INTEGER, requested_feature TEXT, comments TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS payment_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT UNIQUE, gateway TEXT, plan_type TEXT, amount_paid REAL, currency TEXT DEFAULT 'USD', status TEXT, raw_response TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS security_audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action_type TEXT, ip_address TEXT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+
             cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL.lower().strip(),))
             if not cursor.fetchone():
                 hashed_p = SecurityEngine.hash_password("123456")
@@ -325,7 +323,7 @@ class HybridDatabaseEngine:
     def update_user_subscription(cls, email: str, role: str, credits: int = 9999) -> bool:
         email_clean = email.strip().lower()
         user = cls.get_user(email_clean)
-
+        
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
@@ -580,6 +578,4 @@ class HybridDatabaseEngine:
         except Exception: pass
         return feedbacks
 
-
-# Initialize database on module load
 HybridDatabaseEngine.init_db()
