@@ -1,29 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-===============================================================================
-AUTHENTICATION MODULE: Login and Signup Pages
-===============================================================================
-"""
-
 import time
-
+import os
 import streamlit as st
 
-from utils import SecurityEngine, T, inject_custom_css, generate_qr_code_image, APP_BASE_URL, SUPER_ADMIN_EMAIL
-from db import HybridDatabaseEngine
+from utils import SecurityEngine, generate_qr_code_image
+from db import HybridDatabaseEngine, SUPER_ADMIN_EMAIL
 
+APP_BASE_URL = os.getenv("APP_URL", "https://mihna-core-50335759464.asia-south1.run.app")
 
-# =====================================================================
-# AUTH PAGE RENDERER
-# =====================================================================
-def render_auth_page():
-    lang = st.session_state.lang
-    txt = T[lang]
-
-    st.markdown(f"<h1 style='text-align: center; font-family: Tajawal, sans-serif;'>🚀 {txt['title']}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; color: #94A3B8; font-size: 1.1rem;'>{txt['subtitle']}</p>", unsafe_allow_html=True)
+def render_auth_page(txt, lang):
+    st.markdown(f"<h1 style='text-align: center;'>🚀 {txt['title']}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #64748B;'>{txt['subtitle']}</p>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
 
     query_params = st.query_params
@@ -33,7 +22,7 @@ def render_auth_page():
     with col_center:
         tab_login_title = f"🔑 {txt['login_btn']}"
         tab_signup_title = f"✨ {txt['signup_btn']}"
-
+        
         if is_signup_mode:
             auth_tabs = st.tabs([tab_signup_title, tab_login_title])
             signup_tab_container = auth_tabs[0]
@@ -44,7 +33,7 @@ def render_auth_page():
             signup_tab_container = auth_tabs[1]
 
         with login_tab_container:
-            st.markdown("<div class='glass-card glass-card-builder'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             col_l1, col_l2 = st.columns([1.5, 1])
             with col_l1:
                 with st.form("login_form"):
@@ -52,7 +41,7 @@ def render_auth_page():
                     email_input = st.text_input(txt['email_label'], placeholder="name@domain.com").strip().lower()
                     password_input = st.text_input(txt['pass_label'], type="password", placeholder="••••••••")
                     submit_login = st.form_submit_button(txt['login_btn'], use_container_width=True)
-
+                    
                     if submit_login:
                         if not email_input or not password_input:
                             st.warning("⚠️ " + ("يرجى إدخال البريد وكلمة المرور." if lang=='ar' else "Please enter email and password."))
@@ -81,7 +70,7 @@ def render_auth_page():
             with col_l2:
                 st.markdown(f"### {txt['qr_scan_title']}")
                 st.caption(txt['qr_scan_caption'])
-
+                
                 clean_base_url = APP_BASE_URL.rstrip('/')
                 signup_url = f"{clean_base_url}/?mode=signup"
                 qr_bytes = generate_qr_code_image(signup_url)
@@ -90,7 +79,7 @@ def render_auth_page():
             st.markdown("</div>", unsafe_allow_html=True)
 
         with signup_tab_container:
-            st.markdown("<div class='glass-card glass-card-builder'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             with st.form("signup_form"):
                 st.subheader(txt['signup_welcome'])
                 new_username = st.text_input(txt['fullname_label'], placeholder="Alex Sterling").strip()
@@ -98,7 +87,7 @@ def render_auth_page():
                 new_password = st.text_input(txt['pass_label'], type="password", placeholder="••••••••")
                 confirm_password = st.text_input(txt['confirm_pass_label'], type="password", placeholder="••••••••")
                 submit_signup = st.form_submit_button(txt['signup_btn'], use_container_width=True)
-
+                
                 if submit_signup:
                     if not new_username:
                         st.error("❌ " + ("يرجى كتابة الاسم الكامل!" if lang=='ar' else "Full Name is strictly required!"))
