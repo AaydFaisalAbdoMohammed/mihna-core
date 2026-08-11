@@ -178,6 +178,19 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
+                    # PostgreSQL Live Twin Logs Table
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS live_twin_logs (
+                            id SERIAL PRIMARY KEY,
+                            user_email VARCHAR(255),
+                            project_name VARCHAR(255),
+                            safety_score INT,
+                            progress_percentage INT,
+                            escrow_released REAL,
+                            ledger_hash VARCHAR(256),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """))
                     
                     hashed_p = SecurityEngine.hash_password("123456")
                     conn.execute(text("""
@@ -201,7 +214,7 @@ class HybridDatabaseEngine:
             cursor.execute('''CREATE TABLE IF NOT EXISTS payment_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT UNIQUE, gateway TEXT, plan_type TEXT, amount_paid REAL, currency TEXT DEFAULT 'USD', status TEXT, raw_response TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS security_audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action_type TEXT, ip_address TEXT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             
-            # SQLite Engineering Tables
+            # SQLite Engineering Tables & Live Twin Tables
             cls.init_engineering_tables(conn)
 
             cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL.lower().strip(),))
@@ -219,7 +232,7 @@ class HybridDatabaseEngine:
     @staticmethod
     def init_engineering_tables(conn):
         """
-        إضافة جداول المشاريع الهندسية وحساب الكميات والمناقصات لـ SQLite
+        إضافة جداول المشاريع الهندسية وحساب الكميات والمناقصات والتوأم الرقمي لـ SQLite
         """
         cursor = conn.cursor()
         
@@ -249,7 +262,64 @@ class HybridDatabaseEngine:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        # جدول التوأم الرقمي ومطابقة الموقع (Live Twin Logs)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS live_twin_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT,
+                project_name TEXT,
+                safety_score INTEGER,
+                progress_percentage INTEGER,
+                escrow_released REAL,
+                ledger_hash TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         conn.commit()
+
+    @classmethod
+    def log_live_twin_inspection(cls, email: str, project_name: str, safety_score: int, progress: int, escrow_amount: float, ledger_hash: str) -> bool:
+        """
+        حفظ سجل المطابقة الميدانية وإفراج الضمان العقدي وتوثيق الـ Hash
+        """
+        email_clean = email.strip().lower() if email else "anonymous"
+        success = False
+
+        pg_engine = cls.get_sqlalchemy_engine()
+        if pg_engine:
+            try:
+                with pg_engine.connect() as conn:
+                    conn.execute(
+                        text("""INSERT INTO live_twin_logs (user_email, project_name, safety_score, progress_percentage, escrow_released, ledger_hash)
+                                VALUES (:em, :pn, :ss, :pr, :ea, :lh)"""),
+                        {"em": email_clean, "pn": project_name, "ss": safety_score, "pr": progress, "ea": escrow_amount, "lh": ledger_hash}
+                    )
+                    conn.commit()
+                    success = True
+            except Exception as e:
+                logging.error(f"PG Log Live Twin Inspection Error: {e}")
+
+        try:
+            conn = sqlite3.connect(SQLITE_DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute(
+                """INSERT INTO live_twin_logs (user_email, project_name, safety_score, progress_percentage, escrow_released, ledger_hash)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (email_clean, project_name, safety_score, progress, escrow_amount, ledger_hash)
+            )
+            conn.commit()
+            conn.close()
+            
+            user = cls.get_user(email_clean)
+            user_id = user['id'] if user else None
+            cls.log_audit(user_id, "LIVE_TWIN_INSPECT", f"Live Twin log created for '{project_name}' | Escrow: ${escrow_amount:,.2f} | Hash: {ledger_hash[:12]}...")
+            
+            success = True
+        except Exception as e:
+            logging.error(f"SQLite Log Live Twin Inspection Error: {e}")
+
+        return success
 
     @classmethod
     def save_engineering_project(cls, user_email: str, project_name: str, land_area: float, floors_count: int, built_area: float, estimated_boq_cost: float) -> int:
