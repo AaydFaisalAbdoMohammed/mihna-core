@@ -531,24 +531,23 @@ def apply_template(scope, domain, budget, days, pname):
 
 
 # =====================================================================
-# 8. ULTRA-LUXURIOUS GLASSMORPHIC CSS INJECTION
+# 8. ULTRA-LUXURIOUS GLASSMORPHIC CSS INJECTION (Silicon Valley Level)
 # =====================================================================
 def inject_custom_css():
     lang = st.session_state.lang
     theme = st.session_state.theme
     direction = "rtl" if lang == "ar" else "ltr"
-    align_text = "right" if lang == "ar" else "left"
 
+    # Dynamic variables based on theme to maintain compatibility
     if theme == "dark":
-        bg_main = "#070A12"
-        bg_sidebar = "#0F172A"
-        text_color = "#F8FAFC"
-        glass_bg = "rgba(15, 23, 42, 0.72)"
-        glass_border = "rgba(255, 255, 255, 0.12)"
-        glass_shadow = "0 20px 60px rgba(0, 0, 0, 0.55)"
-        glass_focus_bg = "rgba(24, 34, 58, 0.92)"
-        glass_focus_border = "rgba(99, 102, 241, 0.85)"
-        glass_focus_shadow = "0 0 45px rgba(99, 102, 241, 0.45), inset 0 0 20px rgba(99, 102, 241, 0.15)"
+        bg_main = "radial-gradient(circle at 20% 20%, rgba(30, 27, 75, 0.9) 0%, rgba(15, 23, 42, 1) 100%)"
+        text_color = "#f8fafc"
+        glass_bg = "rgba(30, 41, 59, 0.45)"
+        glass_border = "rgba(255, 255, 255, 0.08)"
+        glass_shadow = "0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+        glass_hover_border = "rgba(56, 189, 248, 0.3)"
+        glass_hover_shadow = "0 25px 60px rgba(14, 165, 233, 0.15)"
+        
         glow_colors = {
             "builder": "rgba(59,130,246,0.35)",
             "analytics": "rgba(16,185,129,0.35)",
@@ -559,15 +558,14 @@ def inject_custom_css():
             "ceo": "rgba(217,119,6,0.40)"
         }
     else:
-        bg_main = "#F8FAFC"
-        bg_sidebar = "#FFFFFF"
-        text_color = "#0F172A"
-        glass_bg = "rgba(255, 255, 255, 0.78)"
-        glass_border = "rgba(255, 255, 255, 0.80)"
-        glass_shadow = "0 20px 60px rgba(31, 38, 135, 0.08)"
-        glass_focus_bg = "rgba(255, 255, 255, 0.96)"
-        glass_focus_border = "rgba(37, 99, 235, 0.85)"
-        glass_focus_shadow = "0 0 45px rgba(37, 99, 235, 0.30), inset 0 0 20px rgba(37, 99, 235, 0.10)"
+        bg_main = "radial-gradient(circle at 20% 20%, rgba(241, 245, 249, 0.9) 0%, rgba(255, 255, 255, 1) 100%)"
+        text_color = "#0f172a"
+        glass_bg = "rgba(255, 255, 255, 0.65)"
+        glass_border = "rgba(255, 255, 255, 0.8)"
+        glass_shadow = "0 20px 50px rgba(31, 38, 135, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.5)"
+        glass_hover_border = "rgba(37, 99, 235, 0.5)"
+        glass_hover_shadow = "0 25px 60px rgba(37, 99, 235, 0.15)"
+        
         glow_colors = {
             "builder": "rgba(59,130,246,0.25)",
             "analytics": "rgba(16,185,129,0.25)",
@@ -578,135 +576,142 @@ def inject_custom_css():
             "ceo": "rgba(217,119,6,0.30)"
         }
 
+    # IMPORTANT: All CSS curly braces {} are doubled {{ }} to avoid Python f-string errors
     st.markdown(f"""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
-        * {{ font-family: 'Tajawal', sans-serif !important; }}
+        /* Import Modern Futuristic Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Tajawal:wght@400;500;700;800;900&display=swap');
 
+        * {{
+            font-family: 'Plus Jakarta Sans', 'Tajawal', sans-serif !important;
+            direction: {direction};
+        }}
+
+        /* Ultra Modern App Background */
         .stApp {{
-            background-color: {bg_main};
-            background-image: 
-                radial-gradient(at 10% 10%, rgba(99,102,241,0.08) 0px, transparent 50%),
-                radial-gradient(at 90% 20%, rgba(16,185,129,0.06) 0px, transparent 50%),
-                radial-gradient(at 50% 80%, rgba(139,92,246,0.07) 0px, transparent 50%);
+            background: {bg_main} !important;
             color: {text_color};
         }}
 
-        /* --- Glass Cards --- */
+        /* Glassmorphism Cards */
         .glass-card {{
-            background: {glass_bg};
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
-            border-radius: 32px;
-            border: 1px solid {glass_border};
-            box-shadow: {glass_shadow};
-            padding: 28px;
-            margin-bottom: 24px;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            background: {glass_bg} !important;
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            border: 1px solid {glass_border} !important;
+            border-radius: 20px !important;
+            padding: 24px !important;
+            margin-bottom: 20px !important;
+            box-shadow: {glass_shadow} !important;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
             position: relative;
             overflow: hidden;
         }}
-        .glass-card::before {{
-            content: '';
-            position: absolute;
-            top: -30%;
-            right: -10%;
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            z-index: 0;
-            pointer-events: none;
-        }}
-        .glass-card::after {{
-            content: '';
-            position: absolute;
-            bottom: -20%;
-            left: -10%;
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            z-index: 0;
-            pointer-events: none;
-        }}
-        .glass-card:hover, .glass-card:focus-within {{
-            background: {glass_focus_bg};
-            border-color: {glass_focus_border};
-            box-shadow: {glass_focus_shadow};
-            transform: translateY(-4px) scale(1.005);
+
+        .glass-card:hover {{
+            border-color: {glass_hover_border} !important;
+            transform: translateY(-3px) scale(1.005);
+            box-shadow: {glass_hover_shadow} !important;
         }}
 
-        .glass-card-builder {{ border-left: 5px solid #3B82F6; }}
-        .glass-card-builder::before {{ background: radial-gradient(circle, {glow_colors['builder']} 0%, transparent 70%); }}
-        .glass-card-builder:hover {{ border-color: #3B82F6; box-shadow: 0 0 40px {glow_colors['builder']}; }}
+        /* Keep the custom colored borders and glows for specific cards */
+        .glass-card-builder {{ border-left: 5px solid #3B82F6 !important; }}
+        .glass-card-analytics {{ border-left: 5px solid #10B981 !important; }}
+        .glass-card-editor {{ border-left: 5px solid #8B5CF6 !important; }}
+        .glass-card-feedback {{ border-left: 5px solid #F59E0B !important; }}
+        .glass-card-account {{ border-left: 5px solid #EC4899 !important; }}
+        .glass-card-cloudsql {{ border-left: 5px solid #06B6D4 !important; }}
+        .glass-card-ceo {{ border-left: 5px solid #D97706 !important; }}
 
-        .glass-card-analytics {{ border-left: 5px solid #10B981; }}
-        .glass-card-analytics::before {{ background: radial-gradient(circle, {glow_colors['analytics']} 0%, transparent 70%); }}
-        .glass-card-analytics:hover {{ border-color: #10B981; box-shadow: 0 0 40px {glow_colors['analytics']}; }}
-
-        .glass-card-editor {{ border-left: 5px solid #8B5CF6; }}
-        .glass-card-editor::before {{ background: radial-gradient(circle, {glow_colors['editor']} 0%, transparent 70%); }}
-        .glass-card-editor:hover {{ border-color: #8B5CF6; box-shadow: 0 0 40px {glow_colors['editor']}; }}
-
-        .glass-card-feedback {{ border-left: 5px solid #F59E0B; }}
-        .glass-card-feedback::before {{ background: radial-gradient(circle, {glow_colors['feedback']} 0%, transparent 70%); }}
-        .glass-card-feedback:hover {{ border-color: #F59E0B; box-shadow: 0 0 40px {glow_colors['feedback']}; }}
-
-        .glass-card-account {{ border-left: 5px solid #EC4899; }}
-        .glass-card-account::before {{ background: radial-gradient(circle, {glow_colors['account']} 0%, transparent 70%); }}
-        .glass-card-account:hover {{ border-color: #EC4899; box-shadow: 0 0 40px {glow_colors['account']}; }}
-
-        .glass-card-cloudsql {{ border-left: 5px solid #06B6D4; }}
-        .glass-card-cloudsql::before {{ background: radial-gradient(circle, {glow_colors['cloudsql']} 0%, transparent 70%); }}
-        .glass-card-cloudsql:hover {{ border-color: #06B6D4; box-shadow: 0 0 40px {glow_colors['cloudsql']}; }}
-
-        .glass-card-ceo {{ border-left: 5px solid #D97706; }}
-        .glass-card-ceo::before {{ background: radial-gradient(circle, {glow_colors['ceo']} 0%, transparent 70%); }}
-        .glass-card-ceo:hover {{ border-color: #D97706; box-shadow: 0 0 40px {glow_colors['ceo']}; }}
-
-        [data-testid="stSidebarCollapseButton"] {{
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255,255,255,0.05) !important;
-            backdrop-filter: blur(10px);
-            border-radius: 50% !important;
-            width: 44px !important;
-            height: 44px !important;
-            border: 1px solid {glass_border} !important;
-            color: #94A3B8 !important;
-            transition: all 0.3s ease;
-            z-index: 999999 !important;
-        }}
-        [data-testid="stSidebarCollapseButton"]:hover {{
-            background: rgba(255,255,255,0.15) !important;
-            box-shadow: 0 0 25px {glow_colors['builder']};
-            transform: scale(1.1);
+        /* Neon Gradient Buttons */
+        .stButton>button {{
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 12px 24px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.5px !important;
+            box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3) !important;
+            transition: all 0.3s ease !important;
         }}
 
-        .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }}
-        .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(139,92,246,0.3); }}
-        .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }}
+        .stButton>button:hover {{
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) !important;
+            box-shadow: 0 6px 28px rgba(139, 92, 246, 0.5) !important;
+            transform: translateY(-2px);
+        }}
 
+        /* Glow Badges */
+        .badge-purple {{
+            background: rgba(168, 85, 247, 0.15);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+        }}
+
+        .badge-gold {{
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+        }}
+        
+        .badge-green {{ 
+            background: rgba(16, 185, 129, 0.15); 
+            color: #34d399; 
+            border: 1px solid rgba(16, 185, 129, 0.3); 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-weight: 600; 
+            font-size: 0.85rem; 
+            display: inline-block; 
+        }}
+
+        /* Checkout & Upgrade Custom CTA Buttons */
         .checkout-btn {{
-            display: block; width: 100%; text-align: center;
-            background: linear-gradient(135deg, #2563EB, #1D4ED8);
-            color: white !important; padding: 12px 16px; border-radius: 14px;
-            font-weight: bold; text-decoration: none; border: none; font-size: 14px;
-            box-shadow: 0 6px 20px rgba(37,99,235,0.35);
+            display: block;
+            text-align: center;
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            color: white !important;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
             transition: all 0.3s ease;
         }}
-        .checkout-btn:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(37,99,235,0.5); }}
+        .checkout-btn:hover {{
+            box-shadow: 0 6px 22px rgba(16, 185, 129, 0.5);
+            transform: translateY(-2px);
+        }}
 
         .checkout-btn-yearly {{
-            display: block; width: 100%; text-align: center;
-            background: linear-gradient(135deg, #D97706, #B45309);
-            color: white !important; padding: 12px 16px; border-radius: 14px;
-            font-weight: bold; text-decoration: none; border: none; font-size: 14px;
-            box-shadow: 0 6px 20px rgba(217,119,6,0.35);
+            display: block;
+            text-align: center;
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+            color: white !important;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
             transition: all 0.3s ease;
         }}
-        .checkout-btn-yearly:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(217,119,6,0.5); }}
+        .checkout-btn-yearly:hover {{
+            box-shadow: 0 6px 22px rgba(245, 158, 11, 0.5);
+            transform: translateY(-2px);
+        }}
 
+        /* Modern Tabs to match Glassmorphism */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 10px;
             background: {glass_bg};
@@ -728,8 +733,8 @@ def inject_custom_css():
             color: #3B82F6;
         }}
         .stTabs [aria-selected="true"] {{
-            background: rgba(59,130,246,0.2);
-            border-bottom: 3px solid #3B82F6;
+            background: rgba(59,130,246,0.2) !important;
+            border-bottom: 3px solid #3B82F6 !important;
         }}
     </style>
     """, unsafe_allow_html=True)
