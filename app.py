@@ -203,9 +203,6 @@ def apply_template(scope, domain, budget, days, pname):
 # 🔥 المحرك الجيومكاني العالمي الديناميكي (DYNAMIC GEO-GLOBAL CONTRACTOR ENGINE)
 # =============================================================================
 def get_geo_contractors(user_location, budget_total):
-    """
-    توليد مقاولين وشركات متخصصة ديناميكياً وفق موقع المستخدم الجغرافي بأي مكان في العالم.
-    """
     loc_raw = user_location.strip()
     if not loc_raw:
         loc_raw = "Global Metropolitan District"
@@ -390,7 +387,6 @@ def render_engineering_tab(txt):
                 col_img, col_analysis = st.columns([1, 1])
                 
                 with col_img:
-                    # FIX: Corrected use_container_width=True to eliminate Streamlit error completely
                     st.image(uploaded_file, caption="الرفع الميداني الحالي", use_container_width=True)
                     img_bytes = uploaded_file.getvalue()
                     
@@ -963,7 +959,7 @@ def main():
             st.divider()
 
             st.markdown(f"### {txt['demands_title']}")
-                admin_fb = HybridDatabaseEngine.get_all_feedback()
+            admin_fb = HybridDatabaseEngine.get_all_feedback()  # 👈 FIX: Indentation perfectly aligned (12 spaces)
             if admin_fb:
                 df_admin_fb = pd.DataFrame(admin_fb)
                 st.dataframe(df_admin_fb[["user_email", "rating", "suggested_price", "requested_feature", "comments", "created_at"]], use_container_width=True)
