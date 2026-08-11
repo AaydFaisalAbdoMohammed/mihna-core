@@ -1966,23 +1966,28 @@ def main():
                             time.sleep(1)
                             st.rerun()
                         else:
-                            st.error("❌ Email address not found.")
+                            st.error("❌ Email address not found or database update failed.")
+                    else:
+                        st.warning("⚠️ Please specify an email address.")
             st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['users_log_title']}")
             if all_users:
-                df_admin_users = pd.DataFrame(all_users)
-                st.dataframe(df_admin_users[["id", "full_name", "email", "role", "credits", "is_subscribed", "is_admin", "created_at"]], use_container_width=True)
-
-            st.divider()
-
-            st.markdown(f"### {txt['demands_title']}")
-            admin_fb = HybridDatabaseEngine.get_all_feedback()
-            if admin_fb:
-                df_admin_fb = pd.DataFrame(admin_fb)
-                st.dataframe(df_admin_fb[["user_email", "rating", "suggested_price", "requested_feature", "comments", "created_at"]], use_container_width=True)
+                st.dataframe(pd.DataFrame(all_users), use_container_width=True)
+            else:
+                st.info("No registered users found.")
             st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
+            st.markdown(f"### {txt['demands_title']}")
+            all_feedback_demands = HybridDatabaseEngine.get_all_feedback()
+            if all_feedback_demands:
+                st.dataframe(pd.DataFrame(all_feedback_demands), use_container_width=True)
+            else:
+                st.info("No user feedback records available.")
+            st.markdown("</div>", unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
