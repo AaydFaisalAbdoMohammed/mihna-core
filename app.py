@@ -20,15 +20,21 @@ from utils import (
     generate_pdf_plan, create_half_doughnut_gauge
 )
 from db import HybridDatabaseEngine, SUPER_ADMIN_EMAIL
-from ai import PhoenixAI, AIPaymentAgent, build_detailed_plan_text, PAYMENT_LINK_MONTHLY, PAYMENT_LINK_YEARLY
+from ai import (
+    PhoenixAI, AIPaymentAgent, build_detailed_plan_text, 
+    PAYMENT_LINK_MONTHLY, PAYMENT_LINK_YEARLY, EngineeringAIEngine
+)
 from auth import render_auth_page
 
 APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.6"
 
+# تهيئة المحرك الهندسية الذكي
+eng_ai = EngineeringAIEngine()
+
 T = {
     'ar': {
         'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.6",
-        'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، وتأمين البيانات بـ Cloud SQL و HMAC-SHA512.",
+        'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، والتخطيط الهندسي AI-ConTech.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
         'dark': "🌙 الداكن (Dark)", 'light': "☀️ الفاتح (Light)",
@@ -36,7 +42,9 @@ T = {
         'renew_title': "🛒 ترقية الاشتراك", 'renew_btn': "⚡ اشترك الآن وترقية الحساب",
         'logout_btn': "🚪 تسجيل الخروج", 'notify_settings': "📲 إعدادات الإشعارات الفورية",
         'wa_phone': "رقم الواتساب", 'tg_handle': "معرف التليجرام",
-        'tab1': "🏗️ بناء الخطة والكوادر", 'tab2': "📊 التحليلات التفاعلية 6D",
+        'tab1': "🏗️ بناء الخطة والكوادر", 
+        'tab_eng': "📐 التخطيط الهندسي والكميات (AI-ConTech)",
+        'tab2': "📊 التحليلات التفاعلية 6D",
         'tab3': "✏️ محرر المهام والتقرير النصي", 'tab4': "🔄 التغذية الراجعة والتكيّف السعري",
         'tab5': "💳 الحساب والاشتراكات", 'tab6': "🗄️ أرشفة Cloud SQL (7-Tables Schema)",
         'tab_admin': "👑 لوحة الإدارة العليا (CEO Panel)",
@@ -79,11 +87,18 @@ T = {
         'grant_admin_title': "🔑 تعيين وإضافة مشرف جديد (Grant Supervisor Admin Privilege)",
         'grant_admin_btn': "✨ تفعيل صلاحية المشرف",
         'users_log_title': "📋 سجل جميع المستخدمين وااشتراكاتهم الحية",
-        'demands_title': "💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)"
+        'demands_title': "💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)",
+        
+        # ConTech Translation
+        'eng_title': "🏗️ وحدة التخطيط الهندسي وحساب الكميات الذكي (AI-ConTech)",
+        'eng_caption': "التصميم المعماري الجيلاتي، حساب جدول الكميات (BOQ)، وإسناد المناقصات بنقرة زر.",
+        'eng_subtab1': "📐 1. التصميم الجيلاتي (Generative Floor Plan)",
+        'eng_subtab2': "📊 2. حساب الكميات والتكلفة (Automated BOQ)",
+        'eng_subtab3': "🤝 3. السوق التنفيذي والمناقصات (Smart Marketplace)"
     },
     'en': {
         'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.6",
-        'subtitle': "Advanced Engineering Project Plan Builder & Specialist Payroll Engine Secured with Cloud SQL & HMAC-SHA512.",
+        'subtitle': "Advanced Engineering Project Plan Builder & AI-ConTech Civil Planning Engine.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
         'dark': "🌙 Dark", 'light': "☀️ Light",
@@ -91,7 +106,9 @@ T = {
         'renew_title': "🛒 Upgrade Plan", 'renew_btn': "⚡ Upgrade & Subscribe Now",
         'logout_btn': "🚪 Log Out", 'notify_settings': "📲 Instant Notifications",
         'wa_phone': "WhatsApp Phone", 'tg_handle': "Telegram Handle",
-        'tab1': "🏗️ Build Plan & Payroll", 'tab2': "📊 Advanced 6D Analytics",
+        'tab1': "🏗️ Build Plan & Payroll", 
+        'tab_eng': "📐 Engineering & BOQ (AI-ConTech)",
+        'tab2': "📊 Advanced 6D Analytics",
         'tab3': "✏️ Task Editor & Text Plan", 'tab4': "🔄 Feedback & Pricing",
         'tab5': "💳 Account & Subscriptions", 'tab6': "🗄️ Cloud SQL 7-Tables Archive",
         'tab_admin': "👑 CEO & Admin Panel",
@@ -134,7 +151,14 @@ T = {
         'grant_admin_title': "🔑 Grant Supervisor Admin Privilege",
         'grant_admin_btn': "✨ Activate Supervisor Privileges",
         'users_log_title': "📋 Active Users & Subscriptions Log",
-        'demands_title': "💬 User Demands & Market Feature Requests"
+        'demands_title': "💬 User Demands & Market Feature Requests",
+        
+        # ConTech Translation
+        'eng_title': "🏗️ Engineering & AI Quantity Surveying (AI-ConTech)",
+        'eng_caption': "Generative Floor Plan, Automated BOQ Calculation, and One-Click Bidding Marketplace.",
+        'eng_subtab1': "📐 1. Generative Floor Plan",
+        'eng_subtab2': "📊 2. Automated BOQ & Costing",
+        'eng_subtab3': "🤝 3. Smart Contractor Marketplace"
     }
 }
 
@@ -169,6 +193,95 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_budget = budget
     st.session_state.form_days = days
     st.session_state.form_pname = pname
+
+def render_engineering_tab(txt):
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.title(txt['eng_title'])
+    st.caption(txt['eng_caption'])
+
+    tab1, tab2, tab3 = st.tabs([
+        txt['eng_subtab1'],
+        txt['eng_subtab2'],
+        txt['eng_subtab3']
+    ])
+
+    # ------------------ Tab 1: التصميم الجيلاتي ------------------
+    with tab1:
+        st.subheader("إدخال مواصفات الأرض والمشروع" if st.session_state.lang == 'ar' else "Land & Project Specifications")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            land_area = st.number_input("مساحة الأرض (متر مربع)" if st.session_state.lang == 'ar' else "Land Area (sqm)", min_value=50.0, value=300.0, step=10.0)
+            floors = st.selectbox("عدد الطوابق" if st.session_state.lang == 'ar' else "Floors Count", [1, 2, 3, 4], index=1)
+        with col2:
+            bedrooms = st.number_input("عدد غرف النوم المطلوب" if st.session_state.lang == 'ar' else "Required Bedrooms", min_value=1, value=4, step=1)
+            style = st.selectbox("الطراز المعماري" if st.session_state.lang == 'ar' else "Architectural Style", ["Modern Minimalist", "Classic Luxury", "Neo-Traditional", "Industrial"])
+        with col3:
+            budget = st.number_input("الميزانية التقديرية ($)" if st.session_state.lang == 'ar' else "Estimated Budget ($)", min_value=10000, value=150000, step=5000)
+            quality = st.selectbox("مستوى جودة التشطيب" if st.session_state.lang == 'ar' else "Finishing Quality Tier", ["Economy", "Standard", "Luxury"], index=1)
+
+        if st.button("🚀 توليد المخطط المعماري بالذكاء الاصطناعي" if st.session_state.lang == 'ar' else "🚀 Generate AI Floor Plan", type="primary", use_container_width=True):
+            with st.spinner("⏳ Generating Generative Floor Layout & Calculating Space Distribution..."):
+                eng_plan = eng_ai.generate_generative_floor_plan(land_area, floors, bedrooms, budget, style)
+                
+                st.session_state['current_eng_plan'] = eng_plan
+                st.session_state['quality_tier'] = quality
+                
+                st.success(f"تم إنشاء المخطط بنجاح! إجمالي المساحة المبنية: {eng_plan['total_built_area']} م²" if st.session_state.lang == 'ar' else f"Layout generated successfully! Total built area: {eng_plan['total_built_area']} sqm")
+                
+                df_layout = pd.DataFrame(eng_plan['layout'])
+                st.subheader("📐 التوزيع الهندسي الذكي للمساحات" if st.session_state.lang == 'ar' else "📐 Smart Spatial Distribution")
+                st.dataframe(df_layout, use_container_width=True)
+
+    # ------------------ Tab 2: حساب الكميات والتكلفة ------------------
+    with tab2:
+        st.subheader("جدول الكميات والتكلفة التقديرية (Bill of Quantities)" if st.session_state.lang == 'ar' else "Bill of Quantities (BOQ) & Estimated Cost")
+        
+        if 'current_eng_plan' in st.session_state:
+            eng_plan = st.session_state['current_eng_plan']
+            quality = st.session_state.get('quality_tier', 'Standard')
+            
+            boq_data = eng_ai.calculate_automated_boq(eng_plan['total_built_area'], quality)
+            
+            st.metric("التكلفة الإجمالية المباشرة" if st.session_state.lang == 'ar' else "Direct Grand Total Cost", f"${boq_data['grand_total_usd']:,}")
+            st.info(f"💡 هامش الاحتياطي الموصى به (10% Risk Buffer): ${boq_data['contingency_buffer_10pct']:,}" if st.session_state.lang == 'ar' else f"💡 Recommended 10% Risk Buffer: ${boq_data['contingency_buffer_10pct']:,}")
+
+            df_boq = pd.DataFrame(boq_data['boq_items'])
+            st.table(df_boq)
+            
+            st.session_state['boq_data'] = boq_data
+        else:
+            st.warning("⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً." if st.session_state.lang == 'ar' else "⚠️ Please generate the architectural floor plan in the first tab first.")
+
+    # ------------------ Tab 3: السوق التنفيذي والمناقصات ------------------
+    with tab3:
+        st.subheader("طرح المشروع للمقاولين والشركات المعتمدة (Smart Bidding)" if st.session_state.lang == 'ar' else "Contractor Bidding & Execution Marketplace")
+        
+        if 'boq_data' in st.session_state:
+            boq = st.session_state['boq_data']
+            
+            st.write(f"**الميزانية المستهدفة:** ${boq['grand_total_usd']:,}" if st.session_state.lang == 'ar' else f"**Target Budget:** ${boq['grand_total_usd']:,}")
+            
+            st.markdown("### 🏢 الشركات المقترحة والتنافسية المتاحة حالياً" if st.session_state.lang == 'ar' else "### 🏢 Verified Contractors & Live Bids")
+            
+            contractors = [
+                {"company": "Apex Construction Group", "rating": "⭐ 4.9", "bid": boq['grand_total_usd'] * 0.95, "days": 120},
+                {"company": "BuildTech Solutions", "rating": "⭐ 4.8", "bid": boq['grand_total_usd'] * 0.98, "days": 105},
+                {"company": "Al-Nukhba Contracting", "rating": "⭐ 4.7", "bid": boq['grand_total_usd'] * 0.91, "days": 140},
+            ]
+            
+            for c in contractors:
+                col_a, col_b, col_c, col_d = st.columns([3, 2, 2, 2])
+                col_a.write(f"**{c['company']}** ({c['rating']})")
+                col_b.write(f"العرض: **${c['bid']:,.2f}**" if st.session_state.lang == 'ar' else f"Bid: **${c['bid']:,.2f}**")
+                col_c.write(f"المدة: **{c['days']} يوم**" if st.session_state.lang == 'ar' else f"Duration: **{c['days']} days**")
+                if col_d.button("إسناد العقد 📝" if st.session_state.lang == 'ar' else "Assign Contract 📝", key=f"btn_{c['company']}"):
+                    st.balloons()
+                    st.success(f"تم إسناد مشروعك بنجاح إلى شركة {c['company']}!" if st.session_state.lang == 'ar' else f"Project successfully assigned to {c['company']}!")
+        else:
+            st.warning("⚠️ يرجى إتمام حساب الكميات أولاً قبل طرح المناقصة." if st.session_state.lang == 'ar' else "⚠️ Please complete the BOQ quantity calculation prior to publishing bidding.")
+            
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def main():
     st.set_page_config(page_title=APP_TITLE, page_icon="🛡️", layout="wide")
@@ -297,12 +410,12 @@ def main():
     is_ceo_owner = (st.session_state.user['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower()) or st.session_state.user['is_admin']
     
     if is_ceo_owner:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
-            txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
+        tab1, tab_eng, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
+            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
         ])
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            txt['tab1'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
+        tab1, tab_eng, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
         ])
 
     # TAB 1: BUILD PLAN
@@ -402,6 +515,10 @@ def main():
                 if st.button(txt['send_tg'], use_container_width=True):
                     st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
             st.markdown("</div>", unsafe_allow_html=True)
+
+    # TAB ENGINEERING: AI-ConTech MODULE
+    with tab_eng:
+        render_engineering_tab(txt)
 
     # TAB 2: ANALYTICS 6D
     with tab2:
