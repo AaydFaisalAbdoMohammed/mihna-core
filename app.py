@@ -290,12 +290,14 @@ def render_engineering_tab(txt):
     # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية (Live Twin) ------------------
     with tab3:
         st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
-        st.caption("ربط التخطيط المعماري بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
+        st.caption("ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
         
-        if not st.session_state.get('current_plan'):
-            st.warning("⚠️ يرجى توليد خطة مشروع أو اختيار مشروع محدد أولاً للبدء بالمحاكاة الميدانية.")
+        # التعديل الجذري: الاعتماد الفوري على مخرجات التخطيط الهندسي AI-ConTech بدلاً من خطة عامة خارجية
+        if 'current_eng_plan' not in st.session_state:
+            st.warning("⚠️ يرجى توليد المخطط المعماري في (التصميم الجيلاتي) أولاً للتمكن من تشغيل المحاكاة الميدانية والتوأم الرقمي.")
         else:
-            plan = st.session_state.current_plan
+            eng_plan = st.session_state['current_eng_plan']
+            boq_data = st.session_state.get('boq_data', {})
             
             st.markdown("### 1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)")
             
@@ -310,7 +312,14 @@ def render_engineering_tab(txt):
 
             if run_sim or 'stress_result' in st.session_state:
                 if run_sim:
-                    st.session_state.stress_result = LiveTwinEngine.analyze_structural_stress(plan, soil_type, seismic_risk)
+                    # بناء هيكل مؤقت متوافق مع محرك المحاكاة مستمد من المخطط الهندسي
+                    pseudo_plan = {
+                        "project_name": "مشروع التصميم الهندسي المعماري",
+                        "budget": boq_data.get('grand_total_usd', 150000),
+                        "target_days": 120,
+                        "tasks": [{"task": item['item'], "cost": item['total_price']} for item in boq_data.get('boq_items', [])]
+                    }
+                    st.session_state.stress_result = LiveTwinEngine.analyze_structural_stress(pseudo_plan, soil_type, seismic_risk)
                 
                 res = st.session_state.stress_result
                 
@@ -338,7 +347,8 @@ def render_engineering_tab(txt):
                 with col_analysis:
                     if st.button("🔍 مطابقة الصورة مع الجدول الزمني والـ BOQ", type="primary", use_container_width=True, key="sub_inspect_btn"):
                         with st.spinner("جاري تحليل العناصر الإنشائية والمطابقة بالذكاء الاصطناعي..."):
-                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, plan.get('tasks', []))
+                            mock_tasks = [{"task": item['item']} for item in boq_data.get('boq_items', [])]
+                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, mock_tasks)
                             st.session_state.last_inspection = inspection
                             
             if 'last_inspection' in st.session_state:
@@ -354,7 +364,7 @@ def render_engineering_tab(txt):
                 st.write("---")
                 st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & Immutable Escrow)")
                 
-                ledger_hash = SecurityEngine.generate_smart_contract_hash(plan['project_name'], insp['completion_percentage'], insp['smart_contract_release_amount'])
+                ledger_hash = SecurityEngine.generate_smart_contract_hash("المخطط الهندسي المعماري الذكي", insp['completion_percentage'], insp['smart_contract_release_amount'])
                 
                 st.markdown(f"""
                 <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
@@ -368,7 +378,7 @@ def render_engineering_tab(txt):
                 if st.button("🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر", use_container_width=True, key="sub_escrow_btn"):
                     HybridDatabaseEngine.log_live_twin_inspection(
                         st.session_state.user['email'],
-                        plan['project_name'],
+                        "المخطط الهندسي المعماري الذكي",
                         st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
                         insp['completion_percentage'],
                         insp['smart_contract_release_amount'],
@@ -533,7 +543,6 @@ def main():
 
     is_ceo_owner = (st.session_state.user['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower()) or st.session_state.user['is_admin']
     
-    # تم تحديث مصفوفة التبويبات الرئيسية (إزالة تبويب التوائم الرقمي المنفصل وجعله تحت AI-ConTech)
     if is_ceo_owner:
         tab1, tab_eng, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
             txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
@@ -641,7 +650,7 @@ def main():
                     st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # TAB ENGINEERING: AI-ConTech MODULE (يحتوي بداخله على تبويب التوأم الرقمي)
+    # TAB ENGINEERING: AI-ConTech MODULE
     with tab_eng:
         render_engineering_tab(txt)
 
