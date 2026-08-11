@@ -3,7 +3,7 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.7 - ULTRA ULTIMATE SaaS
+© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.8 - ULTRA ULTIMATE SaaS
 ===============================================================================
 """
 
@@ -26,15 +26,15 @@ from ai import (
 )
 from auth import render_auth_page
 
-APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ULTRA ENTERPRISE v13.7"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ULTRA ENTERPRISE v13.8"
 
 # تهيئة المحرك الهندسي الذكي
 eng_ai = EngineeringAIEngine()
 
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.7 (Ultra Global Edition)",
-        'subtitle': "المنصة العالمية الأقوى والأكثر ذكاءً لهندسة خطط المشاريع، التوأم الرقمي الميداني، والذكاء الاصطناعي التوليدي AI-ConTech.",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
+        'subtitle': "المنصة الذكية لهندسة المشاريع، التوأم الرقمي الميداني، والربط الجيومكاني للشركات والمقاولين المحليين.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
         'dark': "🌙 الداكن (Dark)", 'light': "☀️ الفاتح (Light)",
@@ -44,7 +44,6 @@ T = {
         'wa_phone': "رقم الواتساب", 'tg_handle': "معرف التليجرام",
         'tab1': "🏗️ بناء الخطة والكوادر", 
         'tab_eng': "📐 التخطيط الهندسي والكميات (AI-ConTech)",
-        'tab_live': "🔮 التوأم الرقمي والمحاكاة الحية",
         'tab2': "📊 التحليلات التفاعلية 6D",
         'tab3': "✏️ محرر المهام والتقرير النصي", 'tab4': "🔄 التغذية الراجعة والتكيّف السعري",
         'tab5': "💳 الحساب والاشتراكات", 'tab6': "🗄️ أرشفة Cloud SQL (7-Tables Schema)",
@@ -81,7 +80,7 @@ T = {
         'account_info_title': "👤 بيانات الحساب",
         'upgrade_plans_title': "🛒 خطط الترقية المتاحة (التسيعر الديناميكي المكيّف)",
         'payment_logs_title': "📩 سجل إشعارات الدفع والعمليات الذكية",
-        'cloudsql_title': "🗄️ الأرشيف والتكامل مع Cloud SQL (7-Tables Schema)",
+        'cloudsql_title': "🗄️ الأرشيف والت التكامل مع Cloud SQL (7-Tables Schema)",
         'cloudsql_caption': "عرض أحدث المشاريع المسجلة في هيكل الجداول الكامل من الصور السبع.",
         'ceo_title': "👑 لوحة قيادة الإدارة العليا والمالك (CEO Control Center)",
         'ceo_caption': "مرحباً بك! هذه الصفحة مخفية عن جميع المستخدمين العاديين وتظهر فقط للمالك والمشرفين المعتمدين.",
@@ -91,15 +90,16 @@ T = {
         'demands_title': "💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)",
         
         # ConTech Translation
-        'eng_title': "🏗️ وحدة التخطيط الهندسي وحساب الكميات الذكي (AI-ConTech)",
-        'eng_caption': "التصميم المعماري الجيلاتي، حساب جدول الكميات (BOQ)، وإسناد المناقصات بنقرة زر.",
+        'eng_title': "🏗️ وحدة التخطيط الهندسي وحساب الكميات والتوائم الرقمي (AI-ConTech & Live Twin)",
+        'eng_caption': "التصميم المعماري، حساب جدول الكميات (BOQ)، محاكاة الموقع والمقاولون المحليون.",
         'eng_subtab1': "📐 1. التصميم الجيلاتي (Generative Floor Plan)",
         'eng_subtab2': "📊 2. حساب الكميات والتكلفة (Automated BOQ)",
-        'eng_subtab3': "🤝 3. السوق التنفيذي والمناقصات (Smart Marketplace)"
+        'eng_subtab3': "🔮 3. التوأم الرقمي والمحاكاة الحية (Live Twin & Stress)",
+        'eng_subtab4': "🤝 4. السوق التنفيذي والمقاولون المحليون (Geo-Local Bidding)"
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.7 (Ultra Global Edition)",
-        'subtitle': "The Ultimate Global AI Architecture & Field Twin Platform with AI-ConTech Civil Planning Engine.",
+        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
+        'subtitle': "The Ultimate Global AI Architecture & Field Twin Platform with Geo-Localized AI-ConTech Engine.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
         'dark': "🌙 Dark", 'light': "☀️ Light",
@@ -109,7 +109,6 @@ T = {
         'wa_phone': "WhatsApp Phone", 'tg_handle': "Telegram Handle",
         'tab1': "🏗️ Build Plan & Payroll", 
         'tab_eng': "📐 Engineering & BOQ (AI-ConTech)",
-        'tab_live': "🔮 AI Live Twin",
         'tab2': "📊 Advanced 6D Analytics",
         'tab3': "✏️ Task Editor & Text Plan", 'tab4': "🔄 Feedback & Pricing",
         'tab5': "💳 Account & Subscriptions", 'tab6': "🗄️ Cloud SQL 7-Tables Archive",
@@ -156,11 +155,12 @@ T = {
         'demands_title': "💬 User Demands & Market Feature Requests",
         
         # ConTech Translation
-        'eng_title': "🏗️ Engineering & AI Quantity Surveying (AI-ConTech)",
-        'eng_caption': "Generative Floor Plan, Automated BOQ Calculation, and One-Click Bidding Marketplace.",
+        'eng_title': "🏗️ Engineering, AI Quantity Surveying & Live Twin (AI-ConTech)",
+        'eng_caption': "Generative Floor Plan, Automated BOQ, Live Twin Simulation, and Contractor Bidding.",
         'eng_subtab1': "📐 1. Generative Floor Plan",
         'eng_subtab2': "📊 2. Automated BOQ & Costing",
-        'eng_subtab3': "🤝 3. Smart Contractor Marketplace"
+        'eng_subtab3': "🔮 3. Live Twin & Stress Simulation",
+        'eng_subtab4': "🤝 4. Geo-Localized Contractor Marketplace"
     }
 }
 
@@ -196,18 +196,50 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_days = days
     st.session_state.form_pname = pname
 
+# دالة جلب الشركات المقترحة ديناميكياً حسب موقع المستخدم (المحافظة / الدولة)
+def get_geo_contractors(user_location, budget_total):
+    loc = user_location.strip().lower()
+    
+    if "تعز" in loc or "taizz" in loc:
+        contractors = [
+            {"company": "مجموعة تعز الحديثة للمقاولات الهندسية", "location": "تعز - شارع جمال", "rating": "⭐ 4.9", "bid": budget_total * 0.94, "days": 110},
+            {"company": "شركة الأهدل للتصميم والإنشاءات المعمارية", "location": "تعز - الحوبان", "rating": "⭐ 4.8", "bid": budget_total * 0.97, "days": 100},
+            {"company": "مكتب الهندسية المتكاملة والمقاولات", "location": "تعز - بئر باشا", "rating": "⭐ 4.7", "bid": budget_total * 0.90, "days": 125},
+        ]
+    elif "عدن" in loc or "aden" in loc:
+        contractors = [
+            {"company": "شركة عدن الكبرى للمقاولات العامة", "location": "عدن - كريتر", "rating": "⭐ 4.9", "bid": budget_total * 0.95, "days": 105},
+            {"company": "مكتب التواهي الهندسي للإنشاءات", "location": "عدن - التواهي", "rating": "⭐ 4.8", "bid": budget_total * 0.92, "days": 115},
+            {"company": "الخليج العربي للمقاولات والتطوير", "location": "عدن - المنصورة", "rating": "⭐ 4.7", "bid": budget_total * 0.98, "days": 95},
+        ]
+    elif "صنعاء" in loc or "sanaa" in loc:
+        contractors = [
+            {"company": "شركة سبأ القابضة للمقاولات الهندسية", "location": "صنعاء - حدة", "rating": "⭐ 4.9", "bid": budget_total * 0.95, "days": 100},
+            {"company": "مكتب الرواد للتصميم والإنشاء", "location": "صنعاء - السبعين", "rating": "⭐ 4.8", "bid": budget_total * 0.93, "days": 110},
+            {"company": "اليمن الحديثة للمقاولات", "location": "صنعاء - الدائري", "rating": "⭐ 4.7", "bid": budget_total * 0.96, "days": 120},
+        ]
+    else:
+        contractors = [
+            {"company": "Apex Regional Engineering & Construction", "location": "المقاطعة المركزية (Central District)", "rating": "⭐ 4.9", "bid": budget_total * 0.95, "days": 120},
+            {"company": "BuildTech Local Solutions", "location": "فرع المنطقة الإقليمية القريبة", "rating": "⭐ 4.8", "bid": budget_total * 0.98, "days": 105},
+            {"company": "Al-Nukhba Regional Contracting", "location": "النطاق الجغرافي المحلي", "rating": "⭐ 4.7", "bid": budget_total * 0.91, "days": 140},
+        ]
+    return contractors
+
 def render_engineering_tab(txt):
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     st.title(txt['eng_title'])
     st.caption(txt['eng_caption'])
 
-    tab1, tab2, tab3 = st.tabs([
+    # دمج التوأم الرقمي كأحد التبويبات الفرعية داخل قسم التخطيط الهندسي والكميات AI-ConTech
+    tab1, tab2, tab3, tab4 = st.tabs([
         txt['eng_subtab1'],
         txt['eng_subtab2'],
-        txt['eng_subtab3']
+        txt['eng_subtab3'],
+        txt['eng_subtab4']
     ])
 
-    # ------------------ Tab 1: التصميم الجيلاتي ------------------
+    # ------------------ SubTab 1: التصميم الجيلاتي ------------------
     with tab1:
         st.subheader("إدخال مواصفات الأرض والمشروع" if st.session_state.lang == 'ar' else "Land & Project Specifications")
         col1, col2, col3 = st.columns(3)
@@ -235,7 +267,7 @@ def render_engineering_tab(txt):
                 st.subheader("📐 التوزيع الهندسي الذكي للمساحات" if st.session_state.lang == 'ar' else "📐 Smart Spatial Distribution")
                 st.dataframe(df_layout, use_container_width=True)
 
-    # ------------------ Tab 2: حساب الكميات والتكلفة ------------------
+    # ------------------ SubTab 2: حساب الكميات والتكلفة ------------------
     with tab2:
         st.subheader("جدول الكميات والتكلفة التقديرية (Bill of Quantities)" if st.session_state.lang == 'ar' else "Bill of Quantities (BOQ) & Estimated Cost")
         
@@ -253,33 +285,124 @@ def render_engineering_tab(txt):
             
             st.session_state['boq_data'] = boq_data
         else:
-            st.warning("⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً." if st.session_state.lang == 'ar' else "⚠️ Please generate the architectural floor plan in the first tab first.")
+            st.warning("⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً." if st.session_state.lang == 'ar' else "⚠️ Please generate the architectural floor plan in the first subtab first.")
 
-    # ------------------ Tab 3: السوق التنفيذي والمناقصات ------------------
+    # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية (Live Twin) ------------------
     with tab3:
-        st.subheader("طرح المشروع للمقاولين والشركات المعتمدة (Smart Bidding)" if st.session_state.lang == 'ar' else "Contractor Bidding & Execution Marketplace")
+        st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
+        st.caption("ربط التخطيط المعماري بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
+        
+        if not st.session_state.get('current_plan'):
+            st.warning("⚠️ يرجى توليد خطة مشروع أو اختيار مشروع محدد أولاً للبدء بالمحاكاة الميدانية.")
+        else:
+            plan = st.session_state.current_plan
+            
+            st.markdown("### 1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)")
+            
+            col_st1, col_st2, col_st3 = st.columns(3)
+            with col_st1:
+                soil_type = st.selectbox("نوع التربة الميدانية", ["صخرية صلبة (Rock)", "تربة طينية (Clay)", "تربة رملية (Sand)", "تربة مشبعة بالماء (Silt)"], key="sub_soil")
+            with col_st2:
+                seismic_risk = st.selectbox("مستوى النشاط الزلزالي", ["منخفض (Low)", "متوسط (Moderate)", "مرتفع (High)"], key="sub_seismic")
+            with col_st3:
+                st.write("<br>", unsafe_allow_html=True)
+                run_sim = st.button("⚡ تشغيل محاكاة الإجهاد", use_container_width=True)
+
+            if run_sim or 'stress_result' in st.session_state:
+                if run_sim:
+                    st.session_state.stress_result = LiveTwinEngine.analyze_structural_stress(plan, soil_type, seismic_risk)
+                
+                res = st.session_state.stress_result
+                
+                c_m1, c_m2, c_m3 = st.columns(3)
+                c_m1.metric("🛡️ مؤشر السلامة الإجهادية", f"{res['safety_stress_score']}%", delta="آمن structural" if res['safety_stress_score'] > 75 else "يحتاج تدعيم")
+                c_m2.metric("💵 احتياطي طوارئ الإجهاد", f"${res['financial_contingency_usd']:,}")
+                c_m3.metric("🔑 التوقيع الرقمي للمحاكاة", "Verified SHA-256")
+                
+                st.info(f"💡 **توصية الفحص الهندسي:** {res['engineering_recommendation']}")
+                st.warning(f"⚠️ **نقاط الخلل المحتملة:** {', '.join(res['critical_risk_points'])}")
+
+            st.write("---")
+
+            st.markdown("### 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)")
+            
+            uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'], key="sub_upload")
+            
+            if uploaded_file is not None:
+                col_img, col_analysis = st.columns([1, 1])
+                
+                with col_img:
+                    st.image(uploaded_file, caption="الرفع الميداني الحالي", use_column_width=True)
+                    img_bytes = uploaded_file.getvalue()
+                    
+                with col_analysis:
+                    if st.button("🔍 مطابقة الصورة مع الجدول الزمني والـ BOQ", type="primary", use_container_width=True, key="sub_inspect_btn"):
+                        with st.spinner("جاري تحليل العناصر الإنشائية والمطابقة بالذكاء الاصطناعي..."):
+                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, plan.get('tasks', []))
+                            st.session_state.last_inspection = inspection
+                            
+            if 'last_inspection' in st.session_state:
+                insp = st.session_state.last_inspection
+                
+                st.success("✅ اكتمل تحليل المطابقة الميدانية!")
+                st.progress(insp['completion_percentage'] / 100, text=f"نسبة الإنجاز الميداني الحقيقي: {insp['completion_percentage']}%")
+                
+                col_i1, col_i2 = st.columns(2)
+                col_i1.warning(f"⏳ **الانحرافات والتأخير:** {insp['estimated_delay_days']} أيام تأخير متوقعة.")
+                col_i2.error(f"🚨 **الملاحظات الميدانية:** {', '.join(insp['detected_deviations'])}")
+
+                st.write("---")
+                st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & Immutable Escrow)")
+                
+                ledger_hash = SecurityEngine.generate_smart_contract_hash(plan['project_name'], insp['completion_percentage'], insp['smart_contract_release_amount'])
+                
+                st.markdown(f"""
+                <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
+                    <h4 style="color: #6366F1; margin-0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger</h4>
+                    <p><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
+                    <p><b>المبلغ المستحق للإفراج الفوري للمقاول:</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
+                    <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all;"><b>Block Hash:</b> {ledger_hash}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button("🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر", use_container_width=True, key="sub_escrow_btn"):
+                    HybridDatabaseEngine.log_live_twin_inspection(
+                        st.session_state.user['email'],
+                        plan['project_name'],
+                        st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
+                        insp['completion_percentage'],
+                        insp['smart_contract_release_amount'],
+                        ledger_hash
+                    )
+                    st.balloons()
+                    st.success("🎉 تم الإفراج عن الدفعة وتوثيق المعاملة في السجل الذكي غير القابل للتعديل!")
+
+    # ------------------ SubTab 4: السوق التنفيذي والمناقصات ------------------
+    with tab4:
+        st.subheader("طرح المشروع لأقرب الشركات والمقاولين المعتمدين في منطقتك (Geo-Localized Bidding)" if st.session_state.lang == 'ar' else "Geo-Localized Contractor Bidding & Execution Marketplace")
         
         if 'boq_data' in st.session_state:
             boq = st.session_state['boq_data']
             
-            st.write(f"**الميزانية المستهدفة:** ${boq['grand_total_usd']:,}" if st.session_state.lang == 'ar' else f"**Target Budget:** ${boq['grand_total_usd']:,}")
+            user_current_location = st.text_input(
+                "📍 حدد موقعك الجغرافي الحالي (المدينة / المحافظة / الدولة):" if st.session_state.lang == 'ar' else "📍 Set Your Current Location (City / Province / Country):",
+                value="تعز، اليمن", key="sub_loc"
+            )
             
-            st.markdown("### 🏢 الشركات المقترحة والتنافسية المتاحة حالياً" if st.session_state.lang == 'ar' else "### 🏢 Verified Contractors & Live Bids")
+            st.write(f"**الميزانية المستهدفة للمشروع:** ${boq['grand_total_usd']:,}" if st.session_state.lang == 'ar' else f"**Target Project Budget:** ${boq['grand_total_usd']:,}")
             
-            contractors = [
-                {"company": "Apex Construction Group", "rating": "⭐ 4.9", "bid": boq['grand_total_usd'] * 0.95, "days": 120},
-                {"company": "BuildTech Solutions", "rating": "⭐ 4.8", "bid": boq['grand_total_usd'] * 0.98, "days": 105},
-                {"company": "Al-Nukhba Contracting", "rating": "⭐ 4.7", "bid": boq['grand_total_usd'] * 0.91, "days": 140},
-            ]
+            st.markdown(f"### 🏢 أقرب الشركات والمقاولين المتاحين في نطاق ({user_current_location})" if st.session_state.lang == 'ar' else f"### 🏢 Nearest Verified Contractors in ({user_current_location})")
+            
+            contractors = get_geo_contractors(user_current_location, boq['grand_total_usd'])
             
             for c in contractors:
                 col_a, col_b, col_c, col_d = st.columns([3, 2, 2, 2])
-                col_a.write(f"**{c['company']}** ({c['rating']})")
+                col_a.markdown(f"**{c['company']}**<br><small style='color:gray;'>📍 العنوان: {c['location']} | {c['rating']}</small>", unsafe_allow_html=True)
                 col_b.write(f"العرض: **${c['bid']:,.2f}**" if st.session_state.lang == 'ar' else f"Bid: **${c['bid']:,.2f}**")
-                col_c.write(f"المدة: **{c['days']} يوم**" if st.session_state.lang == 'ar' else f"Duration: **{c['days']} days**")
-                if col_d.button("إسناد العقد 📝" if st.session_state.lang == 'ar' else "Assign Contract 📝", key=f"btn_{c['company']}"):
+                col_c.write(f"المدة الزمنية: **{c['days']} يوم**" if st.session_state.lang == 'ar' else f"Duration: **{c['days']} days**")
+                if col_d.button("إسناد العقد 📝" if st.session_state.lang == 'ar' else "Assign Contract 📝", key=f"sub_btn_{c['company']}"):
                     st.balloons()
-                    st.success(f"تم إسناد مشروعك بنجاح إلى شركة {c['company']}!" if st.session_state.lang == 'ar' else f"Project successfully assigned to {c['company']}!")
+                    st.success(f"تم إسناد مشروعك بنجاح إلى شركة {c['company']} في نطاق {user_current_location}!" if st.session_state.lang == 'ar' else f"Project successfully assigned to {c['company']} in {user_current_location}!")
         else:
             st.warning("⚠️ يرجى إتمام حساب الكميات أولاً قبل طرح المناقصة." if st.session_state.lang == 'ar' else "⚠️ Please complete the BOQ quantity calculation prior to publishing bidding.")
             
@@ -337,7 +460,6 @@ def main():
         .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }}
         .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(124,58,237,0.3); }}
         .ai-payment-card {{ background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(49, 46, 129, 0.95) 100%); border: 2px solid #6366F1; border-radius: 18px; padding: 24px; color: #FFFFFF; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25); }}
-        .stat-card-box {{ background: {glass_bg}; backdrop-filter: blur(10px); border: 1px solid {glass_border}; border-radius: 14px; padding: 18px; text-align: right; margin-bottom: 12px; }}
         .stTabs [data-baseweb="tab-list"] {{ gap: 8px; background: {glass_bg}; padding: 8px; border-radius: 14px; border: 1px solid {glass_border}; }}
         .stTabs [data-baseweb="tab"] {{ border-radius: 10px; padding: 8px 16px; font-weight: bold; }}
     </style>
@@ -345,7 +467,7 @@ def main():
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v13.7 Ultra</span>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v13.8 Geo-Global</span>", unsafe_allow_html=True)
         st.divider()
 
         st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
@@ -411,13 +533,14 @@ def main():
 
     is_ceo_owner = (st.session_state.user['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower()) or st.session_state.user['is_admin']
     
+    # تم تحديث مصفوفة التبويبات الرئيسية (إزالة تبويب التوائم الرقمي المنفصل وجعله تحت AI-ConTech)
     if is_ceo_owner:
-        tab1, tab_eng, tab_live_twin, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
-            txt['tab1'], txt['tab_eng'], txt['tab_live'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
+        tab1, tab_eng, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
+            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
         ])
     else:
-        tab1, tab_eng, tab_live_twin, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            txt['tab1'], txt['tab_eng'], txt['tab_live'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
+        tab1, tab_eng, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
         ])
 
     # TAB 1: BUILD PLAN
@@ -518,101 +641,9 @@ def main():
                     st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # TAB ENGINEERING: AI-ConTech MODULE
+    # TAB ENGINEERING: AI-ConTech MODULE (يحتوي بداخله على تبويب التوأم الرقمي)
     with tab_eng:
         render_engineering_tab(txt)
-
-    # TAB LIVE TWIN: محرك التوأم الرقمي والمحاكاة الحية
-    with tab_live_twin:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
-        st.caption("ربط التخطيط المعماري بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
-        
-        if not st.session_state.get('current_plan'):
-            st.warning("⚠️ يرجى توليد خطة مشروع أو اختيار مشروع محدد أولاً للبدء بالمحاكاة الميدانية.")
-        else:
-            plan = st.session_state.current_plan
-            
-            st.markdown("### 1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)")
-            
-            col_st1, col_st2, col_st3 = st.columns(3)
-            with col_st1:
-                soil_type = st.selectbox("نوع التربة الميدانية", ["صخرية صلبة (Rock)", "تربة طينية (Clay)", "تربة رملية (Sand)", "تربة مشبعة بالماء (Silt)"])
-            with col_st2:
-                seismic_risk = st.selectbox("مستوى النشاط الزلزالي", ["منخفض (Low)", "متوسط (Moderate)", "مرتفع (High)"])
-            with col_st3:
-                st.write("<br>", unsafe_allow_html=True)
-                run_sim = st.button("⚡ تشغيل محاكاة الإجهاد", use_container_width=True)
-
-            if run_sim or 'stress_result' in st.session_state:
-                if run_sim:
-                    st.session_state.stress_result = LiveTwinEngine.analyze_structural_stress(plan, soil_type, seismic_risk)
-                
-                res = st.session_state.stress_result
-                
-                c_m1, c_m2, c_m3 = st.columns(3)
-                c_m1.metric("🛡️ مؤشر السلامة الإجهادية", f"{res['safety_stress_score']}%", delta="آمن structural" if res['safety_stress_score'] > 75 else "يحتاج تدعيم")
-                c_m2.metric("💵 احتياطي طوارئ الإجهاد", f"${res['financial_contingency_usd']:,}")
-                c_m3.metric("🔑 التوقيع الرقمي للمحاكاة", "Verified SHA-256")
-                
-                st.info(f"💡 **توصية الفحص الهندسي:** {res['engineering_recommendation']}")
-                st.warning(f"⚠️ **نقاط الخلل المحتملة:** {', '.join(res['critical_risk_points'])}")
-
-            st.write("---")
-
-            st.markdown("### 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)")
-            
-            uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'])
-            
-            if uploaded_file is not None:
-                col_img, col_analysis = st.columns([1, 1])
-                
-                with col_img:
-                    st.image(uploaded_file, caption="الرفع الميداني الحالي", use_column_width=True)
-                    img_bytes = uploaded_file.getvalue()
-                    
-                with col_analysis:
-                    if st.button("🔍 مطابقة الصورة مع الجدول الزمني والـ BOQ", type="primary", use_container_width=True):
-                        with st.spinner("جاري تحليل العناصر الإنشائية والمطابقة بالذكاء الاصطناعي..."):
-                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, plan.get('tasks', []))
-                            st.session_state.last_inspection = inspection
-                            
-            if 'last_inspection' in st.session_state:
-                insp = st.session_state.last_inspection
-                
-                st.success("✅ اكتمل تحليل المطابقة الميدانية!")
-                st.progress(insp['completion_percentage'] / 100, text=f"نسبة الإنجاز الميداني الحقيقي: {insp['completion_percentage']}%")
-                
-                col_i1, col_i2 = st.columns(2)
-                col_i1.warning(f"⏳ **الانحرافات والتأخير:** {insp['estimated_delay_days']} أيام تأخير متوقعة.")
-                col_i2.error(f"🚨 **الملاحظات الميدانية:** {', '.join(insp['detected_deviations'])}")
-
-                st.write("---")
-                st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & Immutable Escrow)")
-                
-                ledger_hash = SecurityEngine.generate_smart_contract_hash(plan['project_name'], insp['completion_percentage'], insp['smart_contract_release_amount'])
-                
-                st.markdown(f"""
-                <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
-                    <h4 style="color: #6366F1; margin-0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger</h4>
-                    <p><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
-                    <p><b>المبلغ المستحق للإفراج الفوري للمقاول:</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
-                    <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all;"><b>Block Hash:</b> {ledger_hash}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if st.button("🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر", use_container_width=True):
-                    HybridDatabaseEngine.log_live_twin_inspection(
-                        st.session_state.user['email'],
-                        plan['project_name'],
-                        st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
-                        insp['completion_percentage'],
-                        insp['smart_contract_release_amount'],
-                        ledger_hash
-                    )
-                    st.balloons()
-                    st.success("🎉 تم الإفراج عن الدفعة وتوثيق المعاملة في السجل الذكي غير القابل للتعديل!")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # TAB 2: ANALYTICS 6D
     with tab2:
