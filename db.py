@@ -154,6 +154,30 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
+                    # PostgreSQL Engineering Tables
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS engineering_projects (
+                            id SERIAL PRIMARY KEY,
+                            user_id INT REFERENCES users(id) ON DELETE CASCADE,
+                            project_name VARCHAR(255),
+                            land_area NUMERIC(10,2),
+                            floors_count INT,
+                            built_area NUMERIC(10,2),
+                            estimated_boq_cost NUMERIC(12,2),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """))
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS procurement_bids (
+                            id SERIAL PRIMARY KEY,
+                            project_id INT REFERENCES engineering_projects(id) ON DELETE CASCADE,
+                            contractor_name VARCHAR(255),
+                            bid_amount NUMERIC(12,2),
+                            execution_days INT,
+                            status VARCHAR(50) DEFAULT 'PENDING',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """))
                     
                     hashed_p = SecurityEngine.hash_password("123456")
                     conn.execute(text("""
@@ -176,6 +200,9 @@ class HybridDatabaseEngine:
             cursor.execute('''CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, rating INTEGER, suggested_price INTEGER, requested_feature TEXT, comments TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS payment_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT UNIQUE, gateway TEXT, plan_type TEXT, amount_paid REAL, currency TEXT DEFAULT 'USD', status TEXT, raw_response TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS security_audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action_type TEXT, ip_address TEXT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+            
+            # SQLite Engineering Tables
+            cls.init_engineering_tables(conn)
 
             cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL.lower().strip(),))
             if not cursor.fetchone():
@@ -188,6 +215,115 @@ class HybridDatabaseEngine:
             conn.close()
         except Exception as e:
             logging.error(f"SQLite Full Schema Init Error: {e}")
+
+    @staticmethod
+    def init_engineering_tables(conn):
+        """
+        إضافة جداول المشاريع الهندسية وحساب الكميات والمناقصات لـ SQLite
+        """
+        cursor = conn.cursor()
+        
+        # جدول المخططات والمشاريع الهندسية
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS engineering_projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                project_name TEXT,
+                land_area REAL,
+                floors_count INTEGER,
+                built_area REAL,
+                estimated_boq_cost REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # جدول المناقصات والعقود المفتوحة للشركات
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS procurement_bids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER,
+                contractor_name TEXT,
+                bid_amount REAL,
+                execution_days INTEGER,
+                status TEXT DEFAULT 'PENDING',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+
+    @classmethod
+    def save_engineering_project(cls, user_email: str, project_name: str, land_area: float, floors_count: int, built_area: float, estimated_boq_cost: float) -> int:
+        """
+        حفظ مشروع معماري وهندسي في قاعدة البيانات لربطه بالمناقصات
+        """
+        user = cls.get_user(user_email)
+        user_id = user['id'] if user else 1
+        project_id = None
+
+        pg_engine = cls.get_sqlalchemy_engine()
+        if pg_engine:
+            try:
+                with pg_engine.connect() as conn:
+                    res = conn.execute(
+                        text("""INSERT INTO engineering_projects (user_id, project_name, land_area, floors_count, built_area, estimated_boq_cost)
+                                VALUES (:uid, :pn, :la, :fc, :ba, :ebc) RETURNING id"""),
+                        {"uid": user_id, "pn": project_name, "la": land_area, "fc": floors_count, "ba": built_area, "ebc": estimated_boq_cost}
+                    ).fetchone()
+                    conn.commit()
+                    if res:
+                        project_id = res[0]
+            except Exception as e:
+                logging.error(f"PG Save Engineering Project Error: {e}")
+
+        try:
+            conn = sqlite3.connect(SQLITE_DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute(
+                """INSERT INTO engineering_projects (user_id, project_name, land_area, floors_count, built_area, estimated_boq_cost)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (user_id, project_name, land_area, floors_count, built_area, estimated_boq_cost)
+            )
+            if not project_id:
+                project_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logging.error(f"SQLite Save Engineering Project Error: {e}")
+
+        return project_id
+
+    @classmethod
+    def save_procurement_bid(cls, project_id: int, contractor_name: str, bid_amount: float, execution_days: int) -> bool:
+        """
+        إضافة عرض مناقصة لشركة مقاولات على مشروع هندسي قائم
+        """
+        pg_engine = cls.get_sqlalchemy_engine()
+        if pg_engine:
+            try:
+                with pg_engine.connect() as conn:
+                    conn.execute(
+                        text("""INSERT INTO procurement_bids (project_id, contractor_name, bid_amount, execution_days, status)
+                                VALUES (:pid, :cn, :ba, :ed, 'PENDING')"""),
+                        {"pid": project_id, "cn": contractor_name, "ba": bid_amount, "ed": execution_days}
+                    )
+                    conn.commit()
+            except Exception as e:
+                logging.error(f"PG Save Procurement Bid Error: {e}")
+
+        try:
+            conn = sqlite3.connect(SQLITE_DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute(
+                """INSERT INTO procurement_bids (project_id, contractor_name, bid_amount, execution_days, status)
+                   VALUES (?, ?, ?, ?, 'PENDING')""",
+                (project_id, contractor_name, bid_amount, execution_days)
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            logging.error(f"SQLite Save Procurement Bid Error: {e}")
+            return False
 
     @classmethod
     def get_user(cls, email: str) -> dict:
@@ -578,4 +714,6 @@ class HybridDatabaseEngine:
         except Exception: pass
         return feedbacks
 
+
+# تهيئة قواعد البيانات تلقائياً عند التشغيل
 HybridDatabaseEngine.init_db()
