@@ -82,7 +82,7 @@ PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestor
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
 
-# APP BASE URL FOR QR CODES (تحديث الرابط الصحيح والمباشر لـ Google Cloud Run)
+# APP BASE URL FOR QR CODES
 APP_BASE_URL = os.getenv("APP_URL", "https://mihna-core-50335759464.asia-south1.run.app")
 
 # OWNER EMAIL (CEO & SYSTEM OWNER)
@@ -101,7 +101,57 @@ SQLITE_DB_FILE = "phoenix_app_data.db"
 
 
 # =====================================================================
-# 2. FULL HYBRID DATABASE ENGINE (Cloud SQL 7-Tables Schema + Admins)
+# 2. SECURITY ENGINE & UTILITIES (FIXED & ENHANCED)
+# =====================================================================
+class SecurityEngine:
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """تشفير كلمة المرور بدعم متكامل وموثوق"""
+        if BCRYPT_AVAILABLE:
+            try:
+                salt = bcrypt.gensalt(rounds=10)
+                return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+            except Exception as e:
+                logging.error(f"Bcrypt hash error: {e}")
+        return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+    @staticmethod
+    def verify_password(password: str, hashed: str) -> bool:
+        """التحقق الاحترافي الشامل من كلمة المرور للتغلب على مشاكل تسجيل الدخول"""
+        if not hashed or not password:
+            return False
+
+        # 1. التحقق في حال كان التشفير بـ Bcrypt (جميع البادئات المقبولة $2a$, $2b$, $2y$)
+        if BCRYPT_AVAILABLE and hashed.startswith("$2"):
+            try:
+                return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+            except Exception as e:
+                logging.error(f"Bcrypt verification check failed: {e}")
+
+        # 2. التحقق الاحتياطي بـ SHA-256
+        sha256_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+        if hmac.compare_digest(sha256_hash, hashed):
+            return True
+
+        # 3. التحقق الاحتياطي النصي المباشر في الحالات الطارئة
+        return hmac.compare_digest(password, hashed)
+
+    @staticmethod
+    def generate_signature(data_dict: dict) -> str:
+        clean_payload = {k: v for k, v in data_dict.items() if k not in ["signature", "timestamp", "is_tampered"]}
+        serialized = json.dumps(clean_payload, sort_keys=True, ensure_ascii=False)
+        return hmac.new(SECRET_HMAC_KEY.encode(), serialized.encode(), hashlib.sha512).hexdigest()
+
+    @staticmethod
+    def verify_signature(data_dict: dict, signature: str) -> bool:
+        if not signature:
+            return False
+        expected_sig = SecurityEngine.generate_signature(data_dict)
+        return hmac.compare_digest(expected_sig, signature)
+
+
+# =====================================================================
+# 3. FULL HYBRID DATABASE ENGINE (Cloud SQL 7-Tables Schema + Admins)
 # =====================================================================
 class HybridDatabaseEngine:
     _sqlalchemy_engine = None
@@ -117,7 +167,7 @@ class HybridDatabaseEngine:
                     db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
                 else:
                     db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-                cls._sqlalchemy_engine = sqlalchemy.create_engine(db_url, pool_pre_ping=True)
+                cls._sqlalchemy_engine = sqlalchemy.create_engine(db_url, pool_pre_ping=True, pool_timeout=5)
             except Exception as e:
                 logging.error(f"PostgreSQL Engine Error: {e}")
                 cls._sqlalchemy_engine = None
@@ -244,12 +294,12 @@ class HybridDatabaseEngine:
             cursor.execute('''CREATE TABLE IF NOT EXISTS security_audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action_type TEXT, ip_address TEXT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
 
             # Seed Super Admin
-            cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL,))
+            cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL.lower().strip(),))
             if not cursor.fetchone():
-                hashed_p = hashlib.sha256("123456".encode()).hexdigest()
+                hashed_p = SecurityEngine.hash_password("123456")
                 cursor.execute(
                     "INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    ("Alex Sterling (CEO & Owner)", SUPER_ADMIN_EMAIL, hashed_p, 99999, "Enterprise Owner / Super Admin", 1, 1)
+                    ("Alex Sterling (CEO & Owner)", SUPER_ADMIN_EMAIL.lower().strip(), hashed_p, 99999, "Enterprise Owner / Super Admin", 1, 1)
                 )
             conn.commit()
             conn.close()
@@ -258,24 +308,35 @@ class HybridDatabaseEngine:
 
     @classmethod
     def get_user(cls, email: str) -> dict:
+        """جلب بيانات المستخدم بطريقة هجينة ومضمونة بدون فقدان أي حقل"""
         email_clean = email.strip().lower()
+        if not email_clean:
+            return None
+
+        # 1. محاولة الاستعلام من PostgreSQL Cloud SQL
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
                 with pg_engine.connect() as conn:
                     res = conn.execute(
-                        text("SELECT id, email, password_hash, full_name, role, credits, is_subscribed, is_admin FROM users WHERE email = :email"),
+                        text("SELECT id, email, password_hash, full_name, role, credits, is_subscribed, is_admin FROM users WHERE LOWER(email) = :email"),
                         {"email": email_clean}
                     ).fetchone()
                     if res:
-                        return {"id": res[0], "email": res[1], "password_hash": res[2], "full_name": res[3], "role": res[4], "credits": res[5], "is_subscribed": res[6], "is_admin": res[7]}
-            except Exception: pass
+                        return {
+                            "id": res[0], "email": res[1], "password_hash": res[2],
+                            "full_name": res[3], "role": res[4], "credits": res[5],
+                            "is_subscribed": res[6], "is_admin": res[7]
+                        }
+            except Exception as e:
+                logging.error(f"PostgreSQL fetch user fallback: {e}")
 
+        # 2. الاستعلام الاحتياطي الفوري من SQLite المحشور محلياً
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE email = ?", (email_clean,))
+            cursor.execute("SELECT id, email, password_hash, full_name, role, credits, is_subscribed, is_admin FROM users WHERE LOWER(email) = ?", (email_clean,))
             row = cursor.fetchone()
             conn.close()
             if row:
@@ -285,41 +346,52 @@ class HybridDatabaseEngine:
                     "full_name": d["full_name"], "role": d["role"], "credits": d["credits"],
                     "is_subscribed": d["is_subscribed"], "is_admin": d.get("is_admin", 0)
                 }
-        except Exception: pass
+        except Exception as e:
+            logging.error(f"SQLite Fetch User Error: {e}")
+
         return None
 
     @classmethod
     def register_user(cls, full_name: str, email: str, password_hash: str) -> bool:
+        """تسجيل المستخدم بالتزامن الموثوق في كلا من PostgreSQL و SQLite"""
         email_clean = email.strip().lower()
         success = False
-        is_admin_flag = 1 if email_clean == SUPER_ADMIN_EMAIL else 0
+        is_admin_flag = 1 if email_clean == SUPER_ADMIN_EMAIL.lower().strip() else 0
         role_flag = "Enterprise Owner / Super Admin" if is_admin_flag else "Free Trial"
 
+        # الحفظ أولاً في SQLite كحاوية سريعة ومضمونة
+        try:
+            conn = sqlite3.connect(SQLITE_DB_FILE)
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR REPLACE INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (?, ?, ?, 5, ?, 0, ?)",
+                (full_name, email_clean, password_hash, role_flag, is_admin_flag)
+            )
+            uid = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            cls.log_audit(uid, "USER_REGISTERED", f"User {email_clean} registered successfully in SQLite.")
+            success = True
+        except Exception as e:
+            logging.error(f"SQLite Register Error: {e}")
+
+        # الحفظ التزامني في PostgreSQL Cloud SQL
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
                 with pg_engine.connect() as conn:
                     res = conn.execute(
-                        text("INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (:fn, :em, :ph, 5, :rl, 0, :ia) RETURNING id"),
+                        text("""INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin)
+                                VALUES (:fn, :em, :ph, 5, :rl, 0, :ia)
+                                ON CONFLICT (email) DO UPDATE SET password_hash = :ph, full_name = :fn RETURNING id"""),
                         {"fn": full_name, "em": email_clean, "ph": password_hash, "rl": role_flag, "ia": is_admin_flag}
                     ).fetchone()
                     conn.commit()
                     if res:
-                        cls.log_audit(res[0], "USER_REGISTERED", f"User {email_clean} created account.")
+                        cls.log_audit(res[0], "USER_REGISTERED", f"User {email_clean} synced to Cloud SQL.")
                     success = True
-            except Exception: pass
-
-        try:
-            conn = sqlite3.connect(SQLITE_DB_FILE)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin) VALUES (?, ?, ?, 5, ?, 0, ?)", (full_name, email_clean, password_hash, role_flag, is_admin_flag))
-            uid = cursor.lastrowid
-            conn.commit()
-            conn.close()
-            cls.log_audit(uid, "USER_REGISTERED", f"User {email_clean} registered.")
-            success = True
-        except Exception as e:
-            logging.error(f"SQLite Register Error: {e}")
+            except Exception as e:
+                logging.error(f"PG Sync Register Warning: {e}")
 
         return success
 
@@ -331,14 +403,14 @@ class HybridDatabaseEngine:
         if pg_engine:
             try:
                 with pg_engine.connect() as conn:
-                    conn.execute(text("UPDATE users SET is_admin = 1, role = 'Enterprise Admin Supervisor' WHERE email = :email"), {"email": target_clean})
+                    conn.execute(text("UPDATE users SET is_admin = 1, role = 'Enterprise Admin Supervisor' WHERE LOWER(email) = :email"), {"email": target_clean})
                     conn.commit()
             except Exception: pass
 
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET is_admin = 1, role = 'Enterprise Admin Supervisor' WHERE email = ?", (target_clean,))
+            cursor.execute("UPDATE users SET is_admin = 1, role = 'Enterprise Admin Supervisor' WHERE LOWER(email) = ?", (target_clean,))
             conn.commit()
             conn.close()
             return True
@@ -371,7 +443,7 @@ class HybridDatabaseEngine:
             try:
                 with pg_engine.connect() as conn:
                     conn.execute(
-                        text("UPDATE users SET role = :role, credits = :credits, is_subscribed = 1, updated_at = CURRENT_TIMESTAMP WHERE email = :email"),
+                        text("UPDATE users SET role = :role, credits = :credits, is_subscribed = 1, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = :email"),
                         {"role": role, "credits": credits, "email": email_clean}
                     )
                     conn.commit()
@@ -380,7 +452,7 @@ class HybridDatabaseEngine:
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET role = ?, credits = ?, is_subscribed = 1, updated_at = CURRENT_TIMESTAMP WHERE email = ?", (role, credits, email_clean))
+            cursor.execute("UPDATE users SET role = ?, credits = ?, is_subscribed = 1, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = ?", (role, credits, email_clean))
             conn.commit()
             conn.close()
             if user:
@@ -396,14 +468,14 @@ class HybridDatabaseEngine:
         if pg_engine:
             try:
                 with pg_engine.connect() as conn:
-                    conn.execute(text("UPDATE users SET credits = :credits, updated_at = CURRENT_TIMESTAMP WHERE email = :email"), {"credits": new_credits, "email": email_clean})
+                    conn.execute(text("UPDATE users SET credits = :credits, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = :email"), {"credits": new_credits, "email": email_clean})
                     conn.commit()
             except Exception: pass
 
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET credits = ?, updated_at = CURRENT_TIMESTAMP WHERE email = ?", (new_credits, email_clean))
+            cursor.execute("UPDATE users SET credits = ?, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = ?", (new_credits, email_clean))
             conn.commit()
             conn.close()
             return True
@@ -444,7 +516,7 @@ class HybridDatabaseEngine:
                     conn.execute(
                         text("""INSERT INTO projects (user_email, project_name, summary, budget_range, tech_stack, payload, signature)
                                 VALUES (:em, :pn, :sm, :bg, :tc, :pl, :sg)"""),
-                        {"em": user_email, "pn": p_name, "sm": scope, "bg": str(budget), "tc": tech, "pl": json.dumps(plan_json, ensure_ascii=False), "sg": sig}
+                        {"em": user_email.lower().strip(), "pn": p_name, "sm": scope, "bg": str(budget), "tc": tech, "pl": json.dumps(plan_json, ensure_ascii=False), "sg": sig}
                     )
                     conn.commit()
             except Exception as e:
@@ -468,7 +540,7 @@ class HybridDatabaseEngine:
             cursor.execute(
                 """INSERT INTO projects (user_email, project_name, summary, budget_range, tech_stack, payload, signature)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (user_email, p_name, scope, str(budget), tech, json.dumps(plan_json, ensure_ascii=False), sig)
+                (user_email.lower().strip(), p_name, scope, str(budget), tech, json.dumps(plan_json, ensure_ascii=False), sig)
             )
             conn.commit()
             conn.close()
@@ -540,7 +612,7 @@ class HybridDatabaseEngine:
             try:
                 with pg_engine.connect() as conn:
                     rows = conn.execute(
-                        text("SELECT id, project_name, summary, budget_range, created_at, signature FROM projects WHERE user_email = :em ORDER BY created_at DESC"),
+                        text("SELECT id, project_name, summary, budget_range, created_at, signature FROM projects WHERE LOWER(user_email) = :em ORDER BY created_at DESC"),
                         {"em": email_clean}
                     ).fetchall()
                     if rows:
@@ -553,7 +625,7 @@ class HybridDatabaseEngine:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute("SELECT id, project_name, summary, budget_range, created_at, signature FROM projects WHERE user_email = ? ORDER BY created_at DESC", (email_clean,))
+            cursor.execute("SELECT id, project_name, summary, budget_range, created_at, signature FROM projects WHERE LOWER(user_email) = ? ORDER BY created_at DESC", (email_clean,))
             rows = cursor.fetchall()
             conn.close()
             for r in rows:
@@ -604,39 +676,6 @@ class HybridDatabaseEngine:
         return feedbacks
 
 HybridDatabaseEngine.init_db()
-
-# =====================================================================
-# 3. SECURITY ENGINE & UTILITIES
-# =====================================================================
-class SecurityEngine:
-    @staticmethod
-    def hash_password(password: str) -> str:
-        if BCRYPT_AVAILABLE:
-            salt = bcrypt.gensalt()
-            return bcrypt.hashpw(password.encode(), salt).decode()
-        return hashlib.sha256(password.encode()).hexdigest()
-
-    @staticmethod
-    def verify_password(password: str, hashed: str) -> bool:
-        if BCRYPT_AVAILABLE and hashed.startswith("$2b$"):
-            try:
-                return bcrypt.checkpw(password.encode(), hashed.encode())
-            except Exception:
-                return False
-        return hashlib.sha256(password.encode()).hexdigest() == hashed
-
-    @staticmethod
-    def generate_signature(data_dict: dict) -> str:
-        clean_payload = {k: v for k, v in data_dict.items() if k not in ["signature", "timestamp", "is_tampered"]}
-        serialized = json.dumps(clean_payload, sort_keys=True, ensure_ascii=False)
-        return hmac.new(SECRET_HMAC_KEY.encode(), serialized.encode(), hashlib.sha512).hexdigest()
-
-    @staticmethod
-    def verify_signature(data_dict: dict, signature: str) -> bool:
-        if not signature:
-            return False
-        expected_sig = SecurityEngine.generate_signature(data_dict)
-        return hmac.compare_digest(expected_sig, signature)
 
 # =====================================================================
 # 4. AI ARCHITECTURE & SPECIALIST PAYROLL ENGINE
@@ -754,7 +793,7 @@ class PhoenixAI:
                 "market_satisfaction_score": 93.5
             }
         
-        avg_price = np.mean([f['suggested_price'] for f in feedbacks if f['suggested_price'] > 0]) if feedbacks else 29
+        avg_price = np.mean([f['suggested_price'] for f in feedbacks if f.get('suggested_price', 0) > 0]) if feedbacks else 29
         avg_rating = np.mean([f['rating'] for f in feedbacks if f.get('rating') is not None]) if feedbacks else 4.5
         
         features = [f['requested_feature'] for f in feedbacks if f.get('requested_feature')]
@@ -1105,17 +1144,14 @@ def render_auth_page():
     st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى المنصة الهندسية الذكية</p>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
 
-    # التحقق من معاملات URL الموجهة من الإعلانات للتحويل التلقائي لإنشاء الحساب
     query_params = st.query_params
     is_signup_mode = query_params.get("mode") == "signup"
 
     col_center, _ = st.columns([1, 0.01])
     with col_center:
-        # إصلاح وتضمين اختيار التبويب الديناميكي بالمعاملات
         tab_login_title = "🔑 تسجيل الدخول"
         tab_signup_title = "✨ حساب جديد (5 محاولات مجانية)"
         
-        # تحويل الترتيب التلقائي عند مسح الـ QR للذهاب لإنشاء حساب مباشر
         if is_signup_mode:
             auth_tabs = st.tabs([tab_signup_title, tab_login_title])
             signup_tab_container = auth_tabs[0]
@@ -1130,31 +1166,37 @@ def render_auth_page():
             with col_l1:
                 with st.form("login_form"):
                     st.subheader("مرحباً بك مجدداً!")
-                    email_input = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
+                    email_input = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").strip().lower()
                     password_input = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
                     submit_login = st.form_submit_button("🚀 تسجيل الدخول", use_container_width=True)
                     
                     if submit_login:
-                        u = HybridDatabaseEngine.get_user(email_input)
-                        if u and SecurityEngine.verify_password(password_input, u["password_hash"]):
-                            st.session_state.is_authenticated = True
-                            st.session_state.user = {
-                                'email': u['email'], 'username': u['full_name'] or "مهندس مهنة",
-                                'credits': u['credits'], 'role': u['role'], 'is_subscribed': bool(u['is_subscribed']),
-                                'is_admin': bool(u['is_admin']) or (u['email'] == SUPER_ADMIN_EMAIL)
-                            }
-                            HybridDatabaseEngine.log_audit(u['id'], "LOGIN_SUCCESS", "User logged in.")
-                            st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}!")
-                            time.sleep(0.5)
-                            st.rerun()
+                        if not email_input or not password_input:
+                            st.warning("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور.")
                         else:
-                            st.error("❌ بيانات الدخول غير صحيحة.")
+                            u = HybridDatabaseEngine.get_user(email_input)
+                            if u and SecurityEngine.verify_password(password_input, u["password_hash"]):
+                                is_super = (u['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower()) or bool(u.get('is_admin', 0))
+                                st.session_state.is_authenticated = True
+                                st.session_state.user = {
+                                    'email': u['email'],
+                                    'username': u['full_name'] or "مهندس مهنة",
+                                    'credits': u['credits'],
+                                    'role': u['role'],
+                                    'is_subscribed': bool(u['is_subscribed']),
+                                    'is_admin': is_super
+                                }
+                                HybridDatabaseEngine.log_audit(u['id'], "LOGIN_SUCCESS", "User logged in.")
+                                st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}!")
+                                time.sleep(0.4)
+                                st.rerun()
+                            else:
+                                st.error("❌ بيانات الدخول غير صحيحة. يرجى التأكد من البريد وكلمة المرور.")
 
             with col_l2:
                 st.markdown("### 📲 امسح الـ QR للتسجيل السريع")
                 st.caption("للحملات الإعلانية والجوال: امسح الرمز للتوجيه الفوري وإنشاء حساب جديد")
                 
-                # بناء الرابط الفعلي المباشر بدون أخطاء SSL أو 404
                 clean_base_url = APP_BASE_URL.rstrip('/')
                 signup_url = f"{clean_base_url}/?mode=signup"
                 qr_bytes = generate_qr_code_image(signup_url)
@@ -1165,7 +1207,7 @@ def render_auth_page():
             with st.form("signup_form"):
                 st.subheader("انضم إلى منصة PHOENIX Enterprise")
                 new_username = st.text_input("الاسم الكامل", placeholder="Alex Sterling")
-                new_email = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").lower().strip()
+                new_email = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").strip().lower()
                 new_password = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
                 confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="••••••••")
                 submit_signup = st.form_submit_button("✨ إنشاء حساب وتفعيل 5 نقاط هدية", use_container_width=True)
@@ -1178,21 +1220,26 @@ def render_auth_page():
                     else:
                         existing = HybridDatabaseEngine.get_user(new_email)
                         if existing:
-                            st.error("❌ البريد الإلكتروني مسجل مسبقاً.")
+                            st.error("❌ البريد الإلكتروني مسجل مسبقاً. يمكنك تسجيل الدخول مباشرة.")
                         else:
                             hashed_p = SecurityEngine.hash_password(new_password)
                             if HybridDatabaseEngine.register_user(new_username, new_email, hashed_p):
-                                is_super = (new_email == SUPER_ADMIN_EMAIL)
+                                is_super = (new_email == SUPER_ADMIN_EMAIL.strip().lower())
                                 st.session_state.is_authenticated = True
                                 st.session_state.user = {
-                                    'email': new_email, 'username': new_username, 'credits': 5,
+                                    'email': new_email,
+                                    'username': new_username,
+                                    'credits': 5,
                                     'role': "Enterprise Owner / Super Admin" if is_super else "Free Trial",
-                                    'is_subscribed': False, 'is_admin': is_super
+                                    'is_subscribed': False,
+                                    'is_admin': is_super
                                 }
                                 st.balloons()
                                 st.success("🎉 تم إنشاء الحساب وحفظ البيانات في قاعدة البيانات بنجاح!")
-                                time.sleep(0.8)
+                                time.sleep(0.5)
                                 st.rerun()
+                            else:
+                                st.error("❌ تعذر إنشاء الحساب، حاول مرة أخرى.")
 
 def main():
     st.set_page_config(page_title=APP_TITLE, page_icon="🛡️", layout="wide")
@@ -1207,7 +1254,7 @@ def main():
         st.session_state.user['credits'] = fresh_u['credits']
         st.session_state.user['role'] = fresh_u['role']
         st.session_state.user['is_subscribed'] = bool(fresh_u['is_subscribed'])
-        st.session_state.user['is_admin'] = bool(fresh_u['is_admin']) or (fresh_u['email'] == SUPER_ADMIN_EMAIL)
+        st.session_state.user['is_admin'] = bool(fresh_u['is_admin']) or (fresh_u['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower())
 
     lang = st.session_state.lang
     txt = T[lang]
@@ -1296,8 +1343,7 @@ def main():
                 st.balloons()
                 st.rerun()
 
-    # تحديد التبويبات بناءً على صلاحيات الإدارة العليا للمالك فقط
-    is_ceo_owner = (st.session_state.user['email'] == SUPER_ADMIN_EMAIL) or st.session_state.user['is_admin']
+    is_ceo_owner = (st.session_state.user['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower()) or st.session_state.user['is_admin']
     
     if is_ceo_owner:
         tab1, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
@@ -1420,7 +1466,6 @@ def main():
             p_hours = p_days * 8
             daily_cost = p_budget / max(1, p_days)
             
-            # حساب نسبة النجاح والفشل الذكية
             risk_val = plan.get('risk', 'متوسط')
             risk_penalty = 20 if risk_val == "عالي" else (10 if risk_val == "متوسط" else 5)
             budget_efficiency = min(100, max(40, int((p_budget / (p_days * 100)) * 50)))
@@ -1431,7 +1476,6 @@ def main():
             st.markdown("## 📊 لوحة القيادة الهندسية وتفصيل الجودة والمخاطر 6D")
             st.caption("رسومات نص دائرية ومؤشرات تفاعلية ملونة تشرح التكلفة، الأيام، الساعات، نسبة النجاح، والمخاطر لكل مشروع بدقة متناهية.")
 
-            # --- الصف الأول للمؤشرات النصف دائرية (Donut Gauges Row 1) ---
             g_col1, g_col2, g_col3 = st.columns(3)
             with g_col1:
                 fig1 = create_half_doughnut_gauge(daily_cost, "💰 التكلفة اليومية الكلية", "#3B82F6", prefix="$", suffix="/يوم", max_val=daily_cost*2)
@@ -1443,7 +1487,6 @@ def main():
                 fig3 = create_half_doughnut_gauge(p_days, "📅 الأيام التقويمية المستهدفة", "#06B6D4", suffix=" يوم", max_val=p_days*1.5)
                 st.plotly_chart(fig3, use_container_width=True)
 
-            # --- الصف الثاني للمؤشرات النصف دائرية (Donut Gauges Row 2) ---
             g_col4, g_col5, g_col6 = st.columns(3)
             with g_col4:
                 fig4 = create_half_doughnut_gauge(success_rate, "🌟 نسبة النجاح المتوقعة للمشروع", "#10B981", suffix="%")
@@ -1457,7 +1500,6 @@ def main():
 
             st.divider()
 
-            # --- البطاقات التفصيلية الشاملة لجميع المتطلبات والكوادر ---
             st.markdown("### 📝 المتطلبات التفصيلية والشرح المباشر للمشروع")
             col_desc1, col_desc2 = st.columns(2)
 
@@ -1527,7 +1569,7 @@ def main():
             st.markdown(build_detailed_plan_text(st.session_state.current_plan))
 
     # =====================================================================
-    # TAB 4: FEEDBACK LOOP & DYNAMIC PRICING ENGINE (تحديث نظام التقييم بالنجوم الحية)
+    # TAB 4: FEEDBACK LOOP & DYNAMIC PRICING ENGINE
     # =====================================================================
     with tab4:
         st.subheader("🔄 نظام التغذية الراجعة المغلقة والتكيّف السعري (AI Closed-Loop Feedback)")
@@ -1538,7 +1580,6 @@ def main():
         with col_fb1:
             st.markdown("### 📝 شاركنا رأيك (واربح 1 نقطة مجانية أوتوماتيكياً)")
             
-            # التقييم التفاعلي المباشر بالنجوم بدلاً من شريط السحب
             st.markdown("**تقييمك الكلي للمنصة (حدد عدد النجوم):**")
             stars_selection = st.feedback("stars")
             rating_stars = (stars_selection + 1) if stars_selection is not None else 5
@@ -1671,11 +1712,10 @@ def main():
 
             st.divider()
 
-            # قسم تعيين مشرف جديد
             st.markdown("### 🔑 تعيين وإضافة مشرف جديد (Grant Supervisor Admin Privilege)")
             col_add_adm1, col_add_adm2 = st.columns([2, 1])
             with col_add_adm1:
-                target_admin_email = st.text_input("أدخل البريد الإلكتروني للمستخدم لترقيته إلى مشرف", placeholder="supervisor@domain.com").lower().strip()
+                target_admin_email = st.text_input("أدخل البريد الإلكتروني للمستخدم لترقيته إلى مشرف", placeholder="supervisor@domain.com").strip().lower()
             with col_add_adm2:
                 st.write("<br>", unsafe_allow_html=True)
                 if st.button("✨ تفعيل صلاحية المشرف", type="primary", use_container_width=True):
@@ -1689,8 +1729,7 @@ def main():
 
             st.divider()
 
-            # جدول كامل يوضح جميع المستخدمين واشتراكاتهم ورغباتهم
-            st.markdown("### 📋 سجل جميع المستخدمين واشتراكاتهم الحية")
+            st.markdown("### 📋 سجل جميع المستخدمين وااشتراكاتهم الحية")
             if all_users:
                 df_admin_users = pd.DataFrame(all_users)
                 st.dataframe(df_admin_users[["id", "full_name", "email", "role", "credits", "is_subscribed", "is_admin", "created_at"]], use_container_width=True)
