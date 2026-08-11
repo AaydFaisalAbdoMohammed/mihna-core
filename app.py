@@ -3,9 +3,9 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.5 - ULTIMATE SaaS
-محرك معالجة البيانات الهجين المتكامل (PostgreSQL Cloud SQL / SQLite) المعتمد على
-جميع جداول الـ Schema السبعة، الذكاء الاصطناعي (Gemini)، التوقيع الرقمي (HMAC-SHA512)،
+© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.6 - ULTIMATE SaaS
+محرك معالجة البيانات الهجين المتكامل (PostgreSQL Cloud SQL Primary Persistent / SQLite)
+المعتمد على جميع جداول الـ Schema السبعة، الذكاء الاصطناعي (Gemini)، التوقيع الرقمي (HMAC-SHA512)،
 لوحة قيادة المدراء المتقدمة (Admin Dashboard)، مولد الـ QR Code للتسجيل السريع،
 التحليلات الهندسية 6D المقسمة بمؤشرات نصف دائرية ملونة، وحساب أجور الكوادر والمتخصصين.
 ===============================================================================
@@ -77,7 +77,7 @@ except ImportError:
 # =====================================================================
 # 1. CONFIGURATION & SETTINGS
 # =====================================================================
-APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.5"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.6"
 PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly")
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
@@ -88,31 +88,39 @@ APP_BASE_URL = os.getenv("APP_URL", "https://mihna-core-50335759464.asia-south1.
 # OWNER EMAIL (CEO & SYSTEM OWNER)
 SUPER_ADMIN_EMAIL = "eng.alhiadri2021@gmail.com"
 
-# PostgreSQL / Cloud SQL Parameters
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASSWORD", "101519Ayad@%")
-DB_NAME = os.getenv("DB_NAME", "postgres")
-DB_HOST = os.getenv("DB_HOST", "34.93.187.161")
-DB_PORT = os.getenv("DB_PORT", "5432")
-INSTANCE_CONN = os.getenv("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
+# PostgreSQL / Cloud SQL Parameters with st.secrets Support
+def get_env_or_secret(key, default_val=""):
+    if key in os.environ:
+        return os.environ[key]
+    try:
+        if hasattr(st, "secrets") and key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return default_val
+
+DB_USER = get_env_or_secret("DB_USER", "postgres")
+DB_PASS = get_env_or_secret("DB_PASSWORD", "101519Ayad@%")
+DB_NAME = get_env_or_secret("DB_NAME", "postgres")
+DB_HOST = get_env_or_secret("DB_HOST", "34.93.187.161")
+DB_PORT = get_env_or_secret("DB_PORT", "5432")
+INSTANCE_CONN = get_env_or_secret("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
 
 # Local SQLite Fallback File
 SQLITE_DB_FILE = "phoenix_app_data.db"
 
 
 # =====================================================================
-# 2. SECURITY ENGINE & UTILITIES (VALIDATION & SECURITY ENHANCED)
+# 2. SECURITY ENGINE & UTILITIES
 # =====================================================================
 class SecurityEngine:
     @staticmethod
     def is_valid_email(email: str) -> bool:
-        """فحص دقيق لصحّة تنسيق البريد الإلكتروني"""
         pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
         return bool(re.match(pattern, email.strip()))
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """تشفير كلمة المرور بدعم متكامل وموثوق"""
         if BCRYPT_AVAILABLE:
             try:
                 salt = bcrypt.gensalt(rounds=10)
@@ -123,7 +131,6 @@ class SecurityEngine:
 
     @staticmethod
     def verify_password(password: str, hashed: str) -> bool:
-        """التحقق الاحترافي الشامل من كلمة المرور للتغلب على مشاكل تسجيل الدخول"""
         if not hashed or not password:
             return False
 
@@ -154,7 +161,7 @@ class SecurityEngine:
 
 
 # =====================================================================
-# 3. FULL HYBRID DATABASE ENGINE (Cloud SQL 7-Tables Schema + Admins)
+# 3. PERSISTENT HYBRID DATABASE ENGINE (Cloud SQL Primary + SQLite Fallback)
 # =====================================================================
 class HybridDatabaseEngine:
     _sqlalchemy_engine = None
@@ -170,7 +177,7 @@ class HybridDatabaseEngine:
                     db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@/{DB_NAME}?host=/cloudsql/{INSTANCE_CONN}"
                 else:
                     db_url = f"postgresql+psycopg2://{DB_USER}:{encoded_pass}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-                cls._sqlalchemy_engine = sqlalchemy.create_engine(db_url, pool_pre_ping=True, pool_timeout=5)
+                cls._sqlalchemy_engine = sqlalchemy.create_engine(db_url, pool_pre_ping=True, pool_timeout=5, pool_size=10, max_overflow=20)
             except Exception as e:
                 logging.error(f"PostgreSQL Engine Error: {e}")
                 cls._sqlalchemy_engine = None
@@ -178,7 +185,6 @@ class HybridDatabaseEngine:
 
     @classmethod
     def init_db(cls):
-        """تهيئة الجداول السبعة وجدول المشرفين الخاص في PostgreSQL و SQLite"""
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
@@ -273,6 +279,15 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
+                    
+                    # Ensure Super Admin Admin Rights in PG
+                    hashed_p = SecurityEngine.hash_password("123456")
+                    conn.execute(text("""
+                        INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin)
+                        VALUES (:fn, :em, :ph, 99999, 'Enterprise Owner / Super Admin', 1, 1)
+                        ON CONFLICT (email) DO UPDATE SET is_admin = 1, role = 'Enterprise Owner / Super Admin';
+                    """), {"fn": "Alex Sterling (CEO & Owner)", "em": SUPER_ADMIN_EMAIL.lower().strip(), "ph": hashed_p})
+                    
                     conn.commit()
             except Exception as e:
                 logging.error(f"PostgreSQL Full Schema Init Warning: {e}")
@@ -349,6 +364,23 @@ class HybridDatabaseEngine:
         is_admin_flag = 1 if email_clean == SUPER_ADMIN_EMAIL.lower().strip() else 0
         role_flag = "Enterprise Owner / Super Admin" if is_admin_flag else "Free Trial"
 
+        pg_engine = cls.get_sqlalchemy_engine()
+        if pg_engine:
+            try:
+                with pg_engine.connect() as conn:
+                    res = conn.execute(
+                        text("""INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin)
+                                VALUES (:fn, :em, :ph, 5, :rl, 0, :ia)
+                                ON CONFLICT (email) DO UPDATE SET password_hash = :ph, full_name = :fn RETURNING id"""),
+                        {"fn": full_name, "em": email_clean, "ph": password_hash, "rl": role_flag, "ia": is_admin_flag}
+                    ).fetchone()
+                    conn.commit()
+                    if res:
+                        cls.log_audit(res[0], "USER_REGISTERED", f"User {email_clean} persisted to Cloud SQL PostgreSQL.")
+                    success = True
+            except Exception as e:
+                logging.error(f"PG Sync Register Warning: {e}")
+
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
@@ -363,23 +395,6 @@ class HybridDatabaseEngine:
             success = True
         except Exception as e:
             logging.error(f"SQLite Register Error: {e}")
-
-        pg_engine = cls.get_sqlalchemy_engine()
-        if pg_engine:
-            try:
-                with pg_engine.connect() as conn:
-                    res = conn.execute(
-                        text("""INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin)
-                                VALUES (:fn, :em, :ph, 5, :rl, 0, :ia)
-                                ON CONFLICT (email) DO UPDATE SET password_hash = :ph, full_name = :fn RETURNING id"""),
-                        {"fn": full_name, "em": email_clean, "ph": password_hash, "rl": role_flag, "ia": is_admin_flag}
-                    ).fetchone()
-                    conn.commit()
-                    if res:
-                        cls.log_audit(res[0], "USER_REGISTERED", f"User {email_clean} synced to Cloud SQL.")
-                    success = True
-            except Exception as e:
-                logging.error(f"PG Sync Register Warning: {e}")
 
         return success
 
@@ -407,6 +422,17 @@ class HybridDatabaseEngine:
     @classmethod
     def get_all_users_admin(cls) -> list:
         users = []
+        pg_engine = cls.get_sqlalchemy_engine()
+        if pg_engine:
+            try:
+                with pg_engine.connect() as conn:
+                    rows = conn.execute(text("SELECT id, full_name, email, role, credits, is_subscribed, is_admin, created_at FROM users ORDER BY created_at DESC")).fetchall()
+                    if rows:
+                        for r in rows:
+                            users.append({"id": r[0], "full_name": r[1], "email": r[2], "role": r[3], "credits": r[4], "is_subscribed": r[5], "is_admin": r[6], "created_at": str(r[7])})
+                        return users
+            except Exception: pass
+
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             conn.row_factory = sqlite3.Row
@@ -631,7 +657,8 @@ class HybridDatabaseEngine:
                         {"em": email_clean, "rt": rating, "sp": suggested_price, "rf": requested_feature, "cm": comments}
                     )
                     conn.commit()
-            except Exception: pass
+            except Exception as e:
+                logging.error(f"PG Save Feedback Error: {e}")
 
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
@@ -643,12 +670,28 @@ class HybridDatabaseEngine:
             conn.commit()
             conn.close()
             return True
-        except Exception:
+        except Exception as e:
+            logging.error(f"SQLite Save Feedback Error: {e}")
             return False
 
     @classmethod
     def get_all_feedback(cls) -> list:
         feedbacks = []
+        pg_engine = cls.get_sqlalchemy_engine()
+        if pg_engine:
+            try:
+                with pg_engine.connect() as conn:
+                    rows = conn.execute(text("SELECT id, user_email, rating, suggested_price, requested_feature, comments, created_at FROM feedback ORDER BY created_at DESC")).fetchall()
+                    if rows:
+                        for r in rows:
+                            feedbacks.append({
+                                "id": r[0], "user_email": r[1], "rating": r[2],
+                                "suggested_price": r[3], "requested_feature": r[4],
+                                "comments": r[5], "created_at": str(r[6])
+                            })
+                        return feedbacks
+            except Exception: pass
+
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             conn.row_factory = sqlite3.Row
@@ -1038,7 +1081,7 @@ def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str =
 # =====================================================================
 def init_session():
     if 'lang' not in st.session_state: st.session_state.lang = 'ar'
-    if 'theme' not in st.session_state: st.session_state.theme = 'light'  # Default set to Light Mode
+    if 'theme' not in st.session_state: st.session_state.theme = 'light'
     if 'is_authenticated' not in st.session_state: st.session_state.is_authenticated = False
     if 'user' not in st.session_state:
         st.session_state.user = {'email': '', 'username': 'زائر', 'credits': 5, 'role': 'Free Trial', 'is_subscribed': False, 'is_admin': False}
@@ -1055,7 +1098,7 @@ def init_session():
 
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.5",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.6",
         'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، وتأمين البيانات بـ Cloud SQL و HMAC-SHA512.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
@@ -1110,7 +1153,7 @@ T = {
         'demands_title': "💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)"
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.5",
+        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.6",
         'subtitle': "Advanced Engineering Project Plan Builder & Specialist Payroll Engine Secured with Cloud SQL & HMAC-SHA512.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
@@ -1207,6 +1250,7 @@ def render_auth_page():
             signup_tab_container = auth_tabs[1]
 
         with login_tab_container:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             col_l1, col_l2 = st.columns([1.5, 1])
             with col_l1:
                 with st.form("login_form"):
@@ -1219,7 +1263,7 @@ def render_auth_page():
                         if not email_input or not password_input:
                             st.warning("⚠️ " + ("يرجى إدخال البريد وكلمة المرور." if lang=='ar' else "Please enter email and password."))
                         elif not SecurityEngine.is_valid_email(email_input):
-                            st.error("❌ " + ("فريد إلكتروني غير صحيح Formally Invalid Email!" if lang=='ar' else "Invalid email format!"))
+                            st.error("❌ " + ("بريد إلكتروني غير صحيح!" if lang=='ar' else "Invalid email format!"))
                         else:
                             u = HybridDatabaseEngine.get_user(email_input)
                             if u and SecurityEngine.verify_password(password_input, u["password_hash"]):
@@ -1233,7 +1277,7 @@ def render_auth_page():
                                     'is_subscribed': bool(u['is_subscribed']),
                                     'is_admin': is_super
                                 }
-                                HybridDatabaseEngine.log_audit(u['id'], "LOGIN_SUCCESS", "User logged in.")
+                                HybridDatabaseEngine.log_audit(u['id'], "LOGIN_SUCCESS", "User logged in successfully.")
                                 st.success(f"🎉 Welcome back {st.session_state.user['username']}!")
                                 time.sleep(0.4)
                                 st.rerun()
@@ -1249,8 +1293,10 @@ def render_auth_page():
                 qr_bytes = generate_qr_code_image(signup_url)
                 if qr_bytes:
                     st.image(qr_bytes, width=180, caption="Scan QR Code")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with signup_tab_container:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             with st.form("signup_form"):
                 st.subheader(txt['signup_welcome'])
                 new_username = st.text_input(txt['fullname_label'], placeholder="Alex Sterling").strip()
@@ -1260,7 +1306,6 @@ def render_auth_page():
                 submit_signup = st.form_submit_button(txt['signup_btn'], use_container_width=True)
                 
                 if submit_signup:
-                    # STRICT SIGNUP VALIDATION LOGIC
                     if not new_username:
                         st.error("❌ " + ("يرجى كتابة الاسم الكامل!" if lang=='ar' else "Full Name is strictly required!"))
                     elif not new_email or not SecurityEngine.is_valid_email(new_email):
@@ -1287,11 +1332,12 @@ def render_auth_page():
                                     'is_admin': is_super
                                 }
                                 st.balloons()
-                                st.success("🎉 Account Created Successfully!")
+                                st.success("🎉 Account Created Successfully & Persisted!")
                                 time.sleep(0.5)
                                 st.rerun()
                             else:
                                 st.error("❌ Registration failed, try again.")
+            st.markdown("</div>", unsafe_allow_html=True)
 
 def main():
     st.set_page_config(page_title=APP_TITLE, page_icon="🛡️", layout="wide")
@@ -1311,19 +1357,24 @@ def main():
     lang = st.session_state.lang
     txt = T[lang]
 
-    # Glassmorphism Theme Dynamic Styles (Light & Dark Compatible)
     if st.session_state.theme == 'dark':
         bg_color = "#0B0F17"
         text_color = "#F8FAFC"
-        glass_bg = "rgba(30, 41, 59, 0.7)"
-        glass_border = "rgba(255, 255, 255, 0.1)"
-        glass_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.37)"
+        glass_bg = "rgba(30, 41, 59, 0.70)"
+        glass_border = "rgba(255, 255, 255, 0.12)"
+        glass_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.45)"
+        glass_focus_bg = "rgba(45, 55, 72, 0.88)"
+        glass_focus_border = "rgba(99, 102, 241, 0.80)"
+        glass_focus_shadow = "0 12px 40px 0 rgba(99, 102, 241, 0.35)"
     else:
         bg_color = "#F1F5F9"
         text_color = "#0F172A"
         glass_bg = "rgba(255, 255, 255, 0.75)"
-        glass_border = "rgba(255, 255, 255, 0.6)"
+        glass_border = "rgba(255, 255, 255, 0.65)"
         glass_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.08)"
+        glass_focus_bg = "rgba(255, 255, 255, 0.95)"
+        glass_focus_border = "rgba(37, 99, 235, 0.85)"
+        glass_focus_shadow = "0 12px 40px 0 rgba(37, 99, 235, 0.25)"
 
     st.markdown(f"""
     <style>
@@ -1332,21 +1383,24 @@ def main():
             color: {text_color};
         }}
         
-        /* Ultra High-End Glassmorphism Containers */
         .glass-card {{
             background: {glass_bg};
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 18px;
             border: 1px solid {glass_border};
             box-shadow: {glass_shadow};
             padding: 24px;
-            margin-bottom: 20px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-bottom: 22px;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
         }}
-        .glass-card:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.12);
+        
+        .glass-card:hover, .glass-card:focus-within, .glass-card:active {{
+            background: {glass_focus_bg};
+            border-color: {glass_focus_border};
+            box-shadow: {glass_focus_shadow};
+            transform: translateY(-3px);
         }}
 
         .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
@@ -1375,12 +1429,25 @@ def main():
             text-align: right;
             margin-bottom: 12px;
         }}
+
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 8px;
+            background: {glass_bg};
+            padding: 8px;
+            border-radius: 14px;
+            border: 1px solid {glass_border};
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-weight: bold;
+        }}
     </style>
     """, unsafe_allow_html=True)
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v13.5</span>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v13.6</span>", unsafe_allow_html=True)
         st.divider()
 
         st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
@@ -1459,11 +1526,11 @@ def main():
     # TAB 1: BUILD PROJECT PLAN & SPECIALIST PAYROLL
     # =====================================================================
     with tab1:
-        st.markdown(f"<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.subheader(txt['quick_templates'])
         col_t1, col_t2, col_t3 = st.columns(3)
         col_t1.button(txt['ecom'], use_container_width=True, on_click=apply_template, args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل"))
-        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات واختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
+        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات وااختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
         col_t3.button(txt['delivery'], use_container_width=True, on_click=apply_template, args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع"))
 
         domain_options = ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
@@ -1484,7 +1551,6 @@ def main():
             gemini_key = st.text_input("Gemini API Key (Optional)", type="password")
 
             submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
-
         st.markdown("</div>", unsafe_allow_html=True)
 
         if submit_btn:
@@ -1509,7 +1575,7 @@ def main():
                     st.success("✅ Plan generated & signed successfully!")
 
         if st.session_state.current_plan:
-            st.divider()
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             col_sig1, col_sig2 = st.columns([3, 1])
             with col_sig1:
                 st.info(f"{txt['digital_sig']}\n`{st.session_state.plan_signature}`")
@@ -1554,13 +1620,16 @@ def main():
             with col_n2:
                 if st.button(txt['send_tg'], use_container_width=True):
                     st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
     # TAB 2: ADVANCED 6D INTERACTIVE ANALYTICS (HALF-DOUGHNUT GAUGES)
     # =====================================================================
     with tab2:
         if not st.session_state.current_plan:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.info("💡 Please generate a project plan first to display 6D Analytics.")
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
             plan = st.session_state.current_plan
             df = pd.DataFrame(plan.get('tasks', []))
@@ -1602,11 +1671,9 @@ def main():
             with g_col6:
                 fig6 = create_half_doughnut_gauge(tech_readiness, "🛡️ Architecture Readiness", "#D97706", suffix="%")
                 st.plotly_chart(fig6, use_container_width=True)
-
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.divider()
-
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             col_desc1, col_desc2 = st.columns(2)
             with col_desc1:
                 st.markdown(f"""
@@ -1647,16 +1714,19 @@ def main():
                 fig_radar = go.Figure(go.Scatterpolar(r=radar_vals, theta=radar_cats, fill='toself', line=dict(color='#7C3AED')))
                 fig_radar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=320)
                 st.plotly_chart(fig_radar, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
     # TAB 3: TASK EDITOR & DETAILED PLAN
     # =====================================================================
     with tab3:
-        st.subheader(txt['tab3'])
         if not st.session_state.current_plan:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.warning("⚠️ No active plan available to edit.")
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.subheader(txt['tab3'])
             edited_df = st.data_editor(
                 pd.DataFrame(st.session_state.current_plan['tasks']),
                 num_rows="dynamic", use_container_width=True, key="task_editor"
@@ -1671,23 +1741,23 @@ def main():
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.divider()
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['detailed_plan']}")
             st.markdown(build_detailed_plan_text(st.session_state.current_plan))
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
     # TAB 4: FEEDBACK LOOP & DYNAMIC PRICING ENGINE
     # =====================================================================
     with tab4:
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.subheader(txt['pricing_adapted_title'])
         st.caption(txt['pricing_adapted_caption'])
 
         col_fb1, col_fb2 = st.columns([1, 1])
 
         with col_fb1:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-            st.markdown(f"### {txt['share_feedback_title']}")
-            
+            st.markdown("### " + txt['share_feedback_title'])
             st.markdown(f"**{txt['star_rating_label']}**")
             stars_selection = st.feedback("stars")
             rating_stars = (stars_selection + 1) if stars_selection is not None else 5
@@ -1717,11 +1787,9 @@ def main():
                         st.success("🎉 Feedback saved! 1 free bonus credit added.")
                         time.sleep(1)
                         st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_fb2:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-            st.markdown(f"### {txt['market_proof_title']}")
+            st.markdown("### " + txt['market_proof_title'])
             feedbacks = HybridDatabaseEngine.get_all_feedback()
             adapted = PhoenixAI.analyze_feedback_and_adapt_pricing(feedbacks)
 
@@ -1751,52 +1819,50 @@ def main():
                     """, unsafe_allow_html=True)
             else:
                 st.info("No feedback entries yet.")
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
     # TAB 5: ACCOUNT & SUBSCRIPTIONS
     # =====================================================================
     with tab5:
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.subheader(txt['tab5'])
         col_acc1, col_acc2 = st.columns(2)
         with col_acc1:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['account_info_title']}")
             st.write(f"**Name:** {st.session_state.user['username']}")
             st.write(f"**Email:** {st.session_state.user['email']}")
             st.write(f"**Role:** {st.session_state.user['role']}")
             st.write(f"**Credits:** {st.session_state.user['credits']}")
-            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_acc2:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['upgrade_plans_title']}")
             st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 Pro Monthly (${adapted_insights["recommended_monthly"]})</a>', unsafe_allow_html=True)
             st.write("")
             st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 Enterprise Yearly (${adapted_insights["recommended_yearly"]})</a>', unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
 
         if st.session_state.payment_notifications:
             st.divider()
             st.markdown(f"### {txt['payment_logs_title']}")
             for notif in st.session_state.payment_notifications:
                 st.markdown(f"""
-                <div class="glass-card">
+                <div style="background: rgba(16,185,129,0.08); border-radius:12px; padding:12px; margin-bottom:10px;">
                     <b>To:</b> {notif['to']}<br>
                     <b>Order ID:</b> {notif['order_id']}<br>
                     <b>Plan:</b> {notif['plan_name']} ({notif['amount']})<br>
                     <b>Date:</b> {notif['date']}
                 </div>
                 """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
     # TAB 6: DATABASE ARCHIVE (Cloud SQL PostgreSQL 7-Tables Support)
     # =====================================================================
     with tab6:
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.subheader(txt['cloudsql_title'])
         st.caption(txt['cloudsql_caption'])
         
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         saved_projs = HybridDatabaseEngine.get_projects(st.session_state.user['email'])
         if saved_projs:
             st.dataframe(pd.DataFrame(saved_projs), use_container_width=True)
@@ -1825,8 +1891,6 @@ def main():
             m_adm4.metric("📈 Conversion Rate", f"{round((subscribed_count/max(1, total_users_count))*100, 1)}%")
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.divider()
-
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['grant_admin_title']}")
             col_add_adm1, col_add_adm2 = st.columns([2, 1])
@@ -1844,18 +1908,20 @@ def main():
                             st.error("❌ Email address not found.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.divider()
-
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['users_log_title']}")
             if all_users:
                 df_admin_users = pd.DataFrame(all_users)
                 st.dataframe(df_admin_users[["id", "full_name", "email", "role", "credits", "is_subscribed", "is_admin", "created_at"]], use_container_width=True)
+
+            st.divider()
 
             st.markdown(f"### {txt['demands_title']}")
             admin_fb = HybridDatabaseEngine.get_all_feedback()
             if admin_fb:
                 df_admin_fb = pd.DataFrame(admin_fb)
                 st.dataframe(df_admin_fb[["user_email", "rating", "suggested_price", "requested_feature", "comments", "created_at"]], use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
