@@ -3,7 +3,7 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.6 - ULTIMATE SaaS
+© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.7 - ULTRA ULTIMATE SaaS
 ===============================================================================
 """
 
@@ -26,15 +26,15 @@ from ai import (
 )
 from auth import render_auth_page
 
-APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.6"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ULTRA ENTERPRISE v13.7"
 
 # تهيئة المحرك الهندسي الذكي
 eng_ai = EngineeringAIEngine()
 
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.6",
-        'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، والتخطيط الهندسي AI-ConTech.",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.7 (Ultra Global Edition)",
+        'subtitle': "المنصة العالمية الأقوى والأكثر ذكاءً لهندسة خطط المشاريع، التوأم الرقمي الميداني، والذكاء الاصطناعي التوليدي AI-ConTech.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
         'dark': "🌙 الداكن (Dark)", 'light': "☀️ الفاتح (Light)",
@@ -44,7 +44,7 @@ T = {
         'wa_phone': "رقم الواتساب", 'tg_handle': "معرف التليجرام",
         'tab1': "🏗️ بناء الخطة والكوادر", 
         'tab_eng': "📐 التخطيط الهندسي والكميات (AI-ConTech)",
-        'tab_live': "🔮 التوأم الرقمي والمحاكاة",
+        'tab_live': "🔮 التوأم الرقمي والمحاكاة الحية",
         'tab2': "📊 التحليلات التفاعلية 6D",
         'tab3': "✏️ محرر المهام والتقرير النصي", 'tab4': "🔄 التغذية الراجعة والتكيّف السعري",
         'tab5': "💳 الحساب والاشتراكات", 'tab6': "🗄️ أرشفة Cloud SQL (7-Tables Schema)",
@@ -98,8 +98,8 @@ T = {
         'eng_subtab3': "🤝 3. السوق التنفيذي والمناقصات (Smart Marketplace)"
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.6",
-        'subtitle': "Advanced Engineering Project Plan Builder & AI-ConTech Civil Planning Engine.",
+        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.7 (Ultra Global Edition)",
+        'subtitle': "The Ultimate Global AI Architecture & Field Twin Platform with AI-ConTech Civil Planning Engine.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
         'dark': "🌙 Dark", 'light': "☀️ Light",
@@ -345,7 +345,7 @@ def main():
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v13.6</span>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v13.7 Ultra</span>", unsafe_allow_html=True)
         st.divider()
 
         st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
