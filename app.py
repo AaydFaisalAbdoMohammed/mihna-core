@@ -8,6 +8,7 @@
 المعتمد على جميع جداول الـ Schema السبعة، الذكاء الاصطناعي (Gemini)، التوقيع الرقمي (HMAC-SHA512)،
 لوحة قيادة المدراء المتقدمة (Admin Dashboard)، مولد الـ QR Code للتسجيل السريع،
 التحليلات الهندسية 6D المقسمة بمؤشرات نصف دائرية ملونة، وحساب أجور الكوادر والمتخصصين.
+تصميم زجاجي فاخر متطور (Ultra-Luxurious Glassmorphic UI/UX with Glowing Focus Effects).
 ===============================================================================
 """
 
@@ -1057,14 +1058,14 @@ def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str =
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=val,
-        number={'prefix': prefix, 'suffix': suffix, 'font': {'size': 26, 'color': color}},
-        title={'text': title, 'font': {'size': 14, 'color': '#64748B'}},
+        number={'prefix': prefix, 'suffix': suffix, 'font': {'size': 26, 'color': color, 'family': 'Tajawal, sans-serif'}},
+        title={'text': title, 'font': {'size': 14, 'color': '#94A3B8'}},
         gauge={
             'shape': "angular",
-            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#94A3B8"},
+            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#64748B"},
             'bar': {'color': color, 'thickness': 0.75},
-            'bgcolor': "rgba(226, 232, 240, 0.5)",
-            'bordercolor': "rgba(0,0,0,0.05)",
+            'bgcolor': "rgba(226, 232, 240, 0.15)",
+            'bordercolor': "rgba(255,255,255,0.1)",
         }
     ))
     fig.update_layout(
@@ -1072,7 +1073,7 @@ def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str =
         margin=dict(l=15, r=15, t=30, b=10),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color="#1E293B")
+        font=dict(color="#F8FAFC")
     )
     return fig
 
@@ -1081,7 +1082,7 @@ def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str =
 # =====================================================================
 def init_session():
     if 'lang' not in st.session_state: st.session_state.lang = 'ar'
-    if 'theme' not in st.session_state: st.session_state.theme = 'light'
+    if 'theme' not in st.session_state: st.session_state.theme = 'dark'
     if 'is_authenticated' not in st.session_state: st.session_state.is_authenticated = False
     if 'user' not in st.session_state:
         st.session_state.user = {'email': '', 'username': 'زائر', 'credits': 5, 'role': 'Free Trial', 'is_subscribed': False, 'is_admin': False}
@@ -1228,8 +1229,8 @@ def render_auth_page():
     lang = st.session_state.lang
     txt = T[lang]
 
-    st.markdown(f"<h1 style='text-align: center;'>🚀 {txt['title']}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; color: #64748B;'>{txt['subtitle']}</p>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; font-family: Tajawal, sans-serif;'>🚀 {txt['title']}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #94A3B8; font-size: 1.1rem;'>{txt['subtitle']}</p>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
 
     query_params = st.query_params
@@ -1250,7 +1251,7 @@ def render_auth_page():
             signup_tab_container = auth_tabs[1]
 
         with login_tab_container:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-builder'>", unsafe_allow_html=True)
             col_l1, col_l2 = st.columns([1.5, 1])
             with col_l1:
                 with st.form("login_form"):
@@ -1296,7 +1297,7 @@ def render_auth_page():
             st.markdown("</div>", unsafe_allow_html=True)
 
         with signup_tab_container:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-builder'>", unsafe_allow_html=True)
             with st.form("signup_form"):
                 st.subheader(txt['signup_welcome'])
                 new_username = st.text_input(txt['fullname_label'], placeholder="Alex Sterling").strip()
@@ -1358,89 +1359,149 @@ def main():
     txt = T[lang]
 
     if st.session_state.theme == 'dark':
-        bg_color = "#0B0F17"
+        bg_color = "#070A12"
         text_color = "#F8FAFC"
-        glass_bg = "rgba(30, 41, 59, 0.70)"
+        glass_bg = "rgba(15, 23, 42, 0.72)"
         glass_border = "rgba(255, 255, 255, 0.12)"
-        glass_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.45)"
-        glass_focus_bg = "rgba(45, 55, 72, 0.88)"
-        glass_focus_border = "rgba(99, 102, 241, 0.80)"
-        glass_focus_shadow = "0 12px 40px 0 rgba(99, 102, 241, 0.35)"
+        glass_shadow = "0 20px 50px rgba(0, 0, 0, 0.55)"
+        glass_focus_bg = "rgba(24, 34, 58, 0.92)"
+        glass_focus_border = "rgba(99, 102, 241, 0.85)"
+        glass_focus_shadow = "0 0 35px rgba(99, 102, 241, 0.45), inset 0 0 15px rgba(99, 102, 241, 0.15)"
     else:
-        bg_color = "#F1F5F9"
+        bg_color = "#F8FAFC"
         text_color = "#0F172A"
-        glass_bg = "rgba(255, 255, 255, 0.75)"
-        glass_border = "rgba(255, 255, 255, 0.65)"
-        glass_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.08)"
-        glass_focus_bg = "rgba(255, 255, 255, 0.95)"
+        glass_bg = "rgba(255, 255, 255, 0.78)"
+        glass_border = "rgba(255, 255, 255, 0.80)"
+        glass_shadow = "0 20px 50px rgba(31, 38, 135, 0.08)"
+        glass_focus_bg = "rgba(255, 255, 255, 0.96)"
         glass_focus_border = "rgba(37, 99, 235, 0.85)"
-        glass_focus_shadow = "0 12px 40px 0 rgba(37, 99, 235, 0.25)"
+        glass_focus_shadow = "0 0 35px rgba(37, 99, 235, 0.30), inset 0 0 15px rgba(37, 99, 235, 0.10)"
 
     st.markdown(f"""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
+        
+        * {{
+            font-family: 'Tajawal', sans-serif !important;
+        }}
+
         .stApp {{
             background-color: {bg_color};
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+                radial-gradient(at 90% 20%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+                radial-gradient(at 50% 80%, rgba(139, 92, 246, 0.07) 0px, transparent 50%);
             color: {text_color};
         }}
         
+        /* Ultra-Luxurious Cylindrical Glassmorphic Cards */
         .glass-card {{
             background: {glass_bg};
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: 18px;
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 24px;
             border: 1px solid {glass_border};
             box-shadow: {glass_shadow};
-            padding: 24px;
-            margin-bottom: 22px;
-            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 28px;
+            margin-bottom: 24px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
+            overflow: hidden;
         }}
         
+        /* Glowing Soft Focus / Interaction Effects */
         .glass-card:hover, .glass-card:focus-within, .glass-card:active {{
             background: {glass_focus_bg};
             border-color: {glass_focus_border};
             box-shadow: {glass_focus_shadow};
-            transform: translateY(-3px);
+            transform: translateY(-4px);
         }}
 
-        .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
-        .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
-        .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
+        /* Section-Specific Themes & Geometric Styles */
+        .glass-card-builder {{
+            border-left: 5px solid #3B82F6;
+            background-image: radial-gradient(circle at top right, rgba(59, 130, 246, 0.07) 0%, transparent 60%);
+        }}
         
-        .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }}
-        .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(124,58,237,0.3); }}
+        .glass-card-analytics {{
+            border-left: 5px solid #10B981;
+            background-image: radial-gradient(circle at top right, rgba(16, 185, 129, 0.07) 0%, transparent 60%);
+        }}
+
+        .glass-card-editor {{
+            border-left: 5px solid #8B5CF6;
+            background-image: radial-gradient(circle at top right, rgba(139, 92, 246, 0.07) 0%, transparent 60%);
+        }}
+
+        .glass-card-feedback {{
+            border-left: 5px solid #F59E0B;
+            background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.07) 0%, transparent 60%);
+        }}
+
+        .glass-card-account {{
+            border-left: 5px solid #EC4899;
+            background-image: radial-gradient(circle at top right, rgba(236, 72, 153, 0.07) 0%, transparent 60%);
+        }}
+
+        .glass-card-cloudsql {{
+            border-left: 5px solid #06B6D4;
+            background-image: radial-gradient(circle at top right, rgba(6, 182, 212, 0.07) 0%, transparent 60%);
+        }}
+
+        .glass-card-ceo {{
+            border-left: 5px solid #D97706;
+            background-image: radial-gradient(circle at top right, rgba(217, 119, 6, 0.12) 0%, transparent 70%);
+            box-shadow: 0 10px 40px rgba(217, 119, 6, 0.15);
+        }}
+
+        .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }}
+        .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(139,92,246,0.3); }}
+        .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }}
         
+        .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 14px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 6px 20px rgba(37,99,235,0.35); transition: all 0.3s ease; }}
+        .checkout-btn:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(37,99,235,0.5); }}
+        
+        .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 14px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 6px 20px rgba(124,58,237,0.35); transition: all 0.3s ease; }}
+        .checkout-btn-yearly:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(124,58,237,0.5); }}
+
         .ai-payment-card {{
             background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(49, 46, 129, 0.95) 100%);
             border: 2px solid #6366F1;
-            border-radius: 18px;
+            border-radius: 20px;
             padding: 24px;
             color: #FFFFFF;
             margin-bottom: 24px;
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25);
+            box-shadow: 0 10px 35px rgba(99, 102, 241, 0.35);
         }}
         
         .stat-card-box {{
             background: {glass_bg};
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
             border: 1px solid {glass_border};
-            border-radius: 14px;
-            padding: 18px;
+            border-radius: 16px;
+            padding: 20px;
             text-align: right;
             margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }}
+        .stat-card-box:hover {{
+            border-color: {glass_focus_border};
+            transform: translateY(-2px);
         }}
 
         .stTabs [data-baseweb="tab-list"] {{
-            gap: 8px;
+            gap: 10px;
             background: {glass_bg};
-            padding: 8px;
-            border-radius: 14px;
+            padding: 10px;
+            border-radius: 18px;
             border: 1px solid {glass_border};
+            box-shadow: {glass_shadow};
         }}
         .stTabs [data-baseweb="tab"] {{
-            border-radius: 10px;
-            padding: 8px 16px;
+            border-radius: 12px;
+            padding: 10px 20px;
             font-weight: bold;
+            transition: all 0.3s ease;
         }}
     </style>
     """, unsafe_allow_html=True)
@@ -1526,7 +1587,7 @@ def main():
     # TAB 1: BUILD PROJECT PLAN & SPECIALIST PAYROLL
     # =====================================================================
     with tab1:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='glass-card glass-card-builder'>", unsafe_allow_html=True)
         st.subheader(txt['quick_templates'])
         col_t1, col_t2, col_t3 = st.columns(3)
         col_t1.button(txt['ecom'], use_container_width=True, on_click=apply_template, args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل"))
@@ -1575,7 +1636,7 @@ def main():
                     st.success("✅ Plan generated & signed successfully!")
 
         if st.session_state.current_plan:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-builder'>", unsafe_allow_html=True)
             col_sig1, col_sig2 = st.columns([3, 1])
             with col_sig1:
                 st.info(f"{txt['digital_sig']}\n`{st.session_state.plan_signature}`")
@@ -1616,7 +1677,7 @@ def main():
             wa_url = NotificationEngine.create_whatsapp_link(st.session_state.notify_whatsapp, msg_body)
 
             with col_n1:
-                st.markdown(f'<a href="{wa_url}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">{txt["send_wa"]}</a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="{wa_url}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:12px; font-weight:bold; text-decoration:none;">{txt["send_wa"]}</a>', unsafe_allow_html=True)
             with col_n2:
                 if st.button(txt['send_tg'], use_container_width=True):
                     st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
@@ -1627,7 +1688,7 @@ def main():
     # =====================================================================
     with tab2:
         if not st.session_state.current_plan:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-analytics'>", unsafe_allow_html=True)
             st.info("💡 Please generate a project plan first to display 6D Analytics.")
             st.markdown("</div>", unsafe_allow_html=True)
         else:
@@ -1646,7 +1707,7 @@ def main():
             failure_rate = round(100.0 - success_rate, 1)
             tech_readiness = 92.5 if "PostgreSQL" in str(plan.get('tech_stack')) else 84.0
 
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-analytics'>", unsafe_allow_html=True)
             st.markdown("## 📊 6D Engineering Dashboard & Quality Assessment")
             st.caption("Interactive colored gauges analyzing budget, hours, success probabilities, and technical readiness.")
 
@@ -1673,7 +1734,7 @@ def main():
                 st.plotly_chart(fig6, use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-analytics'>", unsafe_allow_html=True)
             col_desc1, col_desc2 = st.columns(2)
             with col_desc1:
                 st.markdown(f"""
@@ -1721,11 +1782,11 @@ def main():
     # =====================================================================
     with tab3:
         if not st.session_state.current_plan:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-editor'>", unsafe_allow_html=True)
             st.warning("⚠️ No active plan available to edit.")
             st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-editor'>", unsafe_allow_html=True)
             st.subheader(txt['tab3'])
             edited_df = st.data_editor(
                 pd.DataFrame(st.session_state.current_plan['tasks']),
@@ -1741,7 +1802,7 @@ def main():
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-editor'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['detailed_plan']}")
             st.markdown(build_detailed_plan_text(st.session_state.current_plan))
             st.markdown("</div>", unsafe_allow_html=True)
@@ -1750,7 +1811,7 @@ def main():
     # TAB 4: FEEDBACK LOOP & DYNAMIC PRICING ENGINE
     # =====================================================================
     with tab4:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='glass-card glass-card-feedback'>", unsafe_allow_html=True)
         st.subheader(txt['pricing_adapted_title'])
         st.caption(txt['pricing_adapted_caption'])
 
@@ -1794,8 +1855,8 @@ def main():
             adapted = PhoenixAI.analyze_feedback_and_adapt_pricing(feedbacks)
 
             st.markdown(f"""
-            <div style="background: rgba(37,99,235,0.08); border-radius: 12px; padding: 16px; margin-bottom: 15px;">
-                <h4 style="color: #2563EB;">🤖 AI Dynamic Pricing Response:</h4>
+            <div style="background: rgba(245, 158, 11, 0.08); border-radius: 16px; padding: 18px; margin-bottom: 15px; border: 1px solid rgba(245, 158, 11, 0.2);">
+                <h4 style="color: #F59E0B;">🤖 AI Dynamic Pricing Response:</h4>
                 <p>• <b>Avg User Price:</b> ${adapted['recommended_monthly']}/month</p>
                 <p>• <b>Calculated Yearly:</b> ${adapted['recommended_yearly']}/year</p>
                 <p>• <b>Product-Market Fit Score:</b> {adapted['market_satisfaction_score']}%</p>
@@ -1811,7 +1872,7 @@ def main():
                     comment_text = f.get('comments', '') or "No comment."
                     
                     st.markdown(f"""
-                    <div style="background: rgba(0,0,0,0.03); border-left: 4px solid #F59E0B; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="background: rgba(255, 255, 255, 0.05); border-left: 4px solid #F59E0B; padding: 12px; border-radius: 10px; margin-bottom: 10px;">
                         <b>👤 {f['user_email']}</b> - {stars_str} ({stars_count}/5)<br>
                         <small>💵 Price: ${f['suggested_price']} | 💡 Feature: {f['requested_feature']}</small><br>
                         <i>💬 "{comment_text}"</i>
@@ -1825,7 +1886,7 @@ def main():
     # TAB 5: ACCOUNT & SUBSCRIPTIONS
     # =====================================================================
     with tab5:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='glass-card glass-card-account'>", unsafe_allow_html=True)
         st.subheader(txt['tab5'])
         col_acc1, col_acc2 = st.columns(2)
         with col_acc1:
@@ -1846,7 +1907,7 @@ def main():
             st.markdown(f"### {txt['payment_logs_title']}")
             for notif in st.session_state.payment_notifications:
                 st.markdown(f"""
-                <div style="background: rgba(16,185,129,0.08); border-radius:12px; padding:12px; margin-bottom:10px;">
+                <div style="background: rgba(16,185,129,0.08); border-radius:14px; padding:14px; margin-bottom:10px; border: 1px solid rgba(16,185,129,0.2);">
                     <b>To:</b> {notif['to']}<br>
                     <b>Order ID:</b> {notif['order_id']}<br>
                     <b>Plan:</b> {notif['plan_name']} ({notif['amount']})<br>
@@ -1859,7 +1920,7 @@ def main():
     # TAB 6: DATABASE ARCHIVE (Cloud SQL PostgreSQL 7-Tables Support)
     # =====================================================================
     with tab6:
-        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown("<div class='glass-card glass-card-cloudsql'>", unsafe_allow_html=True)
         st.subheader(txt['cloudsql_title'])
         st.caption(txt['cloudsql_caption'])
         
@@ -1875,7 +1936,7 @@ def main():
     # =====================================================================
     if is_ceo_owner:
         with tab_admin:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
             st.subheader(txt['ceo_title'])
             st.caption(txt['ceo_caption'])
 
@@ -1891,7 +1952,7 @@ def main():
             m_adm4.metric("📈 Conversion Rate", f"{round((subscribed_count/max(1, total_users_count))*100, 1)}%")
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['grant_admin_title']}")
             col_add_adm1, col_add_adm2 = st.columns([2, 1])
             with col_add_adm1:
@@ -1908,7 +1969,7 @@ def main():
                             st.error("❌ Email address not found.")
             st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['users_log_title']}")
             if all_users:
                 df_admin_users = pd.DataFrame(all_users)
