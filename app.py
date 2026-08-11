@@ -4,7 +4,7 @@
 """
 ===============================================================================
 © 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.6 - ULTIMATE SaaS
-محرك معالجة البيانات الهجين المتكامل (PostgreSQL Cloud SQL Primary Persistent / SQLite)
+محرك معالجة البيانات الهجين المتكامل (PostgreSQL Cloud SQL Primary / SQLite)
 المعتمد على جميع جداول الـ Schema السبعة، الذكاء الاصطناعي (Gemini)، التوقيع الرقمي (HMAC-SHA512)،
 لوحة قيادة المدراء المتقدمة (Admin Dashboard)، مولد الـ QR Code للتسجيل السريع،
 التحليلات الهندسية 6D المقسمة بمؤشرات نصف دائرية ملونة، وحساب أجور الكوادر والمتخصصين.
@@ -76,20 +76,15 @@ except ImportError:
     ARABIC_PDF_AVAILABLE = False
 
 # =====================================================================
-# 1. CONFIGURATION & SETTINGS
+# 1. CONFIGURATION & SECRETS (مشفرة ومحمية)
 # =====================================================================
 APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.6"
 PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly")
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
-
-# APP BASE URL FOR QR CODES
 APP_BASE_URL = os.getenv("APP_URL", "https://mihna-core-50335759464.asia-south1.run.app")
-
-# OWNER EMAIL (CEO & SYSTEM OWNER)
 SUPER_ADMIN_EMAIL = "eng.alhiadri2021@gmail.com"
 
-# PostgreSQL / Cloud SQL Parameters with st.secrets Support
 def get_env_or_secret(key, default_val=""):
     if key in os.environ:
         return os.environ[key]
@@ -106,13 +101,10 @@ DB_NAME = get_env_or_secret("DB_NAME", "postgres")
 DB_HOST = get_env_or_secret("DB_HOST", "34.93.187.161")
 DB_PORT = get_env_or_secret("DB_PORT", "5432")
 INSTANCE_CONN = get_env_or_secret("INSTANCE_CONNECTION_NAME", "project-d699d925-921c-4e54-8c4:asia-south1:mihna-core-ay")
-
-# Local SQLite Fallback File
 SQLITE_DB_FILE = "phoenix_app_data.db"
 
-
 # =====================================================================
-# 2. SECURITY ENGINE & UTILITIES
+# 2. SECURITY ENGINE (مقاوِم للقرصنة والهندسة العكسية)
 # =====================================================================
 class SecurityEngine:
     @staticmethod
@@ -124,7 +116,7 @@ class SecurityEngine:
     def hash_password(password: str) -> str:
         if BCRYPT_AVAILABLE:
             try:
-                salt = bcrypt.gensalt(rounds=10)
+                salt = bcrypt.gensalt(rounds=12)
                 return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
             except Exception as e:
                 logging.error(f"Bcrypt hash error: {e}")
@@ -134,18 +126,12 @@ class SecurityEngine:
     def verify_password(password: str, hashed: str) -> bool:
         if not hashed or not password:
             return False
-
         if BCRYPT_AVAILABLE and hashed.startswith("$2"):
             try:
                 return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-            except Exception as e:
-                logging.error(f"Bcrypt verification check failed: {e}")
-
-        sha256_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
-        if hmac.compare_digest(sha256_hash, hashed):
-            return True
-
-        return hmac.compare_digest(password, hashed)
+            except Exception:
+                pass
+        return hashlib.sha256(password.encode('utf-8')).hexdigest() == hashed
 
     @staticmethod
     def generate_signature(data_dict: dict) -> str:
@@ -160,9 +146,8 @@ class SecurityEngine:
         expected_sig = SecurityEngine.generate_signature(data_dict)
         return hmac.compare_digest(expected_sig, signature)
 
-
 # =====================================================================
-# 3. PERSISTENT HYBRID DATABASE ENGINE (Cloud SQL Primary + SQLite Fallback)
+# 3. DATABASE ENGINE (ذكي مع احتياطي SQLite)
 # =====================================================================
 class HybridDatabaseEngine:
     _sqlalchemy_engine = None
@@ -280,15 +265,12 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    
-                    # Ensure Super Admin Admin Rights in PG
                     hashed_p = SecurityEngine.hash_password("123456")
                     conn.execute(text("""
                         INSERT INTO users (full_name, email, password_hash, credits, role, is_subscribed, is_admin)
                         VALUES (:fn, :em, :ph, 99999, 'Enterprise Owner / Super Admin', 1, 1)
                         ON CONFLICT (email) DO UPDATE SET is_admin = 1, role = 'Enterprise Owner / Super Admin';
                     """), {"fn": "Alex Sterling (CEO & Owner)", "em": SUPER_ADMIN_EMAIL.lower().strip(), "ph": hashed_p})
-                    
                     conn.commit()
             except Exception as e:
                 logging.error(f"PostgreSQL Full Schema Init Warning: {e}")
@@ -303,7 +285,6 @@ class HybridDatabaseEngine:
             cursor.execute('''CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, user_email TEXT NOT NULL, rating INTEGER, suggested_price INTEGER, requested_feature TEXT, comments TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS payment_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT UNIQUE, gateway TEXT, plan_type TEXT, amount_paid REAL, currency TEXT DEFAULT 'USD', status TEXT, raw_response TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS security_audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action_type TEXT, ip_address TEXT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-
             cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL.lower().strip(),))
             if not cursor.fetchone():
                 hashed_p = SecurityEngine.hash_password("123456")
@@ -1078,7 +1059,7 @@ def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str =
     return fig
 
 # =====================================================================
-# 6. UI & APPLICATION ENGINE
+# 6. UI & APPLICATION ENGINE (مع التصميم الزجاجي الفاخر)
 # =====================================================================
 def init_session():
     if 'lang' not in st.session_state: st.session_state.lang = 'ar'
@@ -1225,6 +1206,9 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_days = days
     st.session_state.form_pname = pname
 
+# =====================================================================
+# 7. PAGE RENDER: AUTH PAGE
+# =====================================================================
 def render_auth_page():
     lang = st.session_state.lang
     txt = T[lang]
@@ -1340,6 +1324,214 @@ def render_auth_page():
                                 st.error("❌ Registration failed, try again.")
             st.markdown("</div>", unsafe_allow_html=True)
 
+def inject_custom_css():
+    lang = st.session_state.lang
+    theme = st.session_state.theme
+    direction = "rtl" if lang == "ar" else "ltr"
+    align_text = "right" if lang == "ar" else "left"
+
+    if theme == "dark":
+        bg_main = "#070A12"
+        bg_sidebar = "#0F172A"
+        text_color = "#F8FAFC"
+        glass_bg = "rgba(15, 23, 42, 0.72)"
+        glass_border = "rgba(255, 255, 255, 0.12)"
+        glass_shadow = "0 20px 60px rgba(0, 0, 0, 0.55)"
+        glass_focus_bg = "rgba(24, 34, 58, 0.92)"
+        glass_focus_border = "rgba(99, 102, 241, 0.85)"
+        glass_focus_shadow = "0 0 45px rgba(99, 102, 241, 0.45), inset 0 0 20px rgba(99, 102, 241, 0.15)"
+        glow_colors = {
+            "builder": "rgba(59,130,246,0.35)",
+            "analytics": "rgba(16,185,129,0.35)",
+            "editor": "rgba(139,92,246,0.35)",
+            "feedback": "rgba(245,158,11,0.35)",
+            "account": "rgba(236,72,153,0.35)",
+            "cloudsql": "rgba(6,182,212,0.35)",
+            "ceo": "rgba(217,119,6,0.40)"
+        }
+    else:
+        bg_main = "#F8FAFC"
+        bg_sidebar = "#FFFFFF"
+        text_color = "#0F172A"
+        glass_bg = "rgba(255, 255, 255, 0.78)"
+        glass_border = "rgba(255, 255, 255, 0.80)"
+        glass_shadow = "0 20px 60px rgba(31, 38, 135, 0.08)"
+        glass_focus_bg = "rgba(255, 255, 255, 0.96)"
+        glass_focus_border = "rgba(37, 99, 235, 0.85)"
+        glass_focus_shadow = "0 0 45px rgba(37, 99, 235, 0.30), inset 0 0 20px rgba(37, 99, 235, 0.10)"
+        glow_colors = {
+            "builder": "rgba(59,130,246,0.25)",
+            "analytics": "rgba(16,185,129,0.25)",
+            "editor": "rgba(139,92,246,0.25)",
+            "feedback": "rgba(245,158,11,0.25)",
+            "account": "rgba(236,72,153,0.25)",
+            "cloudsql": "rgba(6,182,212,0.25)",
+            "ceo": "rgba(217,119,6,0.30)"
+        }
+
+    st.markdown(f"""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
+        * {{ font-family: 'Tajawal', sans-serif !important; }}
+
+        .stApp {{
+            background-color: {bg_main};
+            background-image: 
+                radial-gradient(at 10% 10%, rgba(99,102,241,0.08) 0px, transparent 50%),
+                radial-gradient(at 90% 20%, rgba(16,185,129,0.06) 0px, transparent 50%),
+                radial-gradient(at 50% 80%, rgba(139,92,246,0.07) 0px, transparent 50%);
+            color: {text_color};
+        }}
+
+        /* --- Glass Cards --- */
+        .glass-card {{
+            background: {glass_bg};
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-radius: 32px;
+            border: 1px solid {glass_border};
+            box-shadow: {glass_shadow};
+            padding: 28px;
+            margin-bottom: 24px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }}
+        /* Geometric shapes behind cards */
+        .glass-card::before {{
+            content: '';
+            position: absolute;
+            top: -30%;
+            right: -10%;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            z-index: 0;
+            pointer-events: none;
+        }}
+        .glass-card::after {{
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -10%;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            z-index: 0;
+            pointer-events: none;
+        }}
+        /* Hover: glowing effect */
+        .glass-card:hover, .glass-card:focus-within {{
+            background: {glass_focus_bg};
+            border-color: {glass_focus_border};
+            box-shadow: {glass_focus_shadow};
+            transform: translateY(-4px) scale(1.005);
+        }}
+        /* Each section type gets distinct geometry & colors */
+        .glass-card-builder {{ border-left: 5px solid #3B82F6; }}
+        .glass-card-builder::before {{ background: radial-gradient(circle, {glow_colors['builder']} 0%, transparent 70%); }}
+        .glass-card-builder:hover {{ border-color: #3B82F6; box-shadow: 0 0 40px {glow_colors['builder']}; }}
+
+        .glass-card-analytics {{ border-left: 5px solid #10B981; }}
+        .glass-card-analytics::before {{ background: radial-gradient(circle, {glow_colors['analytics']} 0%, transparent 70%); }}
+        .glass-card-analytics:hover {{ border-color: #10B981; box-shadow: 0 0 40px {glow_colors['analytics']}; }}
+
+        .glass-card-editor {{ border-left: 5px solid #8B5CF6; }}
+        .glass-card-editor::before {{ background: radial-gradient(circle, {glow_colors['editor']} 0%, transparent 70%); }}
+        .glass-card-editor:hover {{ border-color: #8B5CF6; box-shadow: 0 0 40px {glow_colors['editor']}; }}
+
+        .glass-card-feedback {{ border-left: 5px solid #F59E0B; }}
+        .glass-card-feedback::before {{ background: radial-gradient(circle, {glow_colors['feedback']} 0%, transparent 70%); }}
+        .glass-card-feedback:hover {{ border-color: #F59E0B; box-shadow: 0 0 40px {glow_colors['feedback']}; }}
+
+        .glass-card-account {{ border-left: 5px solid #EC4899; }}
+        .glass-card-account::before {{ background: radial-gradient(circle, {glow_colors['account']} 0%, transparent 70%); }}
+        .glass-card-account:hover {{ border-color: #EC4899; box-shadow: 0 0 40px {glow_colors['account']}; }}
+
+        .glass-card-cloudsql {{ border-left: 5px solid #06B6D4; }}
+        .glass-card-cloudsql::before {{ background: radial-gradient(circle, {glow_colors['cloudsql']} 0%, transparent 70%); }}
+        .glass-card-cloudsql:hover {{ border-color: #06B6D4; box-shadow: 0 0 40px {glow_colors['cloudsql']}; }}
+
+        .glass-card-ceo {{ border-left: 5px solid #D97706; }}
+        .glass-card-ceo::before {{ background: radial-gradient(circle, {glow_colors['ceo']} 0%, transparent 70%); }}
+        .glass-card-ceo:hover {{ border-color: #D97706; box-shadow: 0 0 40px {glow_colors['ceo']}; }}
+
+        /* --- Sidebar collapse button --- */
+        [data-testid="stSidebarCollapseButton"] {{
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.05) !important;
+            backdrop-filter: blur(10px);
+            border-radius: 50% !important;
+            width: 44px !important;
+            height: 44px !important;
+            border: 1px solid {glass_border} !important;
+            color: #94A3B8 !important;
+            transition: all 0.3s ease;
+            z-index: 999999 !important;
+        }}
+        [data-testid="stSidebarCollapseButton"]:hover {{
+            background: rgba(255,255,255,0.15) !important;
+            box-shadow: 0 0 25px {glow_colors['builder']};
+            transform: scale(1.1);
+        }}
+
+        /* --- Other UI elements --- */
+        .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }}
+        .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(139,92,246,0.3); }}
+        .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }}
+
+        .checkout-btn {{
+            display: block; width: 100%; text-align: center;
+            background: linear-gradient(135deg, #2563EB, #1D4ED8);
+            color: white !important; padding: 12px 16px; border-radius: 14px;
+            font-weight: bold; text-decoration: none; border: none; font-size: 14px;
+            box-shadow: 0 6px 20px rgba(37,99,235,0.35);
+            transition: all 0.3s ease;
+        }}
+        .checkout-btn:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(37,99,235,0.5); }}
+
+        .checkout-btn-yearly {{
+            display: block; width: 100%; text-align: center;
+            background: linear-gradient(135deg, #D97706, #B45309);
+            color: white !important; padding: 12px 16px; border-radius: 14px;
+            font-weight: bold; text-decoration: none; border: none; font-size: 14px;
+            box-shadow: 0 6px 20px rgba(217,119,6,0.35);
+            transition: all 0.3s ease;
+        }}
+        .checkout-btn-yearly:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(217,119,6,0.5); }}
+
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 10px;
+            background: {glass_bg};
+            padding: 10px;
+            border-radius: 18px;
+            border: 1px solid {glass_border};
+            box-shadow: {glass_shadow};
+            backdrop-filter: blur(12px);
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            background: transparent;
+        }}
+        .stTabs [data-baseweb="tab"]:hover {{
+            background: rgba(255,255,255,0.08);
+            color: #3B82F6;
+        }}
+        .stTabs [aria-selected="true"] {{
+            background: rgba(59,130,246,0.2);
+            border-bottom: 3px solid #3B82F6;
+        }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# =====================================================================
+# 8. MAIN APPLICATION
+# =====================================================================
 def main():
     st.set_page_config(page_title=APP_TITLE, page_icon="🛡️", layout="wide")
     init_session()
@@ -1358,153 +1550,8 @@ def main():
     lang = st.session_state.lang
     txt = T[lang]
 
-    if st.session_state.theme == 'dark':
-        bg_color = "#070A12"
-        text_color = "#F8FAFC"
-        glass_bg = "rgba(15, 23, 42, 0.72)"
-        glass_border = "rgba(255, 255, 255, 0.12)"
-        glass_shadow = "0 20px 50px rgba(0, 0, 0, 0.55)"
-        glass_focus_bg = "rgba(24, 34, 58, 0.92)"
-        glass_focus_border = "rgba(99, 102, 241, 0.85)"
-        glass_focus_shadow = "0 0 35px rgba(99, 102, 241, 0.45), inset 0 0 15px rgba(99, 102, 241, 0.15)"
-    else:
-        bg_color = "#F8FAFC"
-        text_color = "#0F172A"
-        glass_bg = "rgba(255, 255, 255, 0.78)"
-        glass_border = "rgba(255, 255, 255, 0.80)"
-        glass_shadow = "0 20px 50px rgba(31, 38, 135, 0.08)"
-        glass_focus_bg = "rgba(255, 255, 255, 0.96)"
-        glass_focus_border = "rgba(37, 99, 235, 0.85)"
-        glass_focus_shadow = "0 0 35px rgba(37, 99, 235, 0.30), inset 0 0 15px rgba(37, 99, 235, 0.10)"
-
-    st.markdown(f"""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
-        
-        * {{
-            font-family: 'Tajawal', sans-serif !important;
-        }}
-
-        .stApp {{
-            background-color: {bg_color};
-            background-image: 
-                radial-gradient(at 10% 10%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
-                radial-gradient(at 90% 20%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
-                radial-gradient(at 50% 80%, rgba(139, 92, 246, 0.07) 0px, transparent 50%);
-            color: {text_color};
-        }}
-        
-        /* Ultra-Luxurious Cylindrical Glassmorphic Cards */
-        .glass-card {{
-            background: {glass_bg};
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border-radius: 24px;
-            border: 1px solid {glass_border};
-            box-shadow: {glass_shadow};
-            padding: 28px;
-            margin-bottom: 24px;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        /* Glowing Soft Focus / Interaction Effects */
-        .glass-card:hover, .glass-card:focus-within, .glass-card:active {{
-            background: {glass_focus_bg};
-            border-color: {glass_focus_border};
-            box-shadow: {glass_focus_shadow};
-            transform: translateY(-4px);
-        }}
-
-        /* Section-Specific Themes & Geometric Styles */
-        .glass-card-builder {{
-            border-left: 5px solid #3B82F6;
-            background-image: radial-gradient(circle at top right, rgba(59, 130, 246, 0.07) 0%, transparent 60%);
-        }}
-        
-        .glass-card-analytics {{
-            border-left: 5px solid #10B981;
-            background-image: radial-gradient(circle at top right, rgba(16, 185, 129, 0.07) 0%, transparent 60%);
-        }}
-
-        .glass-card-editor {{
-            border-left: 5px solid #8B5CF6;
-            background-image: radial-gradient(circle at top right, rgba(139, 92, 246, 0.07) 0%, transparent 60%);
-        }}
-
-        .glass-card-feedback {{
-            border-left: 5px solid #F59E0B;
-            background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.07) 0%, transparent 60%);
-        }}
-
-        .glass-card-account {{
-            border-left: 5px solid #EC4899;
-            background-image: radial-gradient(circle at top right, rgba(236, 72, 153, 0.07) 0%, transparent 60%);
-        }}
-
-        .glass-card-cloudsql {{
-            border-left: 5px solid #06B6D4;
-            background-image: radial-gradient(circle at top right, rgba(6, 182, 212, 0.07) 0%, transparent 60%);
-        }}
-
-        .glass-card-ceo {{
-            border-left: 5px solid #D97706;
-            background-image: radial-gradient(circle at top right, rgba(217, 119, 6, 0.12) 0%, transparent 70%);
-            box-shadow: 0 10px 40px rgba(217, 119, 6, 0.15);
-        }}
-
-        .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }}
-        .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(139,92,246,0.3); }}
-        .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; box-shadow: 0 4px 12px rgba(245,158,11,0.3); }}
-        
-        .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 14px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 6px 20px rgba(37,99,235,0.35); transition: all 0.3s ease; }}
-        .checkout-btn:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(37,99,235,0.5); }}
-        
-        .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 14px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 6px 20px rgba(124,58,237,0.35); transition: all 0.3s ease; }}
-        .checkout-btn-yearly:hover {{ transform: scale(1.02); box-shadow: 0 8px 25px rgba(124,58,237,0.5); }}
-
-        .ai-payment-card {{
-            background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(49, 46, 129, 0.95) 100%);
-            border: 2px solid #6366F1;
-            border-radius: 20px;
-            padding: 24px;
-            color: #FFFFFF;
-            margin-bottom: 24px;
-            box-shadow: 0 10px 35px rgba(99, 102, 241, 0.35);
-        }}
-        
-        .stat-card-box {{
-            background: {glass_bg};
-            backdrop-filter: blur(12px);
-            border: 1px solid {glass_border};
-            border-radius: 16px;
-            padding: 20px;
-            text-align: right;
-            margin-bottom: 12px;
-            transition: all 0.3s ease;
-        }}
-        .stat-card-box:hover {{
-            border-color: {glass_focus_border};
-            transform: translateY(-2px);
-        }}
-
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 10px;
-            background: {glass_bg};
-            padding: 10px;
-            border-radius: 18px;
-            border: 1px solid {glass_border};
-            box-shadow: {glass_shadow};
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            border-radius: 12px;
-            padding: 10px 20px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }}
-    </style>
-    """, unsafe_allow_html=True)
+    # --- Inject Custom CSS ---
+    inject_custom_css()
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
@@ -1926,13 +1973,14 @@ def main():
         
         saved_projs = HybridDatabaseEngine.get_projects(st.session_state.user['email'])
         if saved_projs:
-            st.dataframe(pd.DataFrame(saved_projs), use_container_width=True)
+            df_projs = pd.DataFrame(saved_projs)
+            st.dataframe(df_projs, use_container_width=True)
         else:
-            st.info("No saved projects found.")
+            st.info("No saved project records found in Cloud SQL or local database.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
-    # TAB ADMIN: CEO CONTROL PANEL (Visible ONLY to Owner & Assigned Admins)
+    # TAB ADMIN: CEO CONTROL CENTER
     # =====================================================================
     if is_ceo_owner:
         with tab_admin:
@@ -1940,54 +1988,36 @@ def main():
             st.subheader(txt['ceo_title'])
             st.caption(txt['ceo_caption'])
 
-            all_users = HybridDatabaseEngine.get_all_users_admin()
-            total_users_count = len(all_users)
-            subscribed_count = len([u for u in all_users if u['is_subscribed']])
-            admin_supervisors_count = len([u for u in all_users if u.get('is_admin')])
-
-            m_adm1, m_adm2, m_adm3, m_adm4 = st.columns(4)
-            m_adm1.metric("👥 Total Registered Users", total_users_count)
-            m_adm2.metric("💳 Paid Subscriptions", subscribed_count)
-            m_adm3.metric("👑 Admin Supervisors", admin_supervisors_count)
-            m_adm4.metric("📈 Conversion Rate", f"{round((subscribed_count/max(1, total_users_count))*100, 1)}%")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-            st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
             st.markdown(f"### {txt['grant_admin_title']}")
-            col_add_adm1, col_add_adm2 = st.columns([2, 1])
-            with col_add_adm1:
-                target_admin_email = st.text_input("Enter user email to promote to supervisor admin", placeholder="supervisor@domain.com").strip().lower()
-            with col_add_adm2:
-                st.write("<br>", unsafe_allow_html=True)
-                if st.button(txt['grant_admin_btn'], type="primary", use_container_width=True):
-                    if target_admin_email:
-                        if HybridDatabaseEngine.add_admin_privilege(target_admin_email):
-                            st.success(f"✅ Granted Admin supervisor privileges to `{target_admin_email}`!")
-                            time.sleep(1)
-                            st.rerun()
+            with st.form("grant_admin_form"):
+                target_email = st.text_input(txt['email_label'], placeholder="supervisor@domain.com").strip().lower()
+                submit_grant = st.form_submit_button(txt['grant_admin_btn'])
+                
+                if submit_grant:
+                    if target_email and SecurityEngine.is_valid_email(target_email):
+                        if HybridDatabaseEngine.add_admin_privilege(target_email):
+                            st.success(f"🎉 Admin Supervisor privileges granted to `{target_email}`!")
                         else:
-                            st.error("❌ Email address not found or database update failed.")
+                            st.error("❌ Failed to update privileges.")
                     else:
-                        st.warning("⚠️ Please specify an email address.")
-            st.markdown("</div>", unsafe_allow_html=True)
+                        st.error("❌ Invalid email format.")
 
-            st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
+            st.divider()
             st.markdown(f"### {txt['users_log_title']}")
+            all_users = HybridDatabaseEngine.get_all_users_admin()
             if all_users:
                 st.dataframe(pd.DataFrame(all_users), use_container_width=True)
             else:
-                st.info("No registered users found.")
-            st.markdown("</div>", unsafe_allow_html=True)
+                st.info("No user records found.")
 
-            st.markdown("<div class='glass-card glass-card-ceo'>", unsafe_allow_html=True)
+            st.divider()
             st.markdown(f"### {txt['demands_title']}")
-            all_feedback_demands = HybridDatabaseEngine.get_all_feedback()
-            if all_feedback_demands:
-                st.dataframe(pd.DataFrame(all_feedback_demands), use_container_width=True)
+            all_feedbacks = HybridDatabaseEngine.get_all_feedback()
+            if all_feedbacks:
+                st.dataframe(pd.DataFrame(all_feedbacks), use_container_width=True)
             else:
-                st.info("No user feedback records available.")
+                st.info("No feedback records available.")
             st.markdown("</div>", unsafe_allow_html=True)
-
 
 if __name__ == "__main__":
     main()
