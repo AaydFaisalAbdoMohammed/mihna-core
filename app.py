@@ -22,13 +22,13 @@ from utils import (
 from db import HybridDatabaseEngine, SUPER_ADMIN_EMAIL
 from ai import (
     PhoenixAI, AIPaymentAgent, build_detailed_plan_text, 
-    PAYMENT_LINK_MONTHLY, PAYMENT_LINK_YEARLY, EngineeringAIEngine
+    PAYMENT_LINK_MONTHLY, PAYMENT_LINK_YEARLY, EngineeringAIEngine, LiveTwinEngine
 )
 from auth import render_auth_page
 
 APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.6"
 
-# تهيئة المحرك الهندسية الذكي
+# تهيئة المحرك الهندسي الذكي
 eng_ai = EngineeringAIEngine()
 
 T = {
@@ -44,6 +44,7 @@ T = {
         'wa_phone': "رقم الواتساب", 'tg_handle': "معرف التليجرام",
         'tab1': "🏗️ بناء الخطة والكوادر", 
         'tab_eng': "📐 التخطيط الهندسي والكميات (AI-ConTech)",
+        'tab_live': "🔮 التوأم الرقمي والمحاكاة",
         'tab2': "📊 التحليلات التفاعلية 6D",
         'tab3': "✏️ محرر المهام والتقرير النصي", 'tab4': "🔄 التغذية الراجعة والتكيّف السعري",
         'tab5': "💳 الحساب والاشتراكات", 'tab6': "🗄️ أرشفة Cloud SQL (7-Tables Schema)",
@@ -108,6 +109,7 @@ T = {
         'wa_phone': "WhatsApp Phone", 'tg_handle': "Telegram Handle",
         'tab1': "🏗️ Build Plan & Payroll", 
         'tab_eng': "📐 Engineering & BOQ (AI-ConTech)",
+        'tab_live': "🔮 AI Live Twin",
         'tab2': "📊 Advanced 6D Analytics",
         'tab3': "✏️ Task Editor & Text Plan", 'tab4': "🔄 Feedback & Pricing",
         'tab5': "💳 Account & Subscriptions", 'tab6': "🗄️ Cloud SQL 7-Tables Archive",
@@ -410,12 +412,12 @@ def main():
     is_ceo_owner = (st.session_state.user['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower()) or st.session_state.user['is_admin']
     
     if is_ceo_owner:
-        tab1, tab_eng, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
-            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
+        tab1, tab_eng, tab_live_twin, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
+            txt['tab1'], txt['tab_eng'], txt['tab_live'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
         ])
     else:
-        tab1, tab_eng, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
+        tab1, tab_eng, tab_live_twin, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            txt['tab1'], txt['tab_eng'], txt['tab_live'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
         ])
 
     # TAB 1: BUILD PLAN
@@ -519,6 +521,98 @@ def main():
     # TAB ENGINEERING: AI-ConTech MODULE
     with tab_eng:
         render_engineering_tab(txt)
+
+    # TAB LIVE TWIN: محرك التوأم الرقمي والمحاكاة الحية
+    with tab_live_twin:
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
+        st.caption("ربط التخطيط المعماري بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
+        
+        if not st.session_state.get('current_plan'):
+            st.warning("⚠️ يرجى توليد خطة مشروع أو اختيار مشروع محدد أولاً للبدء بالمحاكاة الميدانية.")
+        else:
+            plan = st.session_state.current_plan
+            
+            st.markdown("### 1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)")
+            
+            col_st1, col_st2, col_st3 = st.columns(3)
+            with col_st1:
+                soil_type = st.selectbox("نوع التربة الميدانية", ["صخرية صلبة (Rock)", "تربة طينية (Clay)", "تربة رملية (Sand)", "تربة مشبعة بالماء (Silt)"])
+            with col_st2:
+                seismic_risk = st.selectbox("مستوى النشاط الزلزالي", ["منخفض (Low)", "متوسط (Moderate)", "مرتفع (High)"])
+            with col_st3:
+                st.write("<br>", unsafe_allow_html=True)
+                run_sim = st.button("⚡ تشغيل محاكاة الإجهاد", use_container_width=True)
+
+            if run_sim or 'stress_result' in st.session_state:
+                if run_sim:
+                    st.session_state.stress_result = LiveTwinEngine.analyze_structural_stress(plan, soil_type, seismic_risk)
+                
+                res = st.session_state.stress_result
+                
+                c_m1, c_m2, c_m3 = st.columns(3)
+                c_m1.metric("🛡️ مؤشر السلامة الإجهادية", f"{res['safety_stress_score']}%", delta="آمن structural" if res['safety_stress_score'] > 75 else "يحتاج تدعيم")
+                c_m2.metric("💵 احتياطي طوارئ الإجهاد", f"${res['financial_contingency_usd']:,}")
+                c_m3.metric("🔑 التوقيع الرقمي للمحاكاة", "Verified SHA-256")
+                
+                st.info(f"💡 **توصية الفحص الهندسي:** {res['engineering_recommendation']}")
+                st.warning(f"⚠️ **نقاط الخلل المحتملة:** {', '.join(res['critical_risk_points'])}")
+
+            st.write("---")
+
+            st.markdown("### 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)")
+            
+            uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'])
+            
+            if uploaded_file is not None:
+                col_img, col_analysis = st.columns([1, 1])
+                
+                with col_img:
+                    st.image(uploaded_file, caption="الرفع الميداني الحالي", use_column_width=True)
+                    img_bytes = uploaded_file.getvalue()
+                    
+                with col_analysis:
+                    if st.button("🔍 مطابقة الصورة مع الجدول الزمني والـ BOQ", type="primary", use_container_width=True):
+                        with st.spinner("جاري تحليل العناصر الإنشائية والمطابقة بالذكاء الاصطناعي..."):
+                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, plan.get('tasks', []))
+                            st.session_state.last_inspection = inspection
+                            
+            if 'last_inspection' in st.session_state:
+                insp = st.session_state.last_inspection
+                
+                st.success("✅ اكتمل تحليل المطابقة الميدانية!")
+                st.progress(insp['completion_percentage'] / 100, text=f"نسبة الإنجاز الميداني الحقيقي: {insp['completion_percentage']}%")
+                
+                col_i1, col_i2 = st.columns(2)
+                col_i1.warning(f"⏳ **الانحرافات والتأخير:** {insp['estimated_delay_days']} أيام تأخير متوقعة.")
+                col_i2.error(f"🚨 **الملاحظات الميدانية:** {', '.join(insp['detected_deviations'])}")
+
+                st.write("---")
+                st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & Immutable Escrow)")
+                
+                ledger_hash = SecurityEngine.generate_smart_contract_hash(plan['project_name'], insp['completion_percentage'], insp['smart_contract_release_amount'])
+                
+                st.markdown(f"""
+                <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
+                    <h4 style="color: #6366F1; margin-0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger</h4>
+                    <p><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
+                    <p><b>المبلغ المستحق للإفراج الفوري للمقاول:</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
+                    <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all;"><b>Block Hash:</b> {ledger_hash}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button("🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر", use_container_width=True):
+                    HybridDatabaseEngine.log_live_twin_inspection(
+                        st.session_state.user['email'],
+                        plan['project_name'],
+                        st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
+                        insp['completion_percentage'],
+                        insp['smart_contract_release_amount'],
+                        ledger_hash
+                    )
+                    st.balloons()
+                    st.success("🎉 تم الإفراج عن الدفعة وتوثيق المعاملة في السجل الذكي غير القابل للتعديل!")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # TAB 2: ANALYTICS 6D
     with tab2:
