@@ -1,5 +1,5 @@
 # --- Streamlit & Web Core ---
-streamlit>=1.28.0
+streamlit>=1.30.0
 python-dotenv
 
 # --- AI & Cloud Services ---
@@ -14,8 +14,8 @@ supabase>=2.0.0
 mysql-connector-python>=8.0.0
 
 # --- Data Processing & Analytics ---
-pandas
-numpy
+pandas>=2.0.0
+numpy>=1.24.0
 plotly
 
 # --- Export & PDF Generation (Arabic Support Included) ---
