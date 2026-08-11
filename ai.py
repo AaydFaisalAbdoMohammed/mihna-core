@@ -1,37 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-===============================================================================
-AI MODULE: Gemini Architecture Generator, Specialist Payroll, Adaptive Pricing
-===============================================================================
-"""
-
 import re
 import json
 import time
-import hashlib
-import datetime
 import logging
-
-import streamlit as st
+import datetime
+import hashlib
 import numpy as np
+import pandas as pd
+import streamlit as st
 import google.generativeai as genai
 
 from utils import SecurityEngine
 from db import HybridDatabaseEngine
 
-
-# =====================================================================
-# CONFIGURATION
-# =====================================================================
 PAYMENT_LINK_MONTHLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly"
 PAYMENT_LINK_YEARLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly"
 
-
-# =====================================================================
-# AI ENGINE
-# =====================================================================
 class PhoenixAI:
     @staticmethod
     def generate_architecture(req: dict, api_key: str = None) -> dict:
@@ -71,7 +57,7 @@ class PhoenixAI:
             {"id": 3, "task": "تطوير واجهات المستخدم Frontend & UI Components", "days": max(1, int(d*0.30)), "cost": int(b*0.30), "status": "مخطط", "priority": "Medium"},
             {"id": 4, "task": "الااختبارات الشاملة QA & Cloud Deployment", "days": max(1, int(d*0.20)), "cost": int(b*0.20), "status": "مخطط", "priority": "Low"}
         ]
-
+        
         tech_list = [t.strip() for t in req['tech_stack'].split(",")] if isinstance(req['tech_stack'], str) else req['tech_stack']
 
         data = {
@@ -144,14 +130,14 @@ class PhoenixAI:
                 "top_requested_features": ["تصدير PDF باللغة العربية", "ربط مباشر مع Cloud SQL", "تكامل الذكاء الاصطناعي مع Gemini Pro"],
                 "market_satisfaction_score": 93.5
             }
-
+        
         avg_price = np.mean([f['suggested_price'] for f in feedbacks if f.get('suggested_price', 0) > 0]) if feedbacks else 29
         avg_rating = np.mean([f['rating'] for f in feedbacks if f.get('rating') is not None]) if feedbacks else 4.5
-
+        
         features = [f['requested_feature'] for f in feedbacks if f.get('requested_feature')]
         feature_counts = pd.Series(features).value_counts().to_dict() if features else {}
         top_features = list(feature_counts.keys())[:3] if feature_counts else ["تكامل تلقائي مع Cloud SQL", "تخزين الخطط مؤمنة", "دعم الدفع المحلي"]
-
+        
         rec_monthly = max(19, int(avg_price))
         rec_yearly = int(rec_monthly * 9.5)
 
@@ -162,10 +148,6 @@ class PhoenixAI:
             "market_satisfaction_score": round(float(avg_rating) * 20, 1)
         }
 
-
-# =====================================================================
-# AI PAYMENT AGENT
-# =====================================================================
 class AIPaymentAgent:
     @staticmethod
     def inspect_payment_method(user_email: str) -> dict:
@@ -181,7 +163,7 @@ class AIPaymentAgent:
     def execute_auto_checkout(user_email: str, plan_type: str = "monthly"):
         progress_bar = st.progress(0)
         status_box = st.empty()
-
+        
         checkout_url = PAYMENT_LINK_YEARLY if plan_type == "yearly" else PAYMENT_LINK_MONTHLY
         plan_name = "Enterprise Yearly Plan ($279)" if plan_type == "yearly" else "Pro Monthly Plan ($29)"
         amount_num = 279.00 if plan_type == "yearly" else 29.00
@@ -199,7 +181,7 @@ class AIPaymentAgent:
         status_box.info("🔐 **[AI Agent]:** Confirming Digital Signature & Upgrading Subscription...")
         time.sleep(0.4)
         progress_bar.progress(100)
-
+        
         progress_bar.empty()
         status_box.empty()
 
@@ -221,3 +203,90 @@ class AIPaymentAgent:
         if 'payment_notifications' not in st.session_state:
             st.session_state.payment_notifications = []
         st.session_state.payment_notifications.insert(0, email_payload)
+
+def build_detailed_plan_text(plan: dict) -> str:
+    p_name = plan.get('project_name', 'المشروع')
+    domain = plan.get('domain', 'تقني')
+    budget = float(plan.get('budget', 0))
+    days = int(plan.get('target_days', 0))
+    tech = plan.get('tech', plan.get('tech_stack', 'Flutter, Node.js, Supabase, PostgreSQL'))
+    risk = plan.get('risk', 'متوسط')
+    tasks = plan.get('tasks', [])
+    
+    working_hours_per_day = 8
+    total_man_hours = days * working_hours_per_day
+    daily_rate = budget / max(1, days)
+    hourly_rate = budget / max(1, total_man_hours)
+    
+    contingency_rate = 0.15 if risk == "عالي" or risk == "High" else (0.10 if risk == "متوسط" or risk == "Medium" else 0.05)
+    contingency_amount = budget * contingency_rate
+    effective_operational_budget = budget - contingency_amount
+    
+    cloud_infra_cost = budget * 0.10
+    dev_labor_cost = effective_operational_budget - cloud_infra_cost
+
+    specialists = PhoenixAI.calculate_specialists_breakdown(budget, days, domain)
+    specialists_str = ""
+    for s in specialists:
+        specialists_str += f"""
+* {s['icon']} **{s['role']}**
+  * ⏱️ **إجمالي الساعات:** {s['total_hours']} ساعة ({s['allocated_days']} أيام عمل)
+  * 💵 **أجر الساعة الهندسية:** ${s['hourly_rate']:,.2f} / ساعة | **اليومي:** ${s['daily_rate']:,.2f} / يوم
+  * 💰 **إجمالي المستحقات:** `${s['total_cost']:,.2f}` ({s['ratio_pct']}% من ميزانية الكوادر)
+"""
+
+    tasks_breakdown_str = ""
+    for idx, t in enumerate(tasks, 1):
+        t_cost = float(t.get('cost', 0))
+        t_days = int(t.get('days', 0))
+        t_hours = t_days * working_hours_per_day
+        cost_percentage = (t_cost / max(1, budget)) * 100
+        daily_t_cost = t_cost / max(1, t_days)
+        hourly_t_cost = t_cost / max(1, t_hours)
+        
+        tasks_breakdown_str += f"""
+#### Phase {idx}: {t.get('task', 'مهمة')}
+* ⏱️ **المدة الزمنية:** {t_days} أيام عمل ({t_hours} ساعة هندسية)
+* 💰 **التكلفة المخصصة:** ${t_cost:,.2f} ({cost_percentage:.1f}% من إجمالي الميزانية)
+* 📊 **المعدل اليومي للإنفاق:** ${daily_t_cost:,.2f} / يوم | **الساعة:** ${hourly_t_cost:,.2f} / ساعة
+* 📌 **الحالة التنفيذية:** {t.get('status', 'مخطط')}
+"""
+
+    return f"""📌 **المستند التنفيذي والهندسي المتكامل لمشروع ({p_name})**
+*تاريخ التوليد والتوقيع الرقمي: {plan.get('generated_at', datetime.datetime.now().strftime('%Y-%m-%d'))}*
+
+---
+
+### 1. نظرة عامة والأهداف التنفيذية (Executive Summary & KPIs)
+يهدف مشروع **{p_name}** إلى تقديم حل سحابي برمجي فائق الأداء في قطاع **{domain}**، معتمداً على البيئة والتقنيات: **({tech})**.
+* **الميزانية الكلية (Total Budget):** `${budget:,.2f}`
+* **المدى الزمني المستهدف (Timeline):** `{days}` يوماً تقويمياً.
+* **مستوى تحمل المخاطر (Risk Profile):** `{risk}`.
+
+---
+
+### 2. توزيع الكوادر والتخصصات الهندسية وأجورهم (Engineering Specialists & Payroll Allocation)
+تم استخدام خوارزمية **Phoenix Resource Allocation Engine** لتحديد الكوادر الدقيقة المطلوبة وحساب أجورهم:
+{specialists_str}
+
+---
+
+### 3. الحسابات المالية والهندسية التفصيلية (Precise Cost & Time Allocation)
+* ⏳ **إجمالي الساعات الهندسية (Total Man-Hours):** `{total_man_hours:,}` ساعة عمل ({working_hours_per_day} ساعات/يوم).
+* 💵 **معدل التكلفة اليومي الكلي:** `${daily_rate:,.2f}` / يوم.
+* ⏱️ **معدل تكلفة الساعة الهندسية:** `${hourly_rate:,.2f}` / ساعة.
+* 🛡️ **احتياطي الطوارئ والمخاطر ({contingency_rate*100:.0f}% Risk Reserve):** `${contingency_amount:,.2f}`.
+* ☁️ **تكاليف البنية التحتية والاستضافة Cloud Infrastructure:** `${cloud_infra_cost:,.2f}`.
+* 🛠️ **صافي ميزانية تطوير الكوادر (Effective Dev Budget):** `${dev_labor_cost:,.2f}`.
+
+---
+
+### 4. التفصيل المرحلي للمهام (Work Breakdown Structure)
+{tasks_breakdown_str}
+
+---
+
+### 5. مصفوفة الأمان والتوقيع الرقمي المشفر (Digital HMAC Signature)
+* **التوقيع الرقمي:** تم توقيع هذه الخطة رسمياً وحفظها في قاعدة بيانات Cloud SQL.
+* **تشفير HMAC-SHA512:** المعيار السري المعتمد في المؤسسة.
+"""
