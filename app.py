@@ -3,7 +3,7 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.1 - ULTIMATE SaaS
+© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.5 - ULTIMATE SaaS
 محرك معالجة البيانات الهجين المتكامل (PostgreSQL Cloud SQL / SQLite) المعتمد على
 جميع جداول الـ Schema السبعة، الذكاء الاصطناعي (Gemini)، التوقيع الرقمي (HMAC-SHA512)،
 لوحة قيادة المدراء المتقدمة (Admin Dashboard)، مولد الـ QR Code للتسجيل السريع،
@@ -77,7 +77,7 @@ except ImportError:
 # =====================================================================
 # 1. CONFIGURATION & SETTINGS
 # =====================================================================
-APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.1"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ENTERPRISE v13.5"
 PAYMENT_LINK_MONTHLY = os.getenv("PAYMENT_LINK_MONTHLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly")
 PAYMENT_LINK_YEARLY = os.getenv("PAYMENT_LINK_YEARLY", "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly")
 SECRET_HMAC_KEY = os.getenv("HMAC_SECRET_KEY", "PHOENIX_SECURE_HMAC_KEY_2026_ENTERPRISE_ULTIMATE")
@@ -101,9 +101,15 @@ SQLITE_DB_FILE = "phoenix_app_data.db"
 
 
 # =====================================================================
-# 2. SECURITY ENGINE & UTILITIES (FIXED & ENHANCED)
+# 2. SECURITY ENGINE & UTILITIES (VALIDATION & SECURITY ENHANCED)
 # =====================================================================
 class SecurityEngine:
+    @staticmethod
+    def is_valid_email(email: str) -> bool:
+        """فحص دقيق لصحّة تنسيق البريد الإلكتروني"""
+        pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        return bool(re.match(pattern, email.strip()))
+
     @staticmethod
     def hash_password(password: str) -> str:
         """تشفير كلمة المرور بدعم متكامل وموثوق"""
@@ -121,19 +127,16 @@ class SecurityEngine:
         if not hashed or not password:
             return False
 
-        # 1. التحقق في حال كان التشفير بـ Bcrypt (جميع البادئات المقبولة $2a$, $2b$, $2y$)
         if BCRYPT_AVAILABLE and hashed.startswith("$2"):
             try:
                 return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
             except Exception as e:
                 logging.error(f"Bcrypt verification check failed: {e}")
 
-        # 2. التحقق الاحتياطي بـ SHA-256
         sha256_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
         if hmac.compare_digest(sha256_hash, hashed):
             return True
 
-        # 3. التحقق الاحتياطي النصي المباشر في الحالات الطارئة
         return hmac.compare_digest(password, hashed)
 
     @staticmethod
@@ -180,7 +183,6 @@ class HybridDatabaseEngine:
         if pg_engine:
             try:
                 with pg_engine.connect() as conn:
-                    # 1. users
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS users (
                             id SERIAL PRIMARY KEY,
@@ -195,7 +197,6 @@ class HybridDatabaseEngine:
                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    # 2. project_plans
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS project_plans (
                             id SERIAL PRIMARY KEY,
@@ -212,7 +213,6 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    # 3. plan_tasks
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS plan_tasks (
                             id SERIAL PRIMARY KEY,
@@ -225,7 +225,6 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    # 4. projects
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS projects (
                             id SERIAL PRIMARY KEY,
@@ -239,7 +238,6 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    # 5. feedback
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS feedback (
                             id SERIAL PRIMARY KEY,
@@ -251,7 +249,6 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    # 6. payment_transactions
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS payment_transactions (
                             id SERIAL PRIMARY KEY,
@@ -266,7 +263,6 @@ class HybridDatabaseEngine:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """))
-                    # 7. security_audit_logs
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS security_audit_logs (
                             id SERIAL PRIMARY KEY,
@@ -281,7 +277,6 @@ class HybridDatabaseEngine:
             except Exception as e:
                 logging.error(f"PostgreSQL Full Schema Init Warning: {e}")
 
-        # Local SQLite Fallback
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
@@ -293,7 +288,6 @@ class HybridDatabaseEngine:
             cursor.execute('''CREATE TABLE IF NOT EXISTS payment_transactions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_id TEXT UNIQUE, gateway TEXT, plan_type TEXT, amount_paid REAL, currency TEXT DEFAULT 'USD', status TEXT, raw_response TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS security_audit_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, action_type TEXT, ip_address TEXT, details TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
 
-            # Seed Super Admin
             cursor.execute("SELECT email FROM users WHERE email = ?", (SUPER_ADMIN_EMAIL.lower().strip(),))
             if not cursor.fetchone():
                 hashed_p = SecurityEngine.hash_password("123456")
@@ -308,12 +302,10 @@ class HybridDatabaseEngine:
 
     @classmethod
     def get_user(cls, email: str) -> dict:
-        """جلب بيانات المستخدم بطريقة هجينة ومضمونة بدون فقدان أي حقل"""
         email_clean = email.strip().lower()
         if not email_clean:
             return None
 
-        # 1. محاولة الاستعلام من PostgreSQL Cloud SQL
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
@@ -331,7 +323,6 @@ class HybridDatabaseEngine:
             except Exception as e:
                 logging.error(f"PostgreSQL fetch user fallback: {e}")
 
-        # 2. الاستعلام الاحتياطي الفوري من SQLite المحشور محلياً
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             conn.row_factory = sqlite3.Row
@@ -353,13 +344,11 @@ class HybridDatabaseEngine:
 
     @classmethod
     def register_user(cls, full_name: str, email: str, password_hash: str) -> bool:
-        """تسجيل المستخدم بالتزامن الموثوق في كلا من PostgreSQL و SQLite"""
         email_clean = email.strip().lower()
         success = False
         is_admin_flag = 1 if email_clean == SUPER_ADMIN_EMAIL.lower().strip() else 0
         role_flag = "Enterprise Owner / Super Admin" if is_admin_flag else "Free Trial"
 
-        # الحفظ أولاً في SQLite كحاوية سريعة ومضمونة
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
             cursor = conn.cursor()
@@ -375,7 +364,6 @@ class HybridDatabaseEngine:
         except Exception as e:
             logging.error(f"SQLite Register Error: {e}")
 
-        # الحفظ التزامني في PostgreSQL Cloud SQL
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
             try:
@@ -397,7 +385,6 @@ class HybridDatabaseEngine:
 
     @classmethod
     def add_admin_privilege(cls, target_email: str) -> bool:
-        """إضافة صلاحية مشرف جديد بواسطة مالك النظام"""
         target_clean = target_email.strip().lower()
         pg_engine = cls.get_sqlalchemy_engine()
         if pg_engine:
@@ -419,7 +406,6 @@ class HybridDatabaseEngine:
 
     @classmethod
     def get_all_users_admin(cls) -> list:
-        """جلب جميع المستخدمين للوحة قيادة المدير"""
         users = []
         try:
             conn = sqlite3.connect(SQLITE_DB_FILE)
@@ -743,13 +729,13 @@ class PhoenixAI:
         total_man_hours = target_days * 8
         dev_budget = budget * 0.75
 
-        if "ذكاء" in domain or "SaaS" in domain:
+        if "ذكاء" in domain or "AI" in domain or "SaaS" in domain:
             roles_ratio = [
                 {"role": "مهندس المعمارية والذكاء الاصطناعي (AI/Cloud Architect)", "ratio": 0.25, "icon": "🧠"},
                 {"role": "مطور خلفية النظم (Senior Backend Engineer)", "ratio": 0.25, "icon": "⚙️"},
                 {"role": "مطور واجهات المستخدم (Frontend/Mobile Engineer)", "ratio": 0.20, "icon": "💻"},
                 {"role": "مصمم تجربة وواجهة المستخدم (UI/UX Designer)", "ratio": 0.12, "icon": "🎨"},
-                {"role": "مهندس جودة وااختبار الأمان (QA & Security Engineer)", "ratio": 0.10, "icon": "🛡️"},
+                {"role": "مهندس جودة واختبار الأمان (QA & Security Engineer)", "ratio": 0.10, "icon": "🛡️"},
                 {"role": "مدير المشروع الهندسي (Agile Project Manager)", "ratio": 0.08, "icon": "📊"}
             ]
         else:
@@ -832,15 +818,15 @@ class AIPaymentAgent:
         amount_str = f"${amount_num:.2f}"
 
         method_info = AIPaymentAgent.inspect_payment_method(user_email)
-        status_box.info(f"🤖 **[AI Agent]:** فحص وسيلة الدفع المتاحة لـ `{user_email}`...")
+        status_box.info(f"🤖 **[AI Agent]:** Checking payment method for `{user_email}`...")
         time.sleep(0.4)
         progress_bar.progress(30)
 
-        status_box.info(f"🔗 **[AI Agent]:** قراءة توجيه Lemon Squeezy الآلي...")
+        status_box.info(f"🔗 **[AI Agent]:** Directing to Lemon Squeezy Router...")
         time.sleep(0.4)
         progress_bar.progress(70)
 
-        status_box.info("🔐 **[AI Agent]:** تأكيد التوقيع الرقمي ومزامنة الاشتراك...")
+        status_box.info("🔐 **[AI Agent]:** Confirming Digital Signature & Upgrading Subscription...")
         time.sleep(0.4)
         progress_bar.progress(100)
         
@@ -877,7 +863,6 @@ class NotificationEngine:
         return f"https://wa.me/{clean_phone}?text={encoded_msg}"
 
 def generate_qr_code_image(target_url: str) -> bytes:
-    """توليد صورة QR Code برابط التسجيل المباشر للحملات الإعلانية"""
     if QRCODE_AVAILABLE:
         qr = qrcode.QRCode(version=1, box_size=8, border=2)
         qr.add_data(target_url)
@@ -952,7 +937,7 @@ def build_detailed_plan_text(plan: dict) -> str:
     daily_rate = budget / max(1, days)
     hourly_rate = budget / max(1, total_man_hours)
     
-    contingency_rate = 0.15 if risk == "عالي" else (0.10 if risk == "متوسط" else 0.05)
+    contingency_rate = 0.15 if risk == "عالي" or risk == "High" else (0.10 if risk == "متوسط" or risk == "Medium" else 0.05)
     contingency_amount = budget * contingency_rate
     effective_operational_budget = budget - contingency_amount
     
@@ -1026,18 +1011,17 @@ def build_detailed_plan_text(plan: dict) -> str:
 """
 
 def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str = "", suffix: str = "", max_val: float = 100):
-    """رسم مؤشر نصف دائري ملون فائق الوضوح مخصص لكل متغيّر"""
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=val,
         number={'prefix': prefix, 'suffix': suffix, 'font': {'size': 26, 'color': color}},
-        title={'text': title, 'font': {'size': 14, 'color': '#94A3B8'}},
+        title={'text': title, 'font': {'size': 14, 'color': '#64748B'}},
         gauge={
             'shape': "angular",
-            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#475569"},
+            'axis': {'range': [0, max_val], 'tickwidth': 1, 'tickcolor': "#94A3B8"},
             'bar': {'color': color, 'thickness': 0.75},
-            'bgcolor': "rgba(15, 23, 42, 0.6)",
-            'bordercolor': "rgba(255,255,255,0.1)",
+            'bgcolor': "rgba(226, 232, 240, 0.5)",
+            'bordercolor': "rgba(0,0,0,0.05)",
         }
     ))
     fig.update_layout(
@@ -1045,7 +1029,7 @@ def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str =
         margin=dict(l=15, r=15, t=30, b=10),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color="#FFFFFF")
+        font=dict(color="#1E293B")
     )
     return fig
 
@@ -1054,7 +1038,7 @@ def create_half_doughnut_gauge(val: float, title: str, color: str, prefix: str =
 # =====================================================================
 def init_session():
     if 'lang' not in st.session_state: st.session_state.lang = 'ar'
-    if 'theme' not in st.session_state: st.session_state.theme = 'dark'
+    if 'theme' not in st.session_state: st.session_state.theme = 'light'  # Default set to Light Mode
     if 'is_authenticated' not in st.session_state: st.session_state.is_authenticated = False
     if 'user' not in st.session_state:
         st.session_state.user = {'email': '', 'username': 'زائر', 'credits': 5, 'role': 'Free Trial', 'is_subscribed': False, 'is_admin': False}
@@ -1071,7 +1055,7 @@ def init_session():
 
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.1",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.5",
         'subtitle': "المنصة المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، وتأمين البيانات بـ Cloud SQL و HMAC-SHA512.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
@@ -1095,16 +1079,45 @@ T = {
         'digital_sig': "🔑 التوقيع الرقمي المشفر (HMAC-SHA512):",
         'sig_valid': "✔ توقيع موثوق وسليم", 'sig_invalid': "❌ تم التلاعب بالبيانات",
         'send_wa': "📱 إرسال عبر WhatsApp", 'send_tg': "📲 إشعار Telegram Bot",
+        'spec_title': "👥 الكوادر والمتخصصون المطلوبون وأجورهم المخصصة (Specialist Payroll & Hours)",
+        'tasks_title': "📋 مراحل ونطاق المهام الفنية",
+        'login_welcome': "مرحباً بك مجدداً!",
+        'signup_welcome': "انضم إلى منصة PHOENIX Enterprise",
+        'login_btn': "🚀 تسجيل الدخول",
+        'signup_btn': "✨ إنشاء حساب وتفعيل 5 نقاط هدية",
+        'email_label': "البريد الإلكتروني",
+        'pass_label': "كلمة المرور",
+        'confirm_pass_label': "تأكيد كلمة المرور",
+        'fullname_label': "الاسم الكامل",
+        'qr_scan_title': "📲 امسح الـ QR للتسجيل السريع",
+        'qr_scan_caption': "للحملات الإعلانية والجوال: امسح الرمز للتوجيه الفوري وإنشاء حساب جديد",
+        'pricing_adapted_title': "🔄 نظام التغذية الراجعة المغلقة والتكيّف السعري (AI Closed-Loop Feedback)",
+        'pricing_adapted_caption': "نظام ذكي يربط آراء العملاء فورياً بضبط الخيارات السعرية والميزات داخل الكود لضمان أعلى ملاءمة للسوق.",
+        'share_feedback_title': "📝 شاركنا رأيك (واربح 1 نقطة مجانية أوتوماتيكياً)",
+        'star_rating_label': "تقييمك الكلي للمنصة (حدد عدد النجوم):",
+        'market_proof_title': "🏆 لوحة إثبات احتياج السوق وقوة التكيف",
+        'live_feedback_stream': "💬 سجل آراء جميع العملاء الحية (Live Stream):",
+        'account_info_title': "👤 بيانات الحساب",
+        'upgrade_plans_title': "🛒 خطط الترقية المتاحة (التسيعر الديناميكي المكيّف)",
+        'payment_logs_title': "📩 سجل إشعارات الدفع والعمليات الذكية",
+        'cloudsql_title': "🗄️ الأرشيف والتكامل مع Cloud SQL (7-Tables Schema)",
+        'cloudsql_caption': "عرض أحدث المشاريع المسجلة في هيكل الجداول الكامل من الصور السبع.",
+        'ceo_title': "👑 لوحة قيادة الإدارة العليا والمالك (CEO Control Center)",
+        'ceo_caption': "مرحباً بك! هذه الصفحة مخفية عن جميع المستخدمين العاديين وتظهر فقط للمالك والمشرفين المعتمدين.",
+        'grant_admin_title': "🔑 تعيين وإضافة مشرف جديد (Grant Supervisor Admin Privilege)",
+        'grant_admin_btn': "✨ تفعيل صلاحية المشرف",
+        'users_log_title': "📋 سجل جميع المستخدمين واشتراكاتهم الحية",
+        'demands_title': "💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)"
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.1",
+        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.5",
         'subtitle': "Advanced Engineering Project Plan Builder & Specialist Payroll Engine Secured with Cloud SQL & HMAC-SHA512.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
         'dark': "🌙 Dark", 'light': "☀️ Light",
-        'user': "👤 User:", 'credits': "💳 Current Balance:", 'points': "points",
+        'user': "👤 User:", 'credits': "💳 Balance:", 'points': "points",
         'renew_title': "🛒 Upgrade Plan", 'renew_btn': "⚡ Upgrade & Subscribe Now",
-        'logout_btn': "🚪 Log Out", 'notify_settings': "📲 Instant Notification Settings",
+        'logout_btn': "🚪 Log Out", 'notify_settings': "📲 Instant Notifications",
         'wa_phone': "WhatsApp Phone", 'tg_handle': "Telegram Handle",
         'tab1': "🏗️ Build Plan & Payroll", 'tab2': "📊 Advanced 6D Analytics",
         'tab3': "✏️ Task Editor & Text Plan", 'tab4': "🔄 Feedback & Pricing",
@@ -1121,12 +1134,41 @@ T = {
         'digital_sig': "🔑 Encrypted HMAC Signature:",
         'sig_valid': "✔ Valid Signature", 'sig_invalid': "❌ Invalid Signature",
         'send_wa': "📱 Send via WhatsApp", 'send_tg': "📲 Notify Telegram Bot",
+        'spec_title': "👥 Specialist Payroll & Hourly Rate Breakdown",
+        'tasks_title': "📋 Technical Task Phases & Scope",
+        'login_welcome': "Welcome Back!",
+        'signup_welcome': "Join PHOENIX Enterprise",
+        'login_btn': "🚀 Sign In",
+        'signup_btn': "✨ Create Account & Get 5 Bonus Points",
+        'email_label': "Email Address",
+        'pass_label': "Password",
+        'confirm_pass_label': "Confirm Password",
+        'fullname_label': "Full Name",
+        'qr_scan_title': "📲 Scan QR Code for Fast Registration",
+        'qr_scan_caption': "For Ads & Mobile: Scan code for instant redirect and account creation",
+        'pricing_adapted_title': "🔄 AI Closed-Loop Feedback & Dynamic Pricing Engine",
+        'pricing_adapted_caption': "Smart AI system adapting pricing & feature priorities directly from live market feedback.",
+        'share_feedback_title': "📝 Share Your Feedback (Earn 1 Free Bonus Credit)",
+        'star_rating_label': "Your Overall Rating (Select Stars):",
+        'market_proof_title': "🏆 Market Validation & Adaptation Panel",
+        'live_feedback_stream': "💬 Live Stream User Feedback:",
+        'account_info_title': "👤 Account Details",
+        'upgrade_plans_title': "🛒 Available Upgrade Plans (Dynamic Pricing)",
+        'payment_logs_title': "📩 Payment & AI Execution Log",
+        'cloudsql_title': "🗄️ Cloud SQL Archive (7-Tables Schema)",
+        'cloudsql_caption': "Displaying latest projects stored across the complete 7-tables architecture.",
+        'ceo_title': "👑 CEO & Owner Control Center",
+        'ceo_caption': "Welcome! This panel is strictly hidden from regular users and visible only to system owner & supervisors.",
+        'grant_admin_title': "🔑 Grant Supervisor Admin Privilege",
+        'grant_admin_btn': "✨ Activate Supervisor Privileges",
+        'users_log_title': "📋 Active Users & Subscriptions Log",
+        'demands_title': "💬 User Demands & Market Feature Requests"
     }
 }
 
 def update_language():
     selected = st.session_state.lang_radio
-    st.session_state.lang = 'ar' if "العربية" in selected else 'en'
+    st.session_state.lang = 'ar' if ("العربية" in selected or "Arabic" in selected) else 'en'
 
 def update_theme():
     selected = st.session_state.theme_radio
@@ -1140,8 +1182,11 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_pname = pname
 
 def render_auth_page():
-    st.markdown("<h1 style='text-align: center;'>🚀 بوابة الدخول | PHOENIX & WAKEEL MEHNA PRO</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #94A3B8;'>سجل دخولك أو أنشئ حساباً جديداً للوصول إلى المنصة الهندسية الذكية</p>", unsafe_allow_html=True)
+    lang = st.session_state.lang
+    txt = T[lang]
+
+    st.markdown(f"<h1 style='text-align: center;'>🚀 {txt['title']}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #64748B;'>{txt['subtitle']}</p>", unsafe_allow_html=True)
     st.write("<br>", unsafe_allow_html=True)
 
     query_params = st.query_params
@@ -1149,8 +1194,8 @@ def render_auth_page():
 
     col_center, _ = st.columns([1, 0.01])
     with col_center:
-        tab_login_title = "🔑 تسجيل الدخول"
-        tab_signup_title = "✨ حساب جديد (5 محاولات مجانية)"
+        tab_login_title = f"🔑 {txt['login_btn']}"
+        tab_signup_title = f"✨ {txt['signup_btn']}"
         
         if is_signup_mode:
             auth_tabs = st.tabs([tab_signup_title, tab_login_title])
@@ -1165,14 +1210,16 @@ def render_auth_page():
             col_l1, col_l2 = st.columns([1.5, 1])
             with col_l1:
                 with st.form("login_form"):
-                    st.subheader("مرحباً بك مجدداً!")
-                    email_input = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").strip().lower()
-                    password_input = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
-                    submit_login = st.form_submit_button("🚀 تسجيل الدخول", use_container_width=True)
+                    st.subheader(txt['login_welcome'])
+                    email_input = st.text_input(txt['email_label'], placeholder="name@domain.com").strip().lower()
+                    password_input = st.text_input(txt['pass_label'], type="password", placeholder="••••••••")
+                    submit_login = st.form_submit_button(txt['login_btn'], use_container_width=True)
                     
                     if submit_login:
                         if not email_input or not password_input:
-                            st.warning("⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور.")
+                            st.warning("⚠️ " + ("يرجى إدخال البريد وكلمة المرور." if lang=='ar' else "Please enter email and password."))
+                        elif not SecurityEngine.is_valid_email(email_input):
+                            st.error("❌ " + ("فريد إلكتروني غير صحيح Formally Invalid Email!" if lang=='ar' else "Invalid email format!"))
                         else:
                             u = HybridDatabaseEngine.get_user(email_input)
                             if u and SecurityEngine.verify_password(password_input, u["password_hash"]):
@@ -1187,40 +1234,45 @@ def render_auth_page():
                                     'is_admin': is_super
                                 }
                                 HybridDatabaseEngine.log_audit(u['id'], "LOGIN_SUCCESS", "User logged in.")
-                                st.success(f"🎉 أهلاً بك مجدداً {st.session_state.user['username']}!")
+                                st.success(f"🎉 Welcome back {st.session_state.user['username']}!")
                                 time.sleep(0.4)
                                 st.rerun()
                             else:
-                                st.error("❌ بيانات الدخول غير صحيحة. يرجى التأكد من البريد وكلمة المرور.")
+                                st.error("❌ " + ("بيانات الدخول غير صحيحة." if lang=='ar' else "Invalid login credentials."))
 
             with col_l2:
-                st.markdown("### 📲 امسح الـ QR للتسجيل السريع")
-                st.caption("للحملات الإعلانية والجوال: امسح الرمز للتوجيه الفوري وإنشاء حساب جديد")
+                st.markdown(f"### {txt['qr_scan_title']}")
+                st.caption(txt['qr_scan_caption'])
                 
                 clean_base_url = APP_BASE_URL.rstrip('/')
                 signup_url = f"{clean_base_url}/?mode=signup"
                 qr_bytes = generate_qr_code_image(signup_url)
                 if qr_bytes:
-                    st.image(qr_bytes, width=180, caption="امسح الرمز للكاميرا")
+                    st.image(qr_bytes, width=180, caption="Scan QR Code")
 
         with signup_tab_container:
             with st.form("signup_form"):
-                st.subheader("انضم إلى منصة PHOENIX Enterprise")
-                new_username = st.text_input("الاسم الكامل", placeholder="Alex Sterling")
-                new_email = st.text_input("البريد الإلكتروني", placeholder="name@domain.com").strip().lower()
-                new_password = st.text_input("كلمة المرور", type="password", placeholder="••••••••")
-                confirm_password = st.text_input("تأكيد كلمة المرور", type="password", placeholder="••••••••")
-                submit_signup = st.form_submit_button("✨ إنشاء حساب وتفعيل 5 نقاط هدية", use_container_width=True)
+                st.subheader(txt['signup_welcome'])
+                new_username = st.text_input(txt['fullname_label'], placeholder="Alex Sterling").strip()
+                new_email = st.text_input(txt['email_label'], placeholder="name@domain.com").strip().lower()
+                new_password = st.text_input(txt['pass_label'], type="password", placeholder="••••••••")
+                confirm_password = st.text_input(txt['confirm_pass_label'], type="password", placeholder="••••••••")
+                submit_signup = st.form_submit_button(txt['signup_btn'], use_container_width=True)
                 
                 if submit_signup:
-                    if not new_username or not new_email or not new_password:
-                        st.warning("⚠️ يرجى ملء كافة الحقول.")
+                    # STRICT SIGNUP VALIDATION LOGIC
+                    if not new_username:
+                        st.error("❌ " + ("يرجى كتابة الاسم الكامل!" if lang=='ar' else "Full Name is strictly required!"))
+                    elif not new_email or not SecurityEngine.is_valid_email(new_email):
+                        st.error("❌ " + ("يرجى كتابة بريد إلكتروني صحيح وصالح!" if lang=='ar' else "Valid Email is strictly required!"))
+                    elif not new_password or len(new_password) < 4:
+                        st.error("❌ " + ("كلمة المرور يجب أن تكون 4 رموز على الأقل!" if lang=='ar' else "Password must be at least 4 characters!"))
                     elif new_password != confirm_password:
-                        st.error("❌ كلمة المرور غير متطابقة.")
+                        st.error("❌ " + ("كلمة المرور وتأكيدها غير متطابقين!" if lang=='ar' else "Passwords do not match!"))
                     else:
                         existing = HybridDatabaseEngine.get_user(new_email)
                         if existing:
-                            st.error("❌ البريد الإلكتروني مسجل مسبقاً. يمكنك تسجيل الدخول مباشرة.")
+                            st.error("❌ " + ("البريد الإلكتروني مسجل مسبقاً." if lang=='ar' else "Email already registered."))
                         else:
                             hashed_p = SecurityEngine.hash_password(new_password)
                             if HybridDatabaseEngine.register_user(new_username, new_email, hashed_p):
@@ -1235,11 +1287,11 @@ def render_auth_page():
                                     'is_admin': is_super
                                 }
                                 st.balloons()
-                                st.success("🎉 تم إنشاء الحساب وحفظ البيانات في قاعدة البيانات بنجاح!")
+                                st.success("🎉 Account Created Successfully!")
                                 time.sleep(0.5)
                                 st.rerun()
                             else:
-                                st.error("❌ تعذر إنشاء الحساب، حاول مرة أخرى.")
+                                st.error("❌ Registration failed, try again.")
 
 def main():
     st.set_page_config(page_title=APP_TITLE, page_icon="🛡️", layout="wide")
@@ -1259,27 +1311,76 @@ def main():
     lang = st.session_state.lang
     txt = T[lang]
 
-    bg_color = "#0E1117" if st.session_state.theme == 'dark' else "#F8FAFC"
-    text_color = "#FFFFFF" if st.session_state.theme == 'dark' else "#0F172A"
+    # Glassmorphism Theme Dynamic Styles (Light & Dark Compatible)
+    if st.session_state.theme == 'dark':
+        bg_color = "#0B0F17"
+        text_color = "#F8FAFC"
+        glass_bg = "rgba(30, 41, 59, 0.7)"
+        glass_border = "rgba(255, 255, 255, 0.1)"
+        glass_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.37)"
+    else:
+        bg_color = "#F1F5F9"
+        text_color = "#0F172A"
+        glass_bg = "rgba(255, 255, 255, 0.75)"
+        glass_border = "rgba(255, 255, 255, 0.6)"
+        glass_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.08)"
 
     st.markdown(f"""
     <style>
-        .stApp {{ background-color: {bg_color}; color: {text_color}; }}
+        .stApp {{
+            background-color: {bg_color};
+            color: {text_color};
+        }}
+        
+        /* Ultra High-End Glassmorphism Containers */
+        .glass-card {{
+            background: {glass_bg};
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            border: 1px solid {glass_border};
+            box-shadow: {glass_shadow};
+            padding: 24px;
+            margin-bottom: 20px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }}
+        .glass-card:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.12);
+        }}
+
         .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
         .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
         .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
-        .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; }}
-        .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 10px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; }}
-        .ai-payment-card {{ background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #6366F1; border-radius: 16px; padding: 24px; color: #FFFFFF; margin-bottom: 24px; }}
-        .feedback-card {{ background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border: 1px solid #3B82F6; border-radius: 14px; padding: 20px; color: #F8FAFC; margin-bottom: 15px; }}
-        .stat-card-box {{ background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 10px; }}
-        .user-feedback-item {{ background: rgba(15, 23, 42, 0.8); border-right: 4px solid #F59E0B; border-radius: 8px; padding: 14px; margin-bottom: 12px; }}
+        
+        .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }}
+        .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(124,58,237,0.3); }}
+        
+        .ai-payment-card {{
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(49, 46, 129, 0.95) 100%);
+            border: 2px solid #6366F1;
+            border-radius: 18px;
+            padding: 24px;
+            color: #FFFFFF;
+            margin-bottom: 24px;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25);
+        }}
+        
+        .stat-card-box {{
+            background: {glass_bg};
+            backdrop-filter: blur(10px);
+            border: 1px solid {glass_border};
+            border-radius: 14px;
+            padding: 18px;
+            text-align: right;
+            margin-bottom: 12px;
+        }}
     </style>
     """, unsafe_allow_html=True)
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v13.1</span>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v13.5</span>", unsafe_allow_html=True)
         st.divider()
 
         st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
@@ -1289,10 +1390,10 @@ def main():
         st.markdown(f"{txt['user']} **{st.session_state.user['username']}**")
 
         if st.session_state.user['is_subscribed']:
-            st.markdown(f"الاشتراك: <span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
-            st.markdown("الرصيد: **غير محدود ♾️**")
+            st.markdown(f"Plan: <span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
+            st.markdown("Credits: **Unlimited ♾️**")
         else:
-            st.markdown(f"الحساب: <span class='badge-purple'>تجريبي</span>", unsafe_allow_html=True)
+            st.markdown(f"Account: <span class='badge-purple'>Free Trial</span>", unsafe_allow_html=True)
             st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
 
         if st.button(txt['logout_btn'], use_container_width=True):
@@ -1305,16 +1406,16 @@ def main():
         adapted_insights = PhoenixAI.analyze_feedback_and_adapt_pricing(all_fb)
 
         if not st.session_state.user['is_subscribed']:
-            if st.button("🤖 الدفع الذكي والتفعيل السريع", type="primary", use_container_width=True):
+            if st.button("🤖 AI Payment Auto-Upgrade", type="primary", use_container_width=True):
                 AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "monthly")
                 st.balloons()
-                st.success("🎉 تم ترقية حسابك بنجاح!")
+                st.success("🎉 Account Upgraded Successfully!")
                 time.sleep(1)
                 st.rerun()
 
         st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 {txt["renew_btn"]} (${adapted_insights["recommended_monthly"]}/m)</a>', unsafe_allow_html=True)
         st.write("")
-        st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 الاشتراك السنوي (${adapted_insights["recommended_yearly"]}/y)</a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 Enterprise Yearly (${adapted_insights["recommended_yearly"]}/y)</a>', unsafe_allow_html=True)
 
         st.divider()
         st.subheader(txt['notify_settings'])
@@ -1327,18 +1428,18 @@ def main():
     if st.session_state.user['credits'] <= 0 and not st.session_state.user['is_subscribed']:
         st.markdown("""
         <div class="ai-payment-card">
-            <h3>🤖 تنبيه من وكيل الدفع الذكي (AI Payment Broker Agent)</h3>
-            <p>لقد نفدت نقاطك المجانية (0/5)! يمكنك تنفيذ الدفع الآلي الفوري بالذكاء الاصطناعي عبر Lemon Squeezy لتفعيل الحساب دون انتظار.</p>
+            <h3>🤖 AI Payment Broker Agent Alert</h3>
+            <p>You have used all free credits (0/5)! Execute instant AI auto-checkout via Lemon Squeezy to continue using enterprise features.</p>
         </div>
         """, unsafe_allow_html=True)
         col_pay_ai1, col_pay_ai2 = st.columns(2)
         with col_pay_ai1:
-            if st.button(f"🚀 تفعيل باقة Pro الشهري (${adapted_insights['recommended_monthly']})", type="primary", use_container_width=True):
+            if st.button(f"🚀 Activate Pro Monthly (${adapted_insights['recommended_monthly']})", type="primary", use_container_width=True):
                 AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "monthly")
                 st.balloons()
                 st.rerun()
         with col_pay_ai2:
-            if st.button(f"💎 تفعيل باقة Enterprise السنوية (${adapted_insights['recommended_yearly']})", use_container_width=True):
+            if st.button(f"💎 Activate Enterprise Yearly (${adapted_insights['recommended_yearly']})", use_container_width=True):
                 AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "yearly")
                 st.balloons()
                 st.rerun()
@@ -1358,10 +1459,11 @@ def main():
     # TAB 1: BUILD PROJECT PLAN & SPECIALIST PAYROLL
     # =====================================================================
     with tab1:
+        st.markdown(f"<div class='glass-card'>", unsafe_allow_html=True)
         st.subheader(txt['quick_templates'])
         col_t1, col_t2, col_t3 = st.columns(3)
         col_t1.button(txt['ecom'], use_container_width=True, on_click=apply_template, args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل"))
-        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات وااختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
+        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات واختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
         col_t3.button(txt['delivery'], use_container_width=True, on_click=apply_template, args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع"))
 
         domain_options = ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
@@ -1376,18 +1478,20 @@ def main():
             with col2:
                 tech_stack = st.text_input(txt['tech_stack'], value="Flutter, Node.js, PostgreSQL, Supabase")
                 target_days = st.number_input(txt['target_days'], min_value=5, key="form_days")
-                risk_tolerance = st.select_slider(txt['risk_level'], options=["منخفض جداً", "متوسط", "عالي"])
+                risk_tolerance = st.select_slider(txt['risk_level'], options=["Low", "Medium", "High"] if lang=='en' else ["منخفض جداً", "متوسط", "عالي"])
 
-            project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="اكتب تفاصيل ومتطلبات المشروع هنا...")
-            gemini_key = st.text_input("مفتاح Gemini API (اختياري للذكاء الاصطناعي المباشر)", type="password")
+            project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="Enter scope and technical requirements...")
+            gemini_key = st.text_input("Gemini API Key (Optional)", type="password")
 
             submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
 
+        st.markdown("</div>", unsafe_allow_html=True)
+
         if submit_btn:
             if st.session_state.user['credits'] < 1 and not st.session_state.user['is_subscribed']:
-                st.error("❌ لقد استنفدت نقاطك المجانية! يرجى الترقية للاستمرار.")
+                st.error("❌ Out of free credits! Upgrade plan to continue.")
             else:
-                with st.spinner("⏳ جاري تحليل المتطلبات، توزيع الكوادر، وتوقيع الخطة رقمياً في Cloud SQL..."):
+                with st.spinner("⏳ Generating Architecture, Calculating Payroll, and Digital HMAC Signing..."):
                     req = {
                         "project_name": project_name, "domain": domain, "budget": budget,
                         "target_days": target_days, "tech_stack": tech_stack, "scope": project_scope, "risk": risk_tolerance
@@ -1402,7 +1506,7 @@ def main():
 
                     st.session_state.current_plan = plan
                     st.session_state.plan_signature = plan.get("signature")
-                    st.success("✅ تم توليد الخطة وحساب الكوادر وحفظها بتوقيع رقمي موثوق!")
+                    st.success("✅ Plan generated & signed successfully!")
 
         if st.session_state.current_plan:
             st.divider()
@@ -1416,7 +1520,7 @@ def main():
                 else:
                     st.markdown(f"<br><span class='badge-purple'>{txt['sig_invalid']}</span>", unsafe_allow_html=True)
 
-            st.markdown("### 👥 الكوادر والمتخصصون المطلوبون وأجورهم المخصصة (Specialist Payroll & Hours)")
+            st.markdown(f"### {txt['spec_title']}")
             specs = PhoenixAI.calculate_specialists_breakdown(
                 st.session_state.current_plan['budget'],
                 st.session_state.current_plan['target_days'],
@@ -1425,13 +1529,13 @@ def main():
             df_specs = pd.DataFrame(specs)
             st.dataframe(df_specs[["icon", "role", "total_cost", "total_hours", "hourly_rate", "daily_rate", "ratio_pct"]], use_container_width=True)
 
-            st.markdown("### 📋 مراحل ونطاق المهام الفنية")
+            st.markdown(f"### {txt['tasks_title']}")
             df_tasks = pd.DataFrame(st.session_state.current_plan.get('tasks', []))
             st.dataframe(df_tasks, use_container_width=True)
 
             col_dl1, col_dl2, col_dl3 = st.columns(3)
             with col_dl1:
-                st.download_button("📦 تصدير ملف JSON", json.dumps(st.session_state.current_plan, ensure_ascii=False), "plan.json", "application/json", use_container_width=True)
+                st.download_button("📦 Export JSON", json.dumps(st.session_state.current_plan, ensure_ascii=False), "plan.json", "application/json", use_container_width=True)
             with col_dl2:
                 excel_bytes = generate_excel_download(df_tasks)
                 st.download_button(txt['export_excel'], excel_bytes, f"{st.session_state.current_plan['project_name']}_Tasks.xlsx", use_container_width=True)
@@ -1442,21 +1546,21 @@ def main():
 
             st.divider()
             col_n1, col_n2 = st.columns(2)
-            msg_body = f"🚀 مشروع جديد: {st.session_state.current_plan['project_name']}\n💰 الميزانية: ${st.session_state.current_plan['budget']}\n⏱️ الأيام: {st.session_state.current_plan['target_days']}\n🔑 التوقيع: {st.session_state.plan_signature[:20]}..."
+            msg_body = f"🚀 Project: {st.session_state.current_plan['project_name']}\n💰 Budget: ${st.session_state.current_plan['budget']}\n⏱️ Days: {st.session_state.current_plan['target_days']}\n🔑 Signature: {st.session_state.plan_signature[:20]}..."
             wa_url = NotificationEngine.create_whatsapp_link(st.session_state.notify_whatsapp, msg_body)
 
             with col_n1:
                 st.markdown(f'<a href="{wa_url}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">{txt["send_wa"]}</a>', unsafe_allow_html=True)
             with col_n2:
                 if st.button(txt['send_tg'], use_container_width=True):
-                    st.success(f"✅ تم إرسال التنبيه إلى {st.session_state.notify_telegram}")
+                    st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
 
     # =====================================================================
     # TAB 2: ADVANCED 6D INTERACTIVE ANALYTICS (HALF-DOUGHNUT GAUGES)
     # =====================================================================
     with tab2:
         if not st.session_state.current_plan:
-            st.info("💡 قم بتوليد خطة مشروع أولاً لعرض التحليلات الهندسية المتقدمة.")
+            st.info("💡 Please generate a project plan first to display 6D Analytics.")
         else:
             plan = st.session_state.current_plan
             df = pd.DataFrame(plan.get('tasks', []))
@@ -1467,67 +1571,68 @@ def main():
             daily_cost = p_budget / max(1, p_days)
             
             risk_val = plan.get('risk', 'متوسط')
-            risk_penalty = 20 if risk_val == "عالي" else (10 if risk_val == "متوسط" else 5)
+            risk_penalty = 20 if risk_val in ["عالي", "High"] else (10 if risk_val in ["متوسط", "Medium"] else 5)
             budget_efficiency = min(100, max(40, int((p_budget / (p_days * 100)) * 50)))
             success_rate = min(98, max(55, int(budget_efficiency + (40 - risk_penalty))))
             failure_rate = round(100.0 - success_rate, 1)
             tech_readiness = 92.5 if "PostgreSQL" in str(plan.get('tech_stack')) else 84.0
 
-            st.markdown("## 📊 لوحة القيادة الهندسية وتفصيل الجودة والمخاطر 6D")
-            st.caption("رسومات نص دائرية ومؤشرات تفاعلية ملونة تشرح التكلفة، الأيام، الساعات، نسبة النجاح، والمخاطر لكل مشروع بدقة متناهية.")
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("## 📊 6D Engineering Dashboard & Quality Assessment")
+            st.caption("Interactive colored gauges analyzing budget, hours, success probabilities, and technical readiness.")
 
             g_col1, g_col2, g_col3 = st.columns(3)
             with g_col1:
-                fig1 = create_half_doughnut_gauge(daily_cost, "💰 التكلفة اليومية الكلية", "#3B82F6", prefix="$", suffix="/يوم", max_val=daily_cost*2)
+                fig1 = create_half_doughnut_gauge(daily_cost, "💰 Daily Cost Rate", "#2563EB", prefix="$", suffix="/day", max_val=daily_cost*2)
                 st.plotly_chart(fig1, use_container_width=True)
             with g_col2:
-                fig2 = create_half_doughnut_gauge(p_hours, "⏱️ إجمالي ساعات العمل الهندسية", "#8B5CF6", suffix=" ساعة", max_val=p_hours*1.5)
+                fig2 = create_half_doughnut_gauge(p_hours, "⏱️ Total Engineering Hours", "#7C3AED", suffix=" hrs", max_val=p_hours*1.5)
                 st.plotly_chart(fig2, use_container_width=True)
             with g_col3:
-                fig3 = create_half_doughnut_gauge(p_days, "📅 الأيام التقويمية المستهدفة", "#06B6D4", suffix=" يوم", max_val=p_days*1.5)
+                fig3 = create_half_doughnut_gauge(p_days, "📅 Calendar Days", "#0284C7", suffix=" days", max_val=p_days*1.5)
                 st.plotly_chart(fig3, use_container_width=True)
 
             g_col4, g_col5, g_col6 = st.columns(3)
             with g_col4:
-                fig4 = create_half_doughnut_gauge(success_rate, "🌟 نسبة النجاح المتوقعة للمشروع", "#10B981", suffix="%")
+                fig4 = create_half_doughnut_gauge(success_rate, "🌟 Success Rate", "#059669", suffix="%")
                 st.plotly_chart(fig4, use_container_width=True)
             with g_col5:
-                fig5 = create_half_doughnut_gauge(failure_rate, "⚠️ نسبة المخاطر والفشل المحتملة", "#EF4444", suffix="%")
+                fig5 = create_half_doughnut_gauge(failure_rate, "⚠️ Risk / Failure Probability", "#DC2626", suffix="%")
                 st.plotly_chart(fig5, use_container_width=True)
             with g_col6:
-                fig6 = create_half_doughnut_gauge(tech_readiness, "🛡️ جاهزية البنية والتكتم الأمني", "#F59E0B", suffix="%")
+                fig6 = create_half_doughnut_gauge(tech_readiness, "🛡️ Architecture Readiness", "#D97706", suffix="%")
                 st.plotly_chart(fig6, use_container_width=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
             st.divider()
 
-            st.markdown("### 📝 المتطلبات التفصيلية والشرح المباشر للمشروع")
             col_desc1, col_desc2 = st.columns(2)
-
             with col_desc1:
                 st.markdown(f"""
-                <div class="stat-card-box" style="text-align: right;">
-                    <h4 style="color: #60A5FA;">💵 تفاصيل توزيع الميزانية والأيام</h4>
-                    <p>• <b>الميزانية الإجمالية:</b> ${p_budget:,.2f}</p>
-                    <p>• <b>معدل الإنفاق اليومي:</b> ${daily_cost:,.2f} / يوم عمل</p>
-                    <p>• <b>معدل التكلفة للساعة:</b> ${(p_budget / max(1, p_hours)):,.2f} / ساعة</p>
-                    <p>• <b>احتياطي الطوارئ الموصى به:</b> ${(p_budget * 0.1):,.2f} (10%)</p>
+                <div class="stat-card-box">
+                    <h4 style="color: #2563EB;">💵 Budget & Timeline Breakdown</h4>
+                    <p>• <b>Total Budget:</b> ${p_budget:,.2f}</p>
+                    <p>• <b>Daily Spend Rate:</b> ${daily_cost:,.2f} / day</p>
+                    <p>• <b>Hourly Rate:</b> ${(p_budget / max(1, p_hours)):,.2f} / hr</p>
+                    <p>• <b>Risk Contingency Reserve:</b> ${(p_budget * 0.1):,.2f} (10%)</p>
                 </div>
                 """, unsafe_allow_html=True)
 
             with col_desc2:
                 st.markdown(f"""
-                <div class="stat-card-box" style="text-align: right;">
-                    <h4 style="color: #34D399;">🧠 تقييم فرصة النجاح والمخاطر</h4>
-                    <p>• <b>احتمالية النجاح التنفيذي:</b> <span style="color: #10B981; font-weight: bold;">{success_rate}%</span></p>
-                    <p>• <b>مستوى تحمل المخاطرة:</b> {plan.get('risk', 'متوسط')}</p>
-                    <p>• <b>توصية النظام الأمني:</b> تفعيل HMAC Signature وتأمين جداول RLS في Cloud SQL.</p>
+                <div class="stat-card-box">
+                    <h4 style="color: #059669;">🧠 Success & Security Assessment</h4>
+                    <p>• <b>Estimated Execution Success:</b> <span style="color: #059669; font-weight: bold;">{success_rate}%</span></p>
+                    <p>• <b>Risk Profile:</b> {plan.get('risk', 'Medium')}</p>
+                    <p>• <b>Security Recommendation:</b> Enable HMAC Signature & Cloud SQL RLS.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
             st.divider()
             col_c1, col_c2 = st.columns(2)
             with col_c1:
-                st.markdown("### 🍩 التحليل المالي المتداخل (Sunburst)")
+                st.markdown("### 🍩 Sunburst Financial Breakdown")
                 labels = [plan['project_name']] + list(df['task'])
                 parents = [""] + [plan['project_name']] * len(df)
                 values = [plan['budget']] + list(df['cost'])
@@ -1536,10 +1641,10 @@ def main():
                 st.plotly_chart(fig_sunburst, use_container_width=True)
 
             with col_c2:
-                st.markdown("### 🕸️ تقييم الأبعاد (5D Radar Risk Matrix)")
-                radar_cats = ['تعقيد النطاق', 'الأمان الرقمي', 'التحكم بالجدول', 'استقرار التكلفة', 'المرونة التقنية']
+                st.markdown("### 🕸️ 5D Radar Risk Matrix")
+                radar_cats = ['Scope', 'Security', 'Timeline', 'Cost Stability', 'Tech Flexibility']
                 radar_vals = [80, 95, 85, 90, 70]
-                fig_radar = go.Figure(go.Scatterpolar(r=radar_vals, theta=radar_cats, fill='toself', line=dict(color='#8B5CF6')))
+                fig_radar = go.Figure(go.Scatterpolar(r=radar_vals, theta=radar_cats, fill='toself', line=dict(color='#7C3AED')))
                 fig_radar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=320)
                 st.plotly_chart(fig_radar, use_container_width=True)
 
@@ -1549,8 +1654,9 @@ def main():
     with tab3:
         st.subheader(txt['tab3'])
         if not st.session_state.current_plan:
-            st.warning("⚠️ لا توجد خطة حالية لتعديلها.")
+            st.warning("⚠️ No active plan available to edit.")
         else:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             edited_df = st.data_editor(
                 pd.DataFrame(st.session_state.current_plan['tasks']),
                 num_rows="dynamic", use_container_width=True, key="task_editor"
@@ -1561,8 +1667,9 @@ def main():
                 st.session_state.current_plan['signature'] = new_sig
                 st.session_state.plan_signature = new_sig
                 HybridDatabaseEngine.save_project_plan_full(st.session_state.current_plan, st.session_state.user['email'])
-                st.success("✅ تم حفظ التعديلات وإعادة التوقيع الرقمي بنجاح!")
+                st.success("✅ Edits saved and HMAC re-signed!")
                 st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
             st.divider()
             st.markdown(f"### {txt['detailed_plan']}")
@@ -1572,32 +1679,33 @@ def main():
     # TAB 4: FEEDBACK LOOP & DYNAMIC PRICING ENGINE
     # =====================================================================
     with tab4:
-        st.subheader("🔄 نظام التغذية الراجعة المغلقة والتكيّف السعري (AI Closed-Loop Feedback)")
-        st.caption("نظام ذكي يربط آراء العملاء فورياً بضبط الخيارات السعرية والميزات داخل الكود لضمان أعلى ملاءمة للسوق.")
+        st.subheader(txt['pricing_adapted_title'])
+        st.caption(txt['pricing_adapted_caption'])
 
         col_fb1, col_fb2 = st.columns([1, 1])
 
         with col_fb1:
-            st.markdown("### 📝 شاركنا رأيك (واربح 1 نقطة مجانية أوتوماتيكياً)")
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown(f"### {txt['share_feedback_title']}")
             
-            st.markdown("**تقييمك الكلي للمنصة (حدد عدد النجوم):**")
+            st.markdown(f"**{txt['star_rating_label']}**")
             stars_selection = st.feedback("stars")
             rating_stars = (stars_selection + 1) if stars_selection is not None else 5
             
             star_display = "🌟" * rating_stars
-            st.caption(f"التقييم المختار: **{star_display}** ({rating_stars} من 5 نجوم)")
+            st.caption(f"Rating: **{star_display}** ({rating_stars}/5)")
 
             with st.form("feedback_form"):
-                suggested_p = st.number_input("ما هو السعر الشهري العادل بالدولار لهذه الخدمة؟ ($)", min_value=5, max_value=200, value=29)
-                req_feature = st.selectbox("ما هي الميزة الأكثر أهمية التي ترغب بإضافتها؟", [
-                    "تصدير تقارير احترافية بالعربية PDF",
-                    "ربط أوتوماتيكي مع Cloud SQL و Cloud Run",
-                    "إشعارات فورية عبر الواتساب والتليجرام",
-                    "تكامل مع الذكاء الاصطناعي المباشر Gemini Pro",
-                    "إدارة الميزانية المتعددة للعملات"
+                suggested_p = st.number_input("Fair Monthly Price ($)", min_value=5, max_value=200, value=29)
+                req_feature = st.selectbox("Most Demanded Feature", [
+                    "Export Professional Arabic PDF",
+                    "Direct Cloud SQL & Cloud Run Sync",
+                    "WhatsApp & Telegram Alerts",
+                    "Direct Gemini Pro Integration",
+                    "Multi-Currency Budgeting"
                 ])
-                comments = st.text_area("ملاحظات إضافية أو مقترحات لتطوير المنصة", placeholder="اكتب تعليقك وطموحك للمنصة هنا...")
-                submit_fb = st.form_submit_button("🚀 إرسال التغذية الراجعة وتحديث النظام")
+                comments = st.text_area("Additional Feedback & Comments", placeholder="Write feedback here...")
+                submit_fb = st.form_submit_button("🚀 Submit Feedback & Claim 1 Free Credit")
 
                 if submit_fb:
                     if HybridDatabaseEngine.save_feedback(st.session_state.user['email'], rating_stars, suggested_p, req_feature, comments):
@@ -1606,45 +1714,44 @@ def main():
                         st.session_state.user['credits'] = new_c
                         
                         st.balloons()
-                        st.success("🎉 شكراً لك! تم إضافة 1 نقطة مجانية إلى حسابك وحفظ التقييم بـ 5 نجوم والتعليق كاملاً!")
+                        st.success("🎉 Feedback saved! 1 free bonus credit added.")
                         time.sleep(1)
                         st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_fb2:
-            st.markdown("### 🏆 لوحة إثبات احتياج السوق وقوة التكيف")
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown(f"### {txt['market_proof_title']}")
             feedbacks = HybridDatabaseEngine.get_all_feedback()
             adapted = PhoenixAI.analyze_feedback_and_adapt_pricing(feedbacks)
 
             st.markdown(f"""
-            <div class="feedback-card">
-                <h4>🤖 Dynamic Pricing Engine Response:</h4>
-                <p>• <b>متوسط السعر المقترح من العملاء:</b> ${adapted['recommended_monthly']}/شهر</p>
-                • <b>الاشتراك السنوي المحسوب تلقائياً:</b> ${adapted['recommended_yearly']}/سنة<br>
-                • <b>مؤشر رضا السوق (PMF Score):</b> {adapted['market_satisfaction_score']}%<br>
-                • <b>إجمالي الآراء المسجلة:</b> {len(feedbacks)} تقييم حقيقي
+            <div style="background: rgba(37,99,235,0.08); border-radius: 12px; padding: 16px; margin-bottom: 15px;">
+                <h4 style="color: #2563EB;">🤖 AI Dynamic Pricing Response:</h4>
+                <p>• <b>Avg User Price:</b> ${adapted['recommended_monthly']}/month</p>
+                <p>• <b>Calculated Yearly:</b> ${adapted['recommended_yearly']}/year</p>
+                <p>• <b>Product-Market Fit Score:</b> {adapted['market_satisfaction_score']}%</p>
+                <p>• <b>Total Feedback Recorded:</b> {len(feedbacks)} reviews</p>
             </div>
             """, unsafe_allow_html=True)
 
-            st.markdown("#### 💬 سجل آراء جميع العملاء الحية (Live Stream):")
+            st.markdown(f"#### {txt['live_feedback_stream']}")
             if feedbacks:
                 for f in feedbacks:
                     stars_count = f.get('rating', 5) or 5
                     stars_str = "🌟" * stars_count
-                    comment_text = f.get('comments', '') or "لا توجد ملاحظات إضافية."
+                    comment_text = f.get('comments', '') or "No comment."
                     
                     st.markdown(f"""
-                    <div class="user-feedback-item">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <b>👤 البريد: <code>{f['user_email']}</code></b>
-                            <span style="font-size: 16px;">{stars_str} ({stars_count}/5)</span>
-                        </div>
-                        <p style="margin-top: 6px; margin-bottom: 4px;">💵 <b>السعر المقترح:</b> ${f['suggested_price']} | 💡 <b>الميزة المطلوبة:</b> {f['requested_feature']}</p>
-                        <p style="color: #94A3B8; font-style: italic; margin-bottom: 0;">💬 <b>التعليق:</b> {comment_text}</p>
-                        <small style="color: #64748B;">📅 التاريخ: {f.get('created_at', 'مؤخراً')}</small>
+                    <div style="background: rgba(0,0,0,0.03); border-left: 4px solid #F59E0B; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+                        <b>👤 {f['user_email']}</b> - {stars_str} ({stars_count}/5)<br>
+                        <small>💵 Price: ${f['suggested_price']} | 💡 Feature: {f['requested_feature']}</small><br>
+                        <i>💬 "{comment_text}"</i>
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.info("لا توجد تقييمات سابقة بعد. كن أول من يشارك رأيه!")
+                st.info("No feedback entries yet.")
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
     # TAB 5: ACCOUNT & SUBSCRIPTIONS
@@ -1653,28 +1760,32 @@ def main():
         st.subheader(txt['tab5'])
         col_acc1, col_acc2 = st.columns(2)
         with col_acc1:
-            st.markdown("### 👤 بيانات الحساب")
-            st.write(f"**الاسم:** {st.session_state.user['username']}")
-            st.write(f"**البريد:** {st.session_state.user['email']}")
-            st.write(f"**نوع الاشتراك:** {st.session_state.user['role']}")
-            st.write(f"**الرصيد المتاح:** {st.session_state.user['credits']} نقطة")
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown(f"### {txt['account_info_title']}")
+            st.write(f"**Name:** {st.session_state.user['username']}")
+            st.write(f"**Email:** {st.session_state.user['email']}")
+            st.write(f"**Role:** {st.session_state.user['role']}")
+            st.write(f"**Credits:** {st.session_state.user['credits']}")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_acc2:
-            st.markdown("### 🛒 خطط الترقية المتاحة (التسيعر الديناميكي المكيّف)")
-            st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 الاشتراك الشهري (${adapted_insights["recommended_monthly"]})</a>', unsafe_allow_html=True)
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown(f"### {txt['upgrade_plans_title']}")
+            st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 Pro Monthly (${adapted_insights["recommended_monthly"]})</a>', unsafe_allow_html=True)
             st.write("")
-            st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 الاشتراك السنوي (${adapted_insights["recommended_yearly"]})</a>', unsafe_allow_html=True)
+            st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 Enterprise Yearly (${adapted_insights["recommended_yearly"]})</a>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
         if st.session_state.payment_notifications:
             st.divider()
-            st.markdown("### 📩 سجل إشعارات الدفع والعمليات الذكية")
+            st.markdown(f"### {txt['payment_logs_title']}")
             for notif in st.session_state.payment_notifications:
                 st.markdown(f"""
-                <div class="email-notification-box">
-                    <b>المستلم:</b> {notif['to']}<br>
-                    <b>رقم الطلب:</b> {notif['order_id']}<br>
-                    <b>الباقة:</b> {notif['plan_name']} ({notif['amount']})<br>
-                    <b>التاريخ:</b> {notif['date']}
+                <div class="glass-card">
+                    <b>To:</b> {notif['to']}<br>
+                    <b>Order ID:</b> {notif['order_id']}<br>
+                    <b>Plan:</b> {notif['plan_name']} ({notif['amount']})<br>
+                    <b>Date:</b> {notif['date']}
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1682,22 +1793,25 @@ def main():
     # TAB 6: DATABASE ARCHIVE (Cloud SQL PostgreSQL 7-Tables Support)
     # =====================================================================
     with tab6:
-        st.subheader("🗄️ الأرشيف والتكامل مع Cloud SQL (7-Tables Schema)")
-        st.caption("عرض أحدث المشاريع المسجلة في هيكل الجداول الكامل من الصور السبع.")
+        st.subheader(txt['cloudsql_title'])
+        st.caption(txt['cloudsql_caption'])
         
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         saved_projs = HybridDatabaseEngine.get_projects(st.session_state.user['email'])
         if saved_projs:
             st.dataframe(pd.DataFrame(saved_projs), use_container_width=True)
         else:
-            st.info("لا توجد مشاريع محفوظة حالياً.")
+            st.info("No saved projects found.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # =====================================================================
     # TAB ADMIN: CEO CONTROL PANEL (Visible ONLY to Owner & Assigned Admins)
     # =====================================================================
     if is_ceo_owner:
         with tab_admin:
-            st.subheader("👑 لوحة قيادة الإدارة العليا والمالك (CEO Control Center)")
-            st.caption(f"مرحباً بك! هذه الصفحة مخفية عن جميع المستخدمين العاديين وتظهر فقط لـ `{SUPER_ADMIN_EMAIL}` والمشرفين المعتمدين.")
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.subheader(txt['ceo_title'])
+            st.caption(txt['ceo_caption'])
 
             all_users = HybridDatabaseEngine.get_all_users_admin()
             total_users_count = len(all_users)
@@ -1705,42 +1819,43 @@ def main():
             admin_supervisors_count = len([u for u in all_users if u.get('is_admin')])
 
             m_adm1, m_adm2, m_adm3, m_adm4 = st.columns(4)
-            m_adm1.metric("👥 إجمالي المستخدمين المسجلين", total_users_count)
-            m_adm2.metric("💳 عدد الاشتراكات المدفوعة", subscribed_count)
-            m_adm3.metric("👑 المشرفين المعتمدين", admin_supervisors_count)
-            m_adm4.metric("📈 نسبة التحويل للاشتراك", f"{round((subscribed_count/max(1, total_users_count))*100, 1)}%")
+            m_adm1.metric("👥 Total Registered Users", total_users_count)
+            m_adm2.metric("💳 Paid Subscriptions", subscribed_count)
+            m_adm3.metric("👑 Admin Supervisors", admin_supervisors_count)
+            m_adm4.metric("📈 Conversion Rate", f"{round((subscribed_count/max(1, total_users_count))*100, 1)}%")
+            st.markdown("</div>", unsafe_allow_html=True)
 
             st.divider()
 
-            st.markdown("### 🔑 تعيين وإضافة مشرف جديد (Grant Supervisor Admin Privilege)")
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown(f"### {txt['grant_admin_title']}")
             col_add_adm1, col_add_adm2 = st.columns([2, 1])
             with col_add_adm1:
-                target_admin_email = st.text_input("أدخل البريد الإلكتروني للمستخدم لترقيته إلى مشرف", placeholder="supervisor@domain.com").strip().lower()
+                target_admin_email = st.text_input("Enter user email to promote to supervisor admin", placeholder="supervisor@domain.com").strip().lower()
             with col_add_adm2:
                 st.write("<br>", unsafe_allow_html=True)
-                if st.button("✨ تفعيل صلاحية المشرف", type="primary", use_container_width=True):
+                if st.button(txt['grant_admin_btn'], type="primary", use_container_width=True):
                     if target_admin_email:
                         if HybridDatabaseEngine.add_admin_privilege(target_admin_email):
-                            st.success(f"✅ تم منح صلاحيات المشرف بنجاح لـ `{target_admin_email}`!")
+                            st.success(f"✅ Granted Admin supervisor privileges to `{target_admin_email}`!")
                             time.sleep(1)
                             st.rerun()
                         else:
-                            st.error("❌ فشل العثور على البريد الإلكتروني في قاعدة البيانات.")
+                            st.error("❌ Email address not found.")
+            st.markdown("</div>", unsafe_allow_html=True)
 
             st.divider()
 
-            st.markdown("### 📋 سجل جميع المستخدمين وااشتراكاتهم الحية")
+            st.markdown(f"### {txt['users_log_title']}")
             if all_users:
                 df_admin_users = pd.DataFrame(all_users)
                 st.dataframe(df_admin_users[["id", "full_name", "email", "role", "credits", "is_subscribed", "is_admin", "created_at"]], use_container_width=True)
 
-            st.markdown("### 💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)")
+            st.markdown(f"### {txt['demands_title']}")
             admin_fb = HybridDatabaseEngine.get_all_feedback()
             if admin_fb:
                 df_admin_fb = pd.DataFrame(admin_fb)
                 st.dataframe(df_admin_fb[["user_email", "rating", "suggested_price", "requested_feature", "comments", "created_at"]], use_container_width=True)
-            else:
-                st.info("لا توجد طلبات مدخلة حتى الآن.")
 
 if __name__ == "__main__":
     main()
