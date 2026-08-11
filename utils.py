@@ -10,6 +10,7 @@ import urllib.parse
 import logging
 import hashlib
 import hmac
+import datetime
 
 import streamlit as st
 import pandas as pd
@@ -96,6 +97,13 @@ class SecurityEngine:
             return False
         expected_sig = SecurityEngine.generate_signature(data_dict)
         return hmac.compare_digest(expected_sig, signature)
+
+    @staticmethod
+    def generate_smart_contract_hash(project_name, completion_pct, released_amount):
+        """توليد هاش العقد الذكي والتوقيع غير القابل للتعديل (Immutable Ledger Hash)"""
+        timestamp = datetime.datetime.utcnow().isoformat()
+        payload = f"{project_name}:{completion_pct}:{released_amount}:{timestamp}"
+        return hashlib.sha256(payload.encode('utf-8')).hexdigest()
 
 class NotificationEngine:
     @staticmethod
