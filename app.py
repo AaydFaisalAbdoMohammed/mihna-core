@@ -4,6 +4,7 @@
 """
 ===============================================================================
 © 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.8 - ULTRA ULTIMATE SaaS
+Geo-Global Dynamic Adaptive Engine Edition
 ===============================================================================
 """
 
@@ -11,6 +12,8 @@ import os
 import json
 import time
 import datetime
+import random
+import re
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -80,7 +83,7 @@ T = {
         'account_info_title': "👤 بيانات الحساب",
         'upgrade_plans_title': "🛒 خطط الترقية المتاحة (التسيعر الديناميكي المكيّف)",
         'payment_logs_title': "📩 سجل إشعارات الدفع والعمليات الذكية",
-        'cloudsql_title': "🗄️ الأرشيف والت التكامل مع Cloud SQL (7-Tables Schema)",
+        'cloudsql_title': "🗄️ الأرشيف والتكامل مع Cloud SQL (7-Tables Schema)",
         'cloudsql_caption': "عرض أحدث المشاريع المسجلة في هيكل الجداول الكامل من الصور السبع.",
         'ceo_title': "👑 لوحة قيادة الإدارة العليا والمالك (CEO Control Center)",
         'ceo_caption': "مرحباً بك! هذه الصفحة مخفية عن جميع المستخدمين العاديين وتظهر فقط للمالك والمشرفين المعتمدين.",
@@ -196,34 +199,86 @@ def apply_template(scope, domain, budget, days, pname):
     st.session_state.form_days = days
     st.session_state.form_pname = pname
 
-# دالة جلب الشركات المقترحة ديناميكياً حسب موقع المستخدم (المحافظة / الدولة)
+# =============================================================================
+# 🔥 المحرك الجيومكاني العالمي الديناميكي (DYNAMIC GEO-GLOBAL CONTRACTOR ENGINE)
+# =============================================================================
 def get_geo_contractors(user_location, budget_total):
-    loc = user_location.strip().lower()
+    """
+    توليد مقاولين وشركات متخصصة ديناميكياً وفق موقع المستخدم الجغرافي بأي مكان في العالم.
+    يقوم بالتعرف الذكي على المدينة / الدولة وتكييف أسماء الشركات والمواقع والأسعار ديناميكياً.
+    """
+    loc_raw = user_location.strip()
+    if not loc_raw:
+        loc_raw = "Global Metropolitan District"
+        
+    parts = [p.strip() for p in loc_raw.split(',') if p.strip()]
+    city = parts[0] if len(parts) > 0 else loc_raw
+    country_or_state = parts[1] if len(parts) > 1 else ""
+
+    # تحديد ما إذا كان المدخل يحتوي على أحرف عربية
+    has_arabic = bool(re.search(r'[\u0600-\u06FF]', loc_raw))
     
-    if "تعز" in loc or "taizz" in loc:
-        contractors = [
-            {"company": "مجموعة تعز الحديثة للمقاولات الهندسية", "location": "تعز - شارع جمال", "rating": "⭐ 4.9", "bid": budget_total * 0.94, "days": 110},
-            {"company": "شركة الأهدل للتصميم والإنشاءات المعمارية", "location": "تعز - الحوبان", "rating": "⭐ 4.8", "bid": budget_total * 0.97, "days": 100},
-            {"company": "مكتب الهندسية المتكاملة والمقاولات", "location": "تعز - بئر باشا", "rating": "⭐ 4.7", "bid": budget_total * 0.90, "days": 125},
+    if has_arabic:
+        prefixes = [
+            "مجموعة", "شركة", "مكتب", "مؤسسة", "ائتلاف", "الشركة العالمية لـ"
         ]
-    elif "عدن" in loc or "aden" in loc:
-        contractors = [
-            {"company": "شركة عدن الكبرى للمقاولات العامة", "location": "عدن - كريتر", "rating": "⭐ 4.9", "bid": budget_total * 0.95, "days": 105},
-            {"company": "مكتب التواهي الهندسي للإنشاءات", "location": "عدن - التواهي", "rating": "⭐ 4.8", "bid": budget_total * 0.92, "days": 115},
-            {"company": "الخليج العربي للمقاولات والتطوير", "location": "عدن - المنصورة", "rating": "⭐ 4.7", "bid": budget_total * 0.98, "days": 95},
+        descriptors = [
+            "للمقاولات الهندسية والتطوير", "للإنشاءات المعمارية الحديثة", 
+            "للمقاولات العامة والاستشارات", "للتصميم الهندسي وإدارة المشاريع",
+            "للحلول الإنشائية والتوأم الرقمي"
         ]
-    elif "صنعاء" in loc or "sanaa" in loc:
-        contractors = [
-            {"company": "شركة سبأ القابضة للمقاولات الهندسية", "location": "صنعاء - حدة", "rating": "⭐ 4.9", "bid": budget_total * 0.95, "days": 100},
-            {"company": "مكتب الرواد للتصميم والإنشاء", "location": "صنعاء - السبعين", "rating": "⭐ 4.8", "bid": budget_total * 0.93, "days": 110},
-            {"company": "اليمن الحديثة للمقاولات", "location": "صنعاء - الدائري", "rating": "⭐ 4.7", "bid": budget_total * 0.96, "days": 120},
+        districts = [
+            f"شارع المركز الرئيسي - {city}",
+            f"المنطقة الإقليمية الأولى - {city}",
+            f"المجمع الهندسي الاستثماري - {city}",
+            f"حي الأعمال والإنشاءات - {city}"
         ]
     else:
-        contractors = [
-            {"company": "Apex Regional Engineering & Construction", "location": "المقاطعة المركزية (Central District)", "rating": "⭐ 4.9", "bid": budget_total * 0.95, "days": 120},
-            {"company": "BuildTech Local Solutions", "location": "فرع المنطقة الإقليمية القريبة", "rating": "⭐ 4.8", "bid": budget_total * 0.98, "days": 105},
-            {"company": "Al-Nukhba Regional Contracting", "location": "النطاق الجغرافي المحلي", "rating": "⭐ 4.7", "bid": budget_total * 0.91, "days": 140},
+        prefixes = [
+            "Apex", "Vanguard", "Nexus", "Global Construction", "BuildTech", "Horizon Group"
         ]
+        descriptors = [
+            "Engineering & Contracting Co.", "Architectural Innovations",
+            "Infrastructure & Building Solutions", "General Contracting & Civil Works",
+            "ConTech Projects & Development"
+        ]
+        districts = [
+            f"Downtown Business District, {city}",
+            f"Industrial Park Ave, {city}",
+            f"Central Engineering Zone, {city}",
+            f"Tech & Infrastructure Sector, {city}"
+        ]
+
+    # توليد 3 عروض هندسية متوازنة ديناميكياً
+    contractors = []
+    modifiers = [
+        {"bid_factor": 0.93, "days_factor": 0.90, "rating": "⭐ 4.9"},
+        {"bid_factor": 0.96, "days_factor": 1.00, "rating": "⭐ 4.8"},
+        {"bid_factor": 0.90, "days_factor": 1.15, "rating": "⭐ 4.7"}
+    ]
+
+    for i in range(3):
+        pref = prefixes[i % len(prefixes)]
+        desc = descriptors[i % len(descriptors)]
+        dist = districts[i % len(districts)]
+        mod = modifiers[i]
+        
+        if has_arabic:
+            comp_name = f"{pref} {city} {desc}" if "شركة" not in pref else f"{pref} {desc}"
+        else:
+            comp_name = f"{city} {pref} {desc}"
+
+        bid_val = round(budget_total * mod["bid_factor"], 2)
+        days_val = max(30, int(110 * mod["days_factor"]))
+
+        contractors.append({
+            "company": comp_name,
+            "location": f"{dist} {f'({country_or_state})' if country_or_state else ''}",
+            "rating": mod["rating"],
+            "bid": bid_val,
+            "days": days_val
+        })
+
     return contractors
 
 def render_engineering_tab(txt):
@@ -231,7 +286,6 @@ def render_engineering_tab(txt):
     st.title(txt['eng_title'])
     st.caption(txt['eng_caption'])
 
-    # دمج التوأم الرقمي كأحد التبويبات الفرعية داخل قسم التخطيط الهندسي والكميات AI-ConTech
     tab1, tab2, tab3, tab4 = st.tabs([
         txt['eng_subtab1'],
         txt['eng_subtab2'],
@@ -292,7 +346,6 @@ def render_engineering_tab(txt):
         st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
         st.caption("ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
         
-        # التعديل الجذري: الاعتماد الفوري على مخرجات التخطيط الهندسي AI-ConTech بدلاً من خطة عامة خارجية
         if 'current_eng_plan' not in st.session_state:
             st.warning("⚠️ يرجى توليد المخطط المعماري في (التصميم الجيلاتي) أولاً للتمكن من تشغيل المحاكاة الميدانية والتوأم الرقمي.")
         else:
@@ -312,7 +365,6 @@ def render_engineering_tab(txt):
 
             if run_sim or 'stress_result' in st.session_state:
                 if run_sim:
-                    # بناء هيكل مؤقت متوافق مع محرك المحاكاة مستمد من المخطط الهندسي
                     pseudo_plan = {
                         "project_name": "مشروع التصميم الهندسي المعماري",
                         "budget": boq_data.get('grand_total_usd', 150000),
@@ -387,7 +439,7 @@ def render_engineering_tab(txt):
                     st.balloons()
                     st.success("🎉 تم الإفراج عن الدفعة وتوثيق المعاملة في السجل الذكي غير القابل للتعديل!")
 
-    # ------------------ SubTab 4: السوق التنفيذي والمناقصات ------------------
+    # ------------------ SubTab 4: السوق التنفيذي والمناقصات (الربط العالمي الديناميكي) ------------------
     with tab4:
         st.subheader("طرح المشروع لأقرب الشركات والمقاولين المعتمدين في منطقتك (Geo-Localized Bidding)" if st.session_state.lang == 'ar' else "Geo-Localized Contractor Bidding & Execution Marketplace")
         
@@ -396,13 +448,14 @@ def render_engineering_tab(txt):
             
             user_current_location = st.text_input(
                 "📍 حدد موقعك الجغرافي الحالي (المدينة / المحافظة / الدولة):" if st.session_state.lang == 'ar' else "📍 Set Your Current Location (City / Province / Country):",
-                value="تعز، اليمن", key="sub_loc"
+                value="São Paulo, Brazil" if st.session_state.lang == 'en' else "القاهرة، مصر", key="sub_loc"
             )
             
             st.write(f"**الميزانية المستهدفة للمشروع:** ${boq['grand_total_usd']:,}" if st.session_state.lang == 'ar' else f"**Target Project Budget:** ${boq['grand_total_usd']:,}")
             
             st.markdown(f"### 🏢 أقرب الشركات والمقاولين المتاحين في نطاق ({user_current_location})" if st.session_state.lang == 'ar' else f"### 🏢 Nearest Verified Contractors in ({user_current_location})")
             
+            # استدعاء المحرك الديناميكي العالمي
             contractors = get_geo_contractors(user_current_location, boq['grand_total_usd'])
             
             for c in contractors:
