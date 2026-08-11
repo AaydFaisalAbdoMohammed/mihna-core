@@ -4,6 +4,7 @@
 import re
 import json
 import time
+import math
 import logging
 import datetime
 import hashlib
@@ -17,6 +18,111 @@ from db import HybridDatabaseEngine
 
 PAYMENT_LINK_MONTHLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=monthly"
 PAYMENT_LINK_YEARLY = "https://nexus-corestore.lemonsqueezy.com/checkout/buy/e6515270-070e-4fc6-b1ea-60c1aeb9e2d3?plan=yearly"
+
+
+class EngineeringAIEngine:
+    """
+    محرك الذكاء الاصطناعي الخاص بالتخطيط المعماري والتصميم الجيلاتي وحساب الكميات (AI-ConTech).
+    """
+    def __init__(self, gemini_api_key: str = None):
+        self.api_key = gemini_api_key
+
+    def generate_generative_floor_plan(self, land_area: float, num_floors: int, num_bedrooms: int, budget: float, style: str) -> dict:
+        """
+        توليد مخطط معماري هندسي محسن بناءً على المساحة والميزانية
+        """
+        total_built_area = land_area * 0.65 * num_floors  # نسبة البناء المسموحة تقريبياً 65%
+        
+        # توزيع المساحات الافتراضي المعتمد هندسياً
+        rooms_layout = [
+            {"name": "Master Bedroom", "area_sqm": round(total_built_area * 0.15, 2), "type": "Private"},
+            {"name": "Living Room", "area_sqm": round(total_built_area * 0.22, 2), "type": "Public"},
+            {"name": "Kitchen", "area_sqm": round(total_built_area * 0.10, 2), "type": "Service"},
+            {"name": "Bathrooms", "area_sqm": round(total_built_area * 0.08, 2), "type": "Service"},
+            {"name": "Corridors & Stairs", "area_sqm": round(total_built_area * 0.15, 2), "type": "Circulation"}
+        ]
+        
+        # إضافة غرف النوم إضافية حسب الطلب
+        for i in range(1, num_bedrooms):
+            rooms_layout.append({
+                "name": f"Bedroom {i+1}",
+                "area_sqm": round((total_built_area * 0.30) / max(1, num_bedrooms - 1), 2),
+                "type": "Private"
+            })
+
+        return {
+            "land_area": land_area,
+            "total_built_area": round(total_built_area, 2),
+            "estimated_cost": round(total_built_area * 350, 2),  # متوسط تكلفة بناء المتر المربع
+            "style": style,
+            "layout": rooms_layout
+        }
+
+    def calculate_automated_boq(self, built_area_sqm: float, quality_tier: str = "Standard") -> dict:
+        """
+        حساب جدول الكميات (Bill of Quantities) وتكاليف المواد بناءً على أسعار السوق
+        """
+        multipliers = {
+            "Economy": {"steel_ratio": 0.035, "concrete_ratio": 0.35, "price_mult": 0.85},
+            "Standard": {"steel_ratio": 0.042, "concrete_ratio": 0.40, "price_mult": 1.0},
+            "Luxury": {"steel_ratio": 0.050, "concrete_ratio": 0.45, "price_mult": 1.4}
+        }
+        
+        tier = multipliers.get(quality_tier, multipliers["Standard"])
+        
+        # معدلات استهلاك المواد التقريبية لكل متر مربع بناء
+        steel_ton = built_area_sqm * tier["steel_ratio"]  # طن حديد
+        concrete_m3 = built_area_sqm * tier["concrete_ratio"]  # متر مكعب خرسانة
+        blocks_units = built_area_sqm * 12.5  # عدد الطابوق/الجراد
+        finishing_sqm = built_area_sqm * 2.8  # مساحة التشطيبات الداخلية والخارجية
+
+        # أسعار تقريبية قياسية مع ضبط الفئة
+        unit_prices = {
+            "steel": 750 * tier["price_mult"],       # $ / طن
+            "concrete": 80 * tier["price_mult"],      # $ / م3
+            "blocks": 0.75 * tier["price_mult"],      # $ / حبة
+            "finishing": 45 * tier["price_mult"]      # $ / م2
+        }
+
+        boq_items = [
+            {
+                "item": "حديد التسليح (Reinforcement Steel)",
+                "quantity": round(steel_ton, 2),
+                "unit": "طن",
+                "unit_price": unit_prices["steel"],
+                "total_price": round(steel_ton * unit_prices["steel"], 2)
+            },
+            {
+                "item": "الخرسانة الجاهزة (Ready-Mix Concrete)",
+                "quantity": round(concrete_m3, 2),
+                "unit": "متر مكعب",
+                "unit_price": unit_prices["concrete"],
+                "total_price": round(concrete_m3 * unit_prices["concrete"], 2)
+            },
+            {
+                "item": "الطابوق / البلوك (Concrete Blocks)",
+                "quantity": round(blocks_units, 0),
+                "unit": "حبة",
+                "unit_price": unit_prices["blocks"],
+                "total_price": round(blocks_units * unit_prices["blocks"], 2)
+            },
+            {
+                "item": "أعمال التشطيبات (Finishing & Coating)",
+                "quantity": round(finishing_sqm, 2),
+                "unit": "متر مكعب/م2",
+                "unit_price": unit_prices["finishing"],
+                "total_price": round(finishing_sqm * unit_prices["finishing"], 2)
+            }
+        ]
+
+        total_boq_cost = sum(item["total_price"] for item in boq_items)
+
+        return {
+            "boq_items": boq_items,
+            "grand_total_usd": round(total_boq_cost, 2),
+            "contingency_buffer_10pct": round(total_boq_cost * 0.10, 2)
+        }
+
 
 class PhoenixAI:
     @staticmethod
@@ -148,6 +254,7 @@ class PhoenixAI:
             "market_satisfaction_score": round(float(avg_rating) * 20, 1)
         }
 
+
 class AIPaymentAgent:
     @staticmethod
     def inspect_payment_method(user_email: str) -> dict:
@@ -203,6 +310,7 @@ class AIPaymentAgent:
         if 'payment_notifications' not in st.session_state:
             st.session_state.payment_notifications = []
         st.session_state.payment_notifications.insert(0, email_payload)
+
 
 def build_detailed_plan_text(plan: dict) -> str:
     p_name = plan.get('project_name', 'المشروع')
