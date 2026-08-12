@@ -64,7 +64,7 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
     loc_raw = user_location.strip() if user_location and user_location.strip() else "Aden, Yemen"
     api_key = google_maps_api_key or os.getenv("GOOGLE_MAPS_API_KEY")
 
-    # 🌐 1. مسار الربط المباشر اللحظي عبر Google Maps Places API (بيانات وعناوين وأرقام رسمية 100%)
+    # 🌐 1. مسار الربط المباشر اللحظي عبر Google Maps Places API
     if api_key:
         try:
             search_url = (
@@ -79,7 +79,6 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
                     for i, place in enumerate(data["results"][:3]):
                         place_id = place.get("place_id")
                         
-                        # الاستعلام عن تفاصيل المكان للحصول على رقم الهاتف الموثق والعنوان
                         details_url = (
                             f"https://maps.googleapis.com/maps/api/place/details/json"
                             f"?place_id={place_id}&fields=name,formatted_phone_number,formatted_address,rating&key={api_key}"
@@ -102,9 +101,9 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
                         })
                     return real_contractors
         except Exception:
-            pass  # الانتقال تلقائياً للبديل المحلي عند حدوث خطأ شبكة أو عدم توفر المفتاح
+            pass  
 
-    # 🏢 2. النظام الاحتياطي الديناميكي المحلي الذكي (Deterministic Dynamic Fallback)
+    # 🏢 2. النظام الاحتياطي الديناميكي المحلي الذكي
     loc_lower = loc_raw.lower()
     has_arabic = bool(re.search(r'[\u0600-\u06FF]', loc_raw))
 
@@ -188,13 +187,13 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
 
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
-        'subtitle': "المنصة الذكية لهندسة المشاريع، التوأم الرقمي الميداني، والربط الجيومكاني للشركات والمقاولين المحليين.",
-        'lang_select': "🌐 لغة الواجهة (Language):",
-        'theme_select': "🎨 مظهر التطبيق (Theme):",
+        'title': "🚀 PHOENIX & WAKEEL MEHNA PRO Enterprise v13.8",
+        'subtitle': "منصة HMAC-SHA512 و Cloud SQL المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، وتأمين البيانات.",
+        'lang_select': "(Language) لغة الواجهة:",
+        'theme_select': "(Theme) مظهر التطبيق:",
         'dark': "🌙 الداكن (Dark)", 'light': "☀️ الفاتح (Light)",
         'user': "👤 المستخدم:", 'credits': "💳 الرصيد الحالي:", 'points': "نقاط مجانية",
-        'renew_title': "🛒 ترقية الاشتراك", 'renew_btn': "⚡ اشترك الآن وترقية الحساب",
+        'renew_title': "🛒 ترقية الاشتراك", 'renew_btn': "اشترك الآن بـ 🛒🚀 واحصل على الخصم",
         'logout_btn': "🚪 تسجيل الخروج", 'notify_settings': "📲 إعدادات الإشعارات الفورية",
         'wa_phone': "رقم الواتساب", 'tg_handle': "معرف التليجرام",
         'tab1': "🏗️ بناء الخطة والكوادر", 
@@ -208,7 +207,7 @@ T = {
         'p_name': "اسم المشروع", 'tech_domain': "المجال التقني", 'budget': "الميزانية التقديرية ($)",
         'tech_stack': "التقنيات المستخدمة", 'target_days': "المدة الزمنية المستهدفة (يوم)", 'risk_level': "تحمل المخاطر",
         'scope': "نطاق العمل (Scope of Work)",
-        'generate_btn': "🚀 توليد وحساب الكوادر والتوقيع الرقمي (1 نقطة)",
+        'generate_btn': "توليد وحساب الكوادر والتوقيع الرقمي (1 نقطة) 🚀",
         'export_excel': "📥 تحميل جدول المهام (Excel)", 'export_pdf': "📄 تحميل الخطة التنفيذية (PDF)",
         'detailed_plan': "📜 الخطة التنفيذية النصية الشاملة والمعمقة", 'save_re_sign': "💾 حفظ التعديلات وإعادة التوقيع الرقمي",
         'digital_sig': "🔑 التوقيع الرقمي المشفر (HMAC-SHA512):",
@@ -253,13 +252,13 @@ T = {
         'eng_subtab4': "🤝 4. السوق التنفيذي والمقاولون المحليون (Geo-Local Bidding)"
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
-        'subtitle': "The Ultimate Global AI Architecture & Field Twin Platform with Geo-Localized AI-ConTech Engine.",
-        'lang_select': "🌐 Interface Language:",
-        'theme_select': "🎨 Application Theme:",
+        'title': "🚀 PHOENIX & WAKEEL MEHNA PRO Enterprise v13.8",
+        'subtitle': "Advanced HMAC-SHA512 & Cloud SQL Platform for project architecture, payroll calculation, and security.",
+        'lang_select': "(Language) Interface Language:",
+        'theme_select': "(Theme) Application Theme:",
         'dark': "🌙 Dark", 'light': "☀️ Light",
         'user': "👤 User:", 'credits': "💳 Balance:", 'points': "points",
-        'renew_title': "🛒 Upgrade Plan", 'renew_btn': "⚡ Upgrade & Subscribe Now",
+        'renew_title': "🛒 Upgrade Plan", 'renew_btn': "Subscribe Now 🛒🚀 Get Discount",
         'logout_btn': "🚪 Log Out", 'notify_settings': "📲 Instant Notifications",
         'wa_phone': "WhatsApp Phone", 'tg_handle': "Telegram Handle",
         'tab1': "🏗️ Build Plan & Payroll", 
@@ -273,7 +272,7 @@ T = {
         'p_name': "Project Name", 'tech_domain': "Technical Domain", 'budget': "Estimated Budget ($)",
         'tech_stack': "Tech Stack", 'target_days': "Target Timeline (Days)", 'risk_level': "Risk Tolerance",
         'scope': "Scope of Work",
-        'generate_btn': "🚀 Generate Plan, Payroll & Sign (1 Credit)",
+        'generate_btn': "Generate Plan, Payroll & Sign (1 Credit) 🚀",
         'export_excel': "📥 Download Tasks (Excel)", 'export_pdf': "📄 Download Plan (PDF)",
         'detailed_plan': "📜 Extended Text Plan", 'save_re_sign': "💾 Save Edits & Re-Sign Digitally",
         'digital_sig': "🔑 Encrypted HMAC Signature:",
@@ -321,10 +320,10 @@ T = {
 
 def init_session():
     if 'lang' not in st.session_state: st.session_state.lang = 'ar'
-    if 'theme' not in st.session_state: st.session_state.theme = 'light'
+    if 'theme' not in st.session_state: st.session_state.theme = 'dark'
     if 'is_authenticated' not in st.session_state: st.session_state.is_authenticated = False
     if 'user' not in st.session_state:
-        st.session_state.user = {'email': '', 'username': 'زائر', 'credits': 5, 'role': 'Free Trial', 'is_subscribed': False, 'is_admin': False}
+        st.session_state.user = {'email': '', 'username': 'Alex Sterling (Owner)', 'credits': 5, 'role': 'Enterprise Owner / Super Admin', 'is_subscribed': True, 'is_admin': True}
     if 'current_plan' not in st.session_state: st.session_state.current_plan = None
     if 'plan_signature' not in st.session_state: st.session_state.plan_signature = None
     if 'notify_whatsapp' not in st.session_state: st.session_state.notify_whatsapp = "+967700000000"
@@ -363,7 +362,6 @@ def render_engineering_tab(txt):
         txt['eng_subtab4']
     ])
 
-    # ------------------ SubTab 1: التصميم الجيلاتي ------------------
     with tab1:
         st.subheader("إدخال مواصفات الأرض والمشروع" if st.session_state.lang == 'ar' else "Land & Project Specifications")
         col1, col2, col3 = st.columns(3)
@@ -381,49 +379,36 @@ def render_engineering_tab(txt):
         if st.button("🚀 توليد المخطط المعماري بالذكاء الاصطناعي" if st.session_state.lang == 'ar' else "🚀 Generate AI Floor Plan", type="primary", use_container_width=True):
             with st.spinner("⏳ Generating Generative Floor Layout & Calculating Space Distribution..."):
                 eng_plan = eng_ai.generate_generative_floor_plan(land_area, floors, bedrooms, budget, style)
-                
                 st.session_state['current_eng_plan'] = eng_plan
                 st.session_state['quality_tier'] = quality
-                
                 st.success(f"تم إنشاء المخطط بنجاح! إجمالي المساحة المبنية: {eng_plan['total_built_area']} م²" if st.session_state.lang == 'ar' else f"Layout generated successfully! Total built area: {eng_plan['total_built_area']} sqm")
-                
                 df_layout = pd.DataFrame(eng_plan['layout'])
                 st.subheader("📐 التوزيع الهندسي الذكي للمساحات" if st.session_state.lang == 'ar' else "📐 Smart Spatial Distribution")
                 st.dataframe(df_layout, use_container_width=True)
 
-    # ------------------ SubTab 2: حساب الكميات والتكلفة ------------------
     with tab2:
         st.subheader("جدول الكميات والتكلفة التقديرية (Bill of Quantities)" if st.session_state.lang == 'ar' else "Bill of Quantities (BOQ) & Estimated Cost")
-        
         if 'current_eng_plan' in st.session_state:
             eng_plan = st.session_state['current_eng_plan']
             quality = st.session_state.get('quality_tier', 'Standard')
-            
             boq_data = eng_ai.calculate_automated_boq(eng_plan['total_built_area'], quality)
-            
             st.metric("التكلفة الإجمالية المباشرة" if st.session_state.lang == 'ar' else "Direct Grand Total Cost", f"${boq_data['grand_total_usd']:,}")
             st.info(f"💡 هامش الاحتياطي الموصى به (10% Risk Buffer): ${boq_data['contingency_buffer_10pct']:,}" if st.session_state.lang == 'ar' else f"💡 Recommended 10% Risk Buffer: ${boq_data['contingency_buffer_10pct']:,}")
-
             df_boq = pd.DataFrame(boq_data['boq_items'])
             st.table(df_boq)
-            
             st.session_state['boq_data'] = boq_data
         else:
             st.warning("⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً." if st.session_state.lang == 'ar' else "⚠️ Please generate the architectural floor plan in the first subtab first.")
 
-    # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية (Live Twin) ------------------
     with tab3:
         st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
         st.caption("ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
-        
         if 'current_eng_plan' not in st.session_state:
             st.warning("⚠️ يرجى توليد المخطط المعماري في (التصميم الجيلاتي) أولاً للتمكن من تشغيل المحاكاة الميدانية والتوأم الرقمي.")
         else:
             eng_plan = st.session_state['current_eng_plan']
             boq_data = st.session_state.get('boq_data', {})
-            
             st.markdown("### 1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)")
-            
             col_st1, col_st2, col_st3 = st.columns(3)
             with col_st1:
                 soil_type = st.selectbox("نوع التربة الميدانية", ["صخرية صلبة (Rock)", "تربة طينية (Clay)", "تربة رملية (Sand)", "تربة مشبعة بالماء (Silt)"], key="sub_soil")
@@ -444,28 +429,21 @@ def render_engineering_tab(txt):
                     st.session_state.stress_result = LiveTwinEngine.analyze_structural_stress(pseudo_plan, soil_type, seismic_risk)
                 
                 res = st.session_state.stress_result
-                
                 c_m1, c_m2, c_m3 = st.columns(3)
                 c_m1.metric("🛡️ مؤشر السلامة الإجهادية", f"{res['safety_stress_score']}%", delta="آمن structural" if res['safety_stress_score'] > 75 else "يحتاج تدعيم")
                 c_m2.metric("💵 احتياطي طوارئ الإجهاد", f"${res['financial_contingency_usd']:,}")
                 c_m3.metric("🔑 التوقيع الرقمي للمحاكاة", "Verified SHA-256")
-                
                 st.info(f"💡 **توصية الفحص الهندسي:** {res['engineering_recommendation']}")
                 st.warning(f"⚠️ **نقاط الخلل المحتملة:** {', '.join(res['critical_risk_points'])}")
 
             st.write("---")
-
             st.markdown("### 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)")
-            
             uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'], key="sub_upload")
-            
             if uploaded_file is not None:
                 col_img, col_analysis = st.columns([1, 1])
-                
                 with col_img:
                     st.image(uploaded_file, caption="الرفع الميداني الحالي", use_container_width=True)
                     img_bytes = uploaded_file.getvalue()
-                    
                 with col_analysis:
                     if st.button("🔍 مطابقة الصورة مع الجدول الزمني والـ BOQ", type="primary", use_container_width=True, key="sub_inspect_btn"):
                         with st.spinner("جاري تحليل العناصر الإنشائية والمطابقة بالذكاء الاصطناعي..."):
@@ -475,23 +453,19 @@ def render_engineering_tab(txt):
                             
             if 'last_inspection' in st.session_state:
                 insp = st.session_state.last_inspection
-                
                 st.success("✅ اكتمل تحليل المطابقة الميدانية!")
                 st.progress(insp['completion_percentage'] / 100, text=f"نسبة الإنجاز الميداني الحقيقي: {insp['completion_percentage']}%")
-                
                 col_i1, col_i2 = st.columns(2)
                 col_i1.warning(f"⏳ **الانحرافات والتأخير:** {insp['estimated_delay_days']} أيام تأخير متوقعة.")
                 col_i2.error(f"🚨 **الملاحظات الميدانية:** {', '.join(insp['detected_deviations'])}")
 
                 st.write("---")
                 st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & ZKP Immutable Escrow)")
-                
-                # توليد توقيع عقد إثبات المعرفة الصفرية ZKP لحماية الفكرة والعقد
                 zkp_proof = ZeroKnowledgeEscrow.generate_zkp_proof("PROJ_ENG_01", insp['completion_percentage'], insp['smart_contract_release_amount'])
                 ledger_hash = SecurityEngine.generate_smart_contract_hash("المخطط الهندسي المعماري الذكي", insp['completion_percentage'], insp['smart_contract_release_amount'])
                 
                 st.markdown(f"""
-                <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
+                <div style="background-color: #0B0F19; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
                     <h4 style="color: #6366F1; margin: 0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger & ZKP Protection</h4>
                     <p style="margin-top: 8px;"><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
                     <p><b>المبلغ المستحق للإفراج الفوري للمقاول:</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
@@ -512,7 +486,6 @@ def render_engineering_tab(txt):
                     st.balloons()
                     st.success("🎉 تم الإفراج عن الدفعة وتوثيق المعاملة في السجل الذكي غير القابل للتعديل!")
 
-    # ------------------ SubTab 4: السوق التنفيذي والمناقصات (الربط العالمي الديناميكي) ------------------
     with tab4:
         st.subheader("🌐 شبكة المقاولين والمكاتب الهندسية المعتمدة (Geo-Localized ConTech Marketplace)" if st.session_state.lang == 'ar' else "🌐 Geo-Localized Contractor & Engineering Marketplace")
         st.caption("ربط جيومكاني لحظي عبر Google Places API والأنظمة المعتمدة يربط مشروعك بأقرب الشركات المعتمدة، مع توفير أرقام التواصل الموثقة والعقود.")
@@ -531,33 +504,28 @@ def render_engineering_tab(txt):
             if st.button("🔍 تحديث البحث" if st.session_state.lang == 'ar' else "🔍 Refresh Geo-Search", use_container_width=True):
                 st.rerun()
 
-        # إمكانية إدخال مفتاح API مباشرة من اللوحة للاستعلام الحي
         g_key_input = st.text_input("🔑 Google Places API Key (اختياري للاتصال الحي المباشر بخرائط جوجل):", type="password", key="g_maps_key_val")
 
-        # الميزانية المستهدفة من الـ BOQ أو افتراضية
         target_budget = 150000
         if 'boq_data' in st.session_state:
             target_budget = st.session_state['boq_data']['grand_total_usd']
 
         st.info(f"💵 **الميزانية المستهدفة المعتمدة في المناقصة:** ${target_budget:,.2f}")
-
-        # جلب قائمة المقاولين والمكاتب باستخدام المحرك الجيومكاني المحدث
         contractors = get_geo_contractors_enterprise(user_current_location, target_budget, google_maps_api_key=g_key_input)
-
         st.markdown(f"### 🏢 الشركاء والمقاولون المتاحون في نطاق: **{user_current_location}**")
 
         for c in contractors:
             st.markdown(f"""
-            <div style="background: rgba(15, 23, 42, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 12px; padding: 16px; margin-bottom: 15px;">
+            <div style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0; color: #6366F1;">🏗️ {c['company']}</h4>
+                    <h4 style="margin: 0; color: #818CF8;">🏗️ {c['company']}</h4>
                     <span style="background: #10B981; color: white; padding: 4px 10px; border-radius: 8px; font-weight: bold; font-size: 12px;">{c['type']}</span>
                 </div>
-                <p style="margin: 8px 0; font-size: 13px;">📍 <b>العنوان الميداني:</b> {c['location']} | {c['rating']}</p>
-                <div style="display: flex; gap: 20px; font-size: 14px; margin-bottom: 10px;">
+                <p style="margin: 8px 0; font-size: 13px; color: #94A3B8;">📍 <b>العنوان الميداني:</b> {c['location']} | {c['rating']}</p>
+                <div style="display: flex; gap: 20px; font-size: 14px; margin-bottom: 10px; color: #E2E8F0;">
                     <span>💰 العرض المالي: <b>${c['bid']:,.2f}</b></span>
                     <span>⏱️ مدة التنفيذ: <b>{c['days']} يوم</b></span>
-                    <span>📞 هاتف التواصل المباشر: <b style="color:#2563EB;">{c['phone']}</b></span>
+                    <span>📞 هاتف التواصل المباشر: <b style="color:#60A5FA;">{c['phone']}</b></span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -590,130 +558,228 @@ def main():
         st.session_state.user['is_subscribed'] = bool(fresh_u['is_subscribed'])
         st.session_state.user['is_admin'] = bool(fresh_u['is_admin']) or (fresh_u['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower())
 
-    if st.session_state.theme == 'dark':
-        bg_color = "#0B0F17"
-        text_color = "#F8FAFC"
-        glass_bg = "rgba(30, 41, 59, 0.70)"
-        glass_border = "rgba(255, 255, 255, 0.12)"
-        glass_shadow = "0 8px 32px 0 rgba(0, 0, 0, 0.45)"
-        glass_focus_bg = "rgba(45, 55, 72, 0.88)"
-        glass_focus_border = "rgba(99, 102, 241, 0.80)"
-        glass_focus_shadow = "0 12px 40px 0 rgba(99, 102, 241, 0.35)"
-    else:
-        bg_color = "#F1F5F9"
-        text_color = "#0F172A"
-        glass_bg = "rgba(255, 255, 255, 0.75)"
-        glass_border = "rgba(255, 255, 255, 0.65)"
-        glass_shadow = "0 8px 32px 0 rgba(31, 38, 135, 0.08)"
-        glass_focus_bg = "rgba(255, 255, 255, 0.95)"
-        glass_focus_border = "rgba(37, 99, 235, 0.85)"
-        glass_focus_shadow = "0 12px 40px 0 rgba(37, 99, 235, 0.25)"
-
-    st.markdown(f"""
+    # =========================================================================
+    # 🎨 ULTRA-DARK ENTERPRISE STYLING MATCHING EXACT DESIGN IN SCREENSHOT
+    # =========================================================================
+    st.markdown("""
     <style>
-        .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-        .glass-card {{
-            background: {glass_bg}; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            border-radius: 18px; border: 1px solid {glass_border}; box-shadow: {glass_shadow};
-            padding: 24px; margin-bottom: 22px; transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-        }}
-        .glass-card:hover {{ background: {glass_focus_bg}; border-color: {glass_focus_border}; box-shadow: {glass_focus_shadow}; transform: translateY(-3px); }}
-        .badge-green {{ background-color: #10B981; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
-        .badge-purple {{ background-color: #8B5CF6; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
-        .badge-gold {{ background-color: #F59E0B; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 13px; display: inline-block; }}
-        .checkout-btn {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }}
-        .checkout-btn-yearly {{ display: block; width: 100%; text-align: center; background: linear-gradient(135deg, #7C3AED, #9333EA); color: white !important; padding: 12px 16px; border-radius: 12px; font-weight: bold; text-decoration: none; border: none; font-size: 14px; box-shadow: 0 4px 14px rgba(124,58,237,0.3); }}
-        .ai-payment-card {{ background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(49, 46, 129, 0.95) 100%); border: 2px solid #6366F1; border-radius: 18px; padding: 24px; color: #FFFFFF; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.25); }}
-        .stTabs [data-baseweb="tab-list"] {{ gap: 8px; background: {glass_bg}; padding: 8px; border-radius: 14px; border: 1px solid {glass_border}; }}
-        .stTabs [data-baseweb="tab"] {{ border-radius: 10px; padding: 8px 16px; font-weight: bold; }}
+        /* الخلفية العامة للتطبيق */
+        .stApp {
+            background-color: #080C14 !important;
+            color: #E2E8F0 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        /* القائمة الجانبية (Sidebar) */
+        [data-testid="stSidebar"] {
+            background-color: #0E1320 !important;
+            border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+            padding-top: 15px;
+        }
+
+        /* الهيدر والعناوين */
+        h1, h2, h3, h4, h5, h6 {
+            color: #FFFFFF !important;
+            font-weight: 700 !important;
+        }
+
+        /* البطاقة الزجاجية الداكنة مطابقة للصورة */
+        .glass-card {
+            background: rgba(15, 22, 35, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* الشارات والتسميات (Badges) */
+        .badge-purple {
+            background: linear-gradient(135deg, #7C3AED, #6D28D9);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+            letter-spacing: 0.5px;
+        }
+        .badge-gold {
+            background: linear-gradient(135deg, #F59E0B, #D97706);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-block;
+        }
+        .badge-green {
+            background-color: #10B981;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 12px;
+            display: inline-block;
+        }
+
+        /* أزرار الاشتراك في Sidebar */
+        .checkout-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: linear-gradient(135deg, #2563EB, #1D4ED8);
+            color: white !important;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+        }
+        .checkout-btn-yearly {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+            color: white !important;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+        }
+        .checkout-btn:hover, .checkout-btn-yearly:hover {
+            transform: translateY(-1px);
+            opacity: 0.95;
+        }
+
+        /* أزرار القوالب السريعة (Quick Templates) */
+        div[data-testid="column"] button {
+            background-color: rgba(23, 32, 51, 0.8) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            color: #E2E8F0 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            padding: 8px 12px !important;
+        }
+        div[data-testid="column"] button:hover {
+            border-color: #6366F1 !important;
+            color: #FFFFFF !important;
+            background-color: rgba(30, 41, 59, 0.9) !important;
+        }
+
+        /* تحسين الإدخالات والحقول */
+        .stTextInput input, .stSelectbox select, .stNumberInput input, .stTextArea textarea {
+            background-color: #0E1422 !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            color: #F8FAFC !important;
+            border-radius: 8px !important;
+        }
+        .stTextInput input:focus, .stSelectbox select:focus, .stNumberInput input:focus, .stTextArea textarea:focus {
+            border-color: #6366F1 !important;
+            box-shadow: 0 0 0 1px #6366F1 !important;
+        }
+
+        /* أزرار الإرسال والتوليد الأساسية */
+        button[kind="primary"] {
+            background: linear-gradient(135deg, #4F46E5, #3730A3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 8px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
+        }
+
+        /* أشرطة التبويب العليا (Tabs) */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 6px;
+            background-color: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 5px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94A3B8;
+            background-color: transparent;
+        }
+        .stTabs [aria-selected="true"] {
+            color: #FFFFFF !important;
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            border-bottom: 2px solid #6366F1 !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
     with st.sidebar:
-        st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v13.8 Geo-Global</span>", unsafe_allow_html=True)
+        st.markdown("<div style='display:flex; align-items:center; gap:8px;'><h3>🛡️ MIHNA AGENT PRO</h3></div>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v14.0</span>", unsafe_allow_html=True)
         st.divider()
 
-        st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
+        st.radio(txt['lang_select'], ["(Arabic) العربية", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
         st.radio(txt['theme_select'], [txt['dark'], txt['light']], index=0 if st.session_state.theme == 'dark' else 1, key='theme_radio', on_change=update_theme)
 
         st.divider()
-        st.markdown(f"{txt['user']} **{st.session_state.user['username']}**")
+        st.markdown(f"👤 **استخدام:**")
+        st.markdown(f"**{st.session_state.user['username']}**")
 
         if st.session_state.user['is_subscribed']:
-            st.markdown(f"Plan: <span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
-            st.markdown("Credits: **Unlimited ♾️**")
+            st.markdown(" الاشتراك:")
+            st.markdown(f"<span class='badge-gold'>{st.session_state.user['role']}</span>", unsafe_allow_html=True)
+            st.markdown("🎟️ **الرصيد: غير محدود**")
         else:
             st.markdown(f"Account: <span class='badge-purple'>Free Trial</span>", unsafe_allow_html=True)
             st.markdown(f"{txt['credits']} `{st.session_state.user['credits']}` {txt['points']}")
 
-        if st.button(txt['logout_btn'], use_container_width=True):
+        if st.button("تسجيل الخروج 🚪", use_container_width=True):
             st.session_state.clear()
             st.rerun()
 
         st.divider()
-        st.markdown(f"### {txt['renew_title']}")
+        st.markdown("### 🛒 ترقية الاشتراك")
         all_fb = HybridDatabaseEngine.get_all_feedback()
         adapted_insights = PhoenixAI.analyze_feedback_and_adapt_pricing(all_fb)
 
-        if not st.session_state.user['is_subscribed']:
-            if st.button("🤖 AI Payment Auto-Upgrade", type="primary", use_container_width=True):
-                AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "monthly")
-                st.balloons()
-                st.success("🎉 Account Upgraded Successfully!")
-                time.sleep(1)
-                st.rerun()
-
-        st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 {txt["renew_btn"]} (${adapted_insights["recommended_monthly"]}/m)</a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 اشترك الآن 🛒🚀 وخفض السعر (${adapted_insights["recommended_monthly"]}/m)</a>', unsafe_allow_html=True)
         st.write("")
-        st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 Enterprise Yearly (${adapted_insights["recommended_yearly"]}/y)</a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 الاشتراك السنوي 👑 (${adapted_insights["recommended_yearly"]}/y)</a>', unsafe_allow_html=True)
 
         st.divider()
-        st.subheader(txt['notify_settings'])
+        st.subheader("📲 إعدادات الإشعار الفورية")
         st.session_state.notify_whatsapp = st.text_input(txt['wa_phone'], value=st.session_state.notify_whatsapp)
         st.session_state.notify_telegram = st.text_input(txt['tg_handle'], value=st.session_state.notify_telegram)
 
-    st.title(txt['title'])
-    st.caption(txt['subtitle'])
-
-    if st.session_state.user['credits'] <= 0 and not st.session_state.user['is_subscribed']:
-        st.markdown("""
-        <div class="ai-payment-card">
-            <h3>🤖 AI Payment Broker Agent Alert</h3>
-            <p>You have used all free credits (0/5)! Execute instant AI auto-checkout via Lemon Squeezy to continue using enterprise features.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        col_pay_ai1, col_pay_ai2 = st.columns(2)
-        with col_pay_ai1:
-            if st.button(f"🚀 Activate Pro Monthly (${adapted_insights['recommended_monthly']})", type="primary", use_container_width=True):
-                AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "monthly")
-                st.balloons()
-                st.rerun()
-        with col_pay_ai2:
-            if st.button(f"💎 Activate Enterprise Yearly (${adapted_insights['recommended_yearly']})", use_container_width=True):
-                AIPaymentAgent.execute_auto_checkout(st.session_state.user['email'], "yearly")
-                st.balloons()
-                st.rerun()
+    # الهيدر العلوي
+    st.markdown(f"## 🚀 PHOENIX & MIHNA AGENT PRO Enterprise v14.0")
+    st.caption("منصة Cloud SQL و HMAC-SHA512 المتقدمة لهندسة خطط المشاريع، حساب أجور المتخصصين، وتأمين البيانات.")
 
     is_ceo_owner = (st.session_state.user['email'].strip().lower() == SUPER_ADMIN_EMAIL.strip().lower()) or st.session_state.user['is_admin']
     
     if is_ceo_owner:
         tab1, tab_eng, tab2, tab3, tab4, tab5, tab6, tab_admin = st.tabs([
-            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6'], txt['tab_admin']
+            "🏗️ بناء الخطة والكوادر", "📐 التخطيط الهندسي 6D", "📊 التحليلات التفاعلية", "✏️ محرر المهام والتقرير النصي", "🔄 التغذية الراجعة والتكيّف السعري", "💳 الحساب والاشتراكات", "🗄️ الأرشفة Cloud SQL", "👑 لوحة الإدارة العليا"
         ])
     else:
         tab1, tab_eng, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            txt['tab1'], txt['tab_eng'], txt['tab2'], txt['tab3'], txt['tab4'], txt['tab5'], txt['tab6']
+            "🏗️ بناء الخطة والكوادر", "📐 التخطيط الهندسي 6D", "📊 التحليلات التفاعلية", "✏️ محرر المهام والتقرير النصي", "🔄 التغذية الراجعة والتكيّف السعري", "💳 الحساب والاشتراكات", "🗄️ الأرشفة Cloud SQL"
         ])
 
     # TAB 1: BUILD PLAN
     with tab1:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.subheader(txt['quick_templates'])
+        st.markdown("### ⚡ قوالب جاهزة للبدء السريع")
         col_t1, col_t2, col_t3 = st.columns(3)
-        col_t1.button(txt['ecom'], use_container_width=True, on_click=apply_template, args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل"))
-        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات وااختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
-        col_t3.button(txt['delivery'], use_container_width=True, on_click=apply_template, args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع"))
+        col_t1.button("🛒 متجر إلكتروني", use_container_width=True, on_click=apply_template, args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل"))
+        col_t2.button("🎓 منصة تعليمية", use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات وااختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
+        col_t3.button("🚗 تطبيق توصيل", use_container_width=True, on_click=apply_template, args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع"))
 
         domain_options = ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
         domain_idx = domain_options.index(st.session_state.form_domain) if st.session_state.form_domain in domain_options else 0
@@ -721,18 +787,18 @@ def main():
         with st.form("project_form"):
             col1, col2 = st.columns(2)
             with col1:
-                project_name = st.text_input(txt['p_name'], key="form_pname")
-                domain = st.selectbox(txt['tech_domain'], domain_options, index=domain_idx, key="form_domain")
-                budget = st.number_input(txt['budget'], min_value=500, key="form_budget")
+                project_name = st.text_input("اسم المشروع", key="form_pname")
+                domain = st.selectbox("المجال التقني", domain_options, index=domain_idx, key="form_domain")
+                budget = st.number_input("($) الميزانية التقديرية", min_value=500, key="form_budget")
             with col2:
-                tech_stack = st.text_input(txt['tech_stack'], value="Flutter, Node.js, PostgreSQL, Supabase")
-                target_days = st.number_input(txt['target_days'], min_value=5, key="form_days")
-                risk_tolerance = st.select_slider(txt['risk_level'], options=["Low", "Medium", "High"] if lang=='en' else ["منخفض جداً", "متوسط", "عالي"])
+                tech_stack = st.text_input("التقنيات المستخدمة", value="Flutter, Node.js, PostgreSQL, Supabase")
+                target_days = st.number_input("المدة الزمنية المستهدفة (يوم)", min_value=5, key="form_days")
+                risk_tolerance = st.select_slider("تحمل المخاطر", options=["منخفض جداً", "متوسط", "عالي"])
 
-            project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="Enter scope and technical requirements...")
-            gemini_key = st.text_input("Gemini API Key (Optional)", type="password")
+            project_scope = st.text_area("نطاق العمل (Scope of Work)", key="form_scope", placeholder="اكتب تفاصيل ومتطلبات المشروع هنا...")
+            gemini_key = st.text_input("مفتاح Gemini API المباشر (اختياري للذكاء الاصطناعي)", type="password")
 
-            submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
+            submit_btn = st.form_submit_button("توليد وحساب الكوادر والتوقيع الرقمي (1 نقطة) 🚀", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
         if submit_btn:
@@ -864,7 +930,7 @@ def main():
                 parents = [""] + [plan['project_name']] * len(df)
                 values = [plan['budget']] + list(df['cost'])
                 fig_sunburst = go.Figure(go.Sunburst(labels=labels, parents=parents, values=values, branchvalues="total", marker=dict(colorscale='Blues')))
-                fig_sunburst.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=320)
+                fig_sunburst.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color="#F8FAFC"), height=320)
                 st.plotly_chart(fig_sunburst, use_container_width=True)
 
             with col_c2:
@@ -872,7 +938,7 @@ def main():
                 radar_cats = ['Scope', 'Security', 'Timeline', 'Cost Stability', 'Tech Flexibility']
                 radar_vals = [80, 95, 85, 90, 70]
                 fig_radar = go.Figure(go.Scatterpolar(r=radar_vals, theta=radar_cats, fill='toself', line=dict(color='#7C3AED')))
-                fig_radar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color=text_color), height=320)
+                fig_radar.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color="#F8FAFC"), height=320)
                 st.plotly_chart(fig_radar, use_container_width=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -951,7 +1017,7 @@ def main():
 
             st.markdown(f"""
             <div style="background: rgba(37,99,235,0.08); border-radius: 12px; padding: 16px; margin-bottom: 15px;">
-                <h4 style="color: #2563EB;">🤖 AI Dynamic Pricing Response:</h4>
+                <h4 style="color: #60A5FA;">🤖 AI Dynamic Pricing Response:</h4>
                 <p>• <b>Avg User Price:</b> ${adapted['recommended_monthly']}/month</p>
                 <p>• <b>Calculated Yearly:</b> ${adapted['recommended_yearly']}/year</p>
                 <p>• <b>Product-Market Fit Score:</b> {adapted['market_satisfaction_score']}%</p>
@@ -967,9 +1033,9 @@ def main():
                     comment_text = f.get('comments', '') or "No comment."
                     
                     st.markdown(f"""
-                    <div style="background: rgba(0,0,0,0.03); border-left: 4px solid #F59E0B; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="background: rgba(0,0,0,0.2); border-left: 4px solid #F59E0B; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
                         <b>👤 {f['user_email']}</b> - {stars_str} ({stars_count}/5)<br>
-                        <small>💵 Price: ${f['suggested_price']} | 💡 Feature: {f['requested_feature']}</small><br>
+                        <small style="color:#94A3B8;">💵 Price: ${f['suggested_price']} | 💡 Feature: {f['requested_feature']}</small><br>
                         <i>💬 "{comment_text}"</i>
                     </div>
                     """, unsafe_allow_html=True)
