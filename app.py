@@ -729,17 +729,17 @@ def main():
                 target_days = st.number_input(txt['target_days'], min_value=5, key="form_days")
                 risk_tolerance = st.select_slider(txt['risk_level'], options=["Low", "Medium", "High"] if lang=='en' else ["منخفض جداً", "متوسط", "عالي"])
 
-            project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="Enter scope and technical requirements...")
-            gemini_key = st.text_input("Gemini API Key (Optional)", type="password")
+            # ---------------- الدمج الكامل للكود الثاني هنا ----------------
+            project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="أدخل نطاق العمل والمواصفات الفنية بالتفصيل...")
+            gemini_key = st.text_input("Gemini API Key (اختياري للربط المباشر)", type="password")
 
             submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
         if submit_btn:
             if st.session_state.user['credits'] < 1 and not st.session_state.user['is_subscribed']:
-                st.error("❌ Out of free credits! Upgrade plan to continue.")
+                st.error("❌ نفدت النقاط المجانية! يرجى ترقية الحساب للاستمرار.")
             else:
-                with st.spinner("⏳ Generating Architecture, Calculating Payroll, and Digital HMAC Signing..."):
+                with st.spinner("⏳ جاري تحليل المشاريع، توزيع الأجور، وتوليد التوقيع الرقمي HMAC-SHA512..."):
                     req = {
                         "project_name": project_name, "domain": domain, "budget": budget,
                         "target_days": target_days, "tech_stack": tech_stack, "scope": project_scope, "risk": risk_tolerance
@@ -754,7 +754,7 @@ def main():
 
                     st.session_state.current_plan = plan
                     st.session_state.plan_signature = plan.get("signature")
-                    st.success("✅ Plan generated & signed successfully!")
+                    st.success("✅ تم توليد الخطة التنفيذية والتوقيع المشفر بنجاح!")
 
         if st.session_state.current_plan:
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
@@ -783,7 +783,7 @@ def main():
 
             col_dl1, col_dl2, col_dl3 = st.columns(3)
             with col_dl1:
-                st.download_button("📦 Export JSON", json.dumps(st.session_state.current_plan, ensure_ascii=False), "plan.json", "application/json", use_container_width=True)
+                st.download_button("📦 تصدير JSON", json.dumps(st.session_state.current_plan, ensure_ascii=False), "plan.json", "application/json", use_container_width=True)
             with col_dl2:
                 excel_bytes = generate_excel_download(df_tasks)
                 st.download_button(txt['export_excel'], excel_bytes, f"{st.session_state.current_plan['project_name']}_Tasks.xlsx", use_container_width=True)
@@ -794,14 +794,14 @@ def main():
 
             st.divider()
             col_n1, col_n2 = st.columns(2)
-            msg_body = f"🚀 Project: {st.session_state.current_plan['project_name']}\n💰 Budget: ${st.session_state.current_plan['budget']}\n⏱️ Days: {st.session_state.current_plan['target_days']}\n🔑 Signature: {st.session_state.plan_signature[:20]}..."
+            msg_body = f"🚀 مشروع: {st.session_state.current_plan['project_name']}\n💰 الميزانية: ${st.session_state.current_plan['budget']}\n⏱️ المدة: {st.session_state.current_plan['target_days']} يوم\n🔑 التوقيع: {st.session_state.plan_signature[:20]}..."
             wa_url = NotificationEngine.create_whatsapp_link(st.session_state.notify_whatsapp, msg_body)
 
             with col_n1:
                 st.markdown(f'<a href="{wa_url}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">{txt["send_wa"]}</a>', unsafe_allow_html=True)
             with col_n2:
                 if st.button(txt['send_tg'], use_container_width=True):
-                    st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
+                    st.success(f"✅ تم إرسال الإشعار إلى {st.session_state.notify_telegram}")
             st.markdown("</div>", unsafe_allow_html=True)
 
     # TAB ENGINEERING: AI-ConTech MODULE
