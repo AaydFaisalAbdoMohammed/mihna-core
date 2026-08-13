@@ -73,18 +73,23 @@ Driven by advanced **Google Gemini AI models**, the platform converts raw engine
 | **Messaging & Telemetry** | Telegram Bot API, WhatsApp Notifications API |
 ## 📂 Repository Structure
 ```text
-mihna-core/
+Mihna-core/
 ├── .devcontainer/        # Local development environment container configuration
 ├── .github/workflows/   # Automated CI/CD pipelines for Google Cloud Run deployment
 ├── data/plans/           # RAG knowledge base & baseline engineering plan templates
+├── .gitignore            # Git exclusion rules for temporary/secret files
 ├── Dockerfile            # Container definition optimized for Google Cloud Run
-├── app.py                # Core application entry point & interface router
+├── LICENSE               # MIT Open-source license agreement
+├── README.md             # Project documentation & execution guide
 ├── ai.py                 # LiveTwinEngine for structural physics & stress analysis
-├── cloudsql_utils.py     # Cloud SQL / PostgreSQL enterprise connector
+├── app.py                # Core application entry point & interface router
 ├── auth.py               # Authentication, access control & multi-tenant isolation
-├── utils.py              # Cryptographic smart contract hash generators (SHA512)
+├── cloudsql_utils.py     # Cloud SQL / PostgreSQL enterprise connector
 ├── config.py             # Enterprise secrets & service key handlers
-└── requirements.txt      # Production runtime dependencies
+├── db.py                 # SQLite local logging & Live Twin metrics storage
+├── requirements.txt      # Production runtime dependencies
+└── utils.py              # Cryptographic smart contract hash generators (SHA512)
+
 
 ```
 ## 🏃 Quick Start & Local Spin-up
