@@ -64,7 +64,7 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
     loc_raw = user_location.strip() if user_location and user_location.strip() else "Aden, Yemen"
     api_key = google_maps_api_key or os.getenv("GOOGLE_MAPS_API_KEY")
 
-    # 🌐 1. مسار الربط المباشر اللحظي عبر Google Maps Places API (بيانات وعناوين وأرقام رسمية 100%)
+    # 🌐 1. مسار الربط المباشر اللحظي عبر Google Maps Places API
     if api_key:
         try:
             search_url = (
@@ -79,7 +79,6 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
                     for i, place in enumerate(data["results"][:3]):
                         place_id = place.get("place_id")
                         
-                        # الاستعلام عن تفاصيل المكان للحصول على رقم الهاتف الموثق والعنوان
                         details_url = (
                             f"https://maps.googleapis.com/maps/api/place/details/json"
                             f"?place_id={place_id}&fields=name,formatted_phone_number,formatted_address,rating&key={api_key}"
@@ -102,9 +101,9 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
                         })
                     return real_contractors
         except Exception:
-            pass  # الانتقال تلقائياً للبديل المحلي عند حدوث خطأ شبكة أو عدم توفر المفتاح
+            pass
 
-    # 🏢 2. النظام الاحتياطي الديناميكي المحلي الذكي (Deterministic Dynamic Fallback)
+    # 🏢 2. النظام الاحتياطي الديناميكي المحلي الذكي
     loc_lower = loc_raw.lower()
     has_arabic = bool(re.search(r'[\u0600-\u06FF]', loc_raw))
 
@@ -411,7 +410,7 @@ def render_engineering_tab(txt):
         else:
             st.warning("⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً." if st.session_state.lang == 'ar' else "⚠️ Please generate the architectural floor plan in the first subtab first.")
 
-    # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية (Live Twin) ------------------
+    # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية المتقدمة (ULTRA LIVE TWIN) ------------------
     with tab3:
         st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
         st.caption("ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
@@ -455,62 +454,87 @@ def render_engineering_tab(txt):
 
             st.write("---")
 
+            # الدمج الكامل والاحترافي للنسخة المتقدمة من الكود الأول
             st.markdown("### 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)")
-            
-            uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'], key="sub_upload")
+            st.caption("نظام فحص ذكي لا يقبل إلا صور المواقع الإنشائية الحقيقية. يحسب كميات الشغل المنجز وقيمته المالية بدقة متناهية.")
+
+            uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'], key="sub_upload_ultra")
             
             if uploaded_file is not None:
                 col_img, col_analysis = st.columns([1, 1])
                 
                 with col_img:
-                    st.image(uploaded_file, caption="الرفع الميداني الحالي", use_container_width=True)
+                    st.image(uploaded_file, caption="الرفع الميداني الحالي للموقع", use_container_width=True)
                     img_bytes = uploaded_file.getvalue()
                     
                 with col_analysis:
-                    if st.button("🔍 مطابقة الصورة مع الجدول الزمني والـ BOQ", type="primary", use_container_width=True, key="sub_inspect_btn"):
-                        with st.spinner("جاري تحليل العناصر الإنشائية والمطابقة بالذكاء الاصطناعي..."):
-                            mock_tasks = [{"task": item['item']} for item in boq_data.get('boq_items', [])]
-                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, mock_tasks)
-                            st.session_state.last_inspection = inspection
+                    if st.button("🔍 مطابقة الصورة وحساب الكميات والتكلفة المنجزة", type="primary", use_container_width=True, key="sub_inspect_btn_ultra"):
+                        with st.spinner("جاري فحص الصورة عبر محرك الذكاء الاصطناعي الهندسية والمطابقة بالـ BOQ..."):
+                            mock_boq_items = boq_data.get('boq_items', [])
+                            grand_total = boq_data.get('grand_total_usd', 150000)
                             
+                            # استدعاء المحرك المطور بكامل معايير التكلفة والإنجاز
+                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, mock_boq_items, grand_total)
+                            st.session_state.last_inspection = inspection
+
+            # عرض النتائج التفصيلية للفحص والتدقيق
             if 'last_inspection' in st.session_state:
                 insp = st.session_state.last_inspection
-                
-                st.success("✅ اكتمل تحليل المطابقة الميدانية!")
-                st.progress(insp['completion_percentage'] / 100, text=f"نسبة الإنجاز الميداني الحقيقي: {insp['completion_percentage']}%")
-                
-                col_i1, col_i2 = st.columns(2)
-                col_i1.warning(f"⏳ **الانحرافات والتأخير:** {insp['estimated_delay_days']} أيام تأخير متوقعة.")
-                col_i2.error(f"🚨 **الملاحظات الميدانية:** {', '.join(insp['detected_deviations'])}")
 
-                st.write("---")
-                st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & ZKP Immutable Escrow)")
-                
-                # توليد توقيع عقد إثبات المعرفة الصفرية ZKP لحماية الفكرة والعقد
-                zkp_proof = ZeroKnowledgeEscrow.generate_zkp_proof("PROJ_ENG_01", insp['completion_percentage'], insp['smart_contract_release_amount'])
-                ledger_hash = SecurityEngine.generate_smart_contract_hash("المخطط الهندسي المعماري الذكي", insp['completion_percentage'], insp['smart_contract_release_amount'])
-                
-                st.markdown(f"""
-                <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
-                    <h4 style="color: #6366F1; margin: 0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger & ZKP Protection</h4>
-                    <p style="margin-top: 8px;"><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
-                    <p><b>المبلغ المستحق للإفراج الفوري للمقاول:</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
-                    <p style="font-family: monospace; font-size: 11px; color: #10B981; word-break: break-all; margin-bottom: 4px;"><b>ZKP Cryptographic Proof:</b> {zkp_proof}</p>
-                    <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all; margin: 0;"><b>Block Hash:</b> {ledger_hash}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if st.button("🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر", use_container_width=True, key="sub_escrow_btn"):
-                    HybridDatabaseEngine.log_live_twin_inspection(
-                        st.session_state.user['email'],
-                        "المخطط الهندسي المعماري الذكي",
-                        st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
-                        insp['completion_percentage'],
-                        insp['smart_contract_release_amount'],
-                        ledger_hash
-                    )
-                    st.balloons()
-                    st.success("🎉 تم الإفراج عن الدفعة وتوثيق المعاملة في السجل الذكي غير القابل للتعديل!")
+                # 🛑 1. التحقق من صحة الصورة (الحارس الهيكلي)
+                if not insp.get("is_valid_construction_site", True):
+                    st.error("❌ **تم رفض الصورة:** " + insp.get("rejection_reason", "الصورة المرفوعة لا تعود لموقع إنشائي أو هندسي معتمد. يرجى رفع صورة حقيقية من موقع البناء."))
+                else:
+                    st.success(f"✅ **تم التحقق بنجاح!** مرحلة البناء الحالية: **{insp.get('construction_phase', 'أعمال إنشائية')}**")
+
+                    # 📊 2. عرض نسبة ومبالغ الشغل المنجز
+                    col_val1, col_val2, col_val3 = st.columns(3)
+                    col_val1.metric("📊 نسبة الشغل المنجز الحقيقي", f"{insp['completion_percentage']}%")
+                    col_val2.metric("💵 قيمة الأعمال المنجزة ($ Executed)", f"${insp['executed_value_usd']:,}")
+                    col_val3.metric("⏳ المتبقي من الميزانية ($ Remaining)", f"${insp['remaining_value_usd']:,}")
+
+                    st.progress(insp['completion_percentage'] / 100, text=f"تقدم العمل الميداني: {insp['completion_percentage']}%")
+
+                    # 🏗️ 3. المكونات المكتشفة ومؤشر الجودة
+                    st.markdown("#### 🏗️ العناصر الإنشائية المكتشفة في الموقع:")
+                    elements_html = " ".join([f"<span style='background:#6366F1; color:white; padding:4px 10px; border-radius:8px; font-size:12px; margin-right:5px;'>{el}</span>" for el in insp.get('detected_elements', [])])
+                    st.markdown(elements_html, unsafe_allow_html=True)
+
+                    st.write("")
+                    col_i1, col_i2 = st.columns(2)
+                    col_i1.warning(f"⏱️ **الانحراف الجدولي:** {insp['estimated_delay_days']} أيام تأخير متوقعة.")
+                    col_i2.error(f"🚨 **الملاحظات والعيوب الميدانية:** {', '.join(insp['detected_deviations'])}")
+
+                    st.info(f"📋 **ملخص التقرير الهندسي:** {insp.get('engineering_summary', '')}")
+
+                    st.write("---")
+                    st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & ZKP Immutable Escrow)")
+                    
+                    # توليد توقيع عقد إثبات المعرفة الصفرية ZKP
+                    zkp_proof = ZeroKnowledgeEscrow.generate_zkp_proof("PROJ_ENG_01", insp['completion_percentage'], insp['smart_contract_release_amount'])
+                    ledger_hash = SecurityEngine.generate_smart_contract_hash("المخطط الهندسي المعماري الذكي", insp['completion_percentage'], insp['smart_contract_release_amount'])
+                    
+                    st.markdown(f"""
+                    <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
+                        <h4 style="color: #6366F1; margin: 0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger & ZKP Protection</h4>
+                        <p style="margin-top: 8px;"><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
+                        <p><b>المبلغ المستحق للإفراج الفوري للمقاول (90% من الشغل المنجز):</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
+                        <p style="font-family: monospace; font-size: 11px; color: #10B981; word-break: break-all; margin-bottom: 4px;"><b>ZKP Cryptographic Proof:</b> {zkp_proof}</p>
+                        <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all; margin: 0;"><b>Block Hash:</b> {ledger_hash}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button("🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر", use_container_width=True, key="sub_escrow_btn_ultra"):
+                        HybridDatabaseEngine.log_live_twin_inspection(
+                            st.session_state.user['email'],
+                            "المخطط الهندسي المعماري الذكي",
+                            st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
+                            insp['completion_percentage'],
+                            insp['smart_contract_release_amount'],
+                            ledger_hash
+                        )
+                        st.balloons()
+                        st.success("🎉 تم الإفراج عن الدفعة المستحقة للمقاول وتوثيقها في السجل الذكي!")
 
     # ------------------ SubTab 4: السوق التنفيذي والمناقصات (الربط العالمي الديناميكي) ------------------
     with tab4:
@@ -531,17 +555,14 @@ def render_engineering_tab(txt):
             if st.button("🔍 تحديث البحث" if st.session_state.lang == 'ar' else "🔍 Refresh Geo-Search", use_container_width=True):
                 st.rerun()
 
-        # إمكانية إدخال مفتاح API مباشرة من اللوحة للاستعلام الحي
         g_key_input = st.text_input("🔑 Google Places API Key (اختياري للاتصال الحي المباشر بخرائط جوجل):", type="password", key="g_maps_key_val")
 
-        # الميزانية المستهدفة من الـ BOQ أو افتراضية
         target_budget = 150000
         if 'boq_data' in st.session_state:
             target_budget = st.session_state['boq_data']['grand_total_usd']
 
         st.info(f"💵 **الميزانية المستهدفة المعتمدة في المناقصة:** ${target_budget:,.2f}")
 
-        # جلب قائمة المقاولين والمكاتب باستخدام المحرك الجيومكاني المحدث
         contractors = get_geo_contractors_enterprise(user_current_location, target_budget, google_maps_api_key=g_key_input)
 
         st.markdown(f"### 🏢 الشركاء والمقاولون المتاحون في نطاق: **{user_current_location}**")
@@ -729,7 +750,6 @@ def main():
                 target_days = st.number_input(txt['target_days'], min_value=5, key="form_days")
                 risk_tolerance = st.select_slider(txt['risk_level'], options=["Low", "Medium", "High"] if lang=='en' else ["منخفض جداً", "متوسط", "عالي"])
 
-            # ---------------- الدمج الكامل للكود الثاني هنا ----------------
             project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="أدخل نطاق العمل والمواصفات الفنية بالتفصيل...")
             gemini_key = st.text_input("Gemini API Key (اختياري للربط المباشر)", type="password")
 
