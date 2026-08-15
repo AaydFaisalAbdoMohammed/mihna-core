@@ -454,71 +454,64 @@ def render_engineering_tab(txt):
 
             st.write("---")
 
-            # الدمج الكامل والاحترافي للنسخة المتقدمة من الكود الأول
+            # -----------------------------------------------------------------------------
+            # 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)
+            # -----------------------------------------------------------------------------
             st.markdown("### 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)")
             st.caption("نظام فحص ذكي لا يقبل إلا صور المواقع الإنشائية الحقيقية. يحسب كميات الشغل المنجز وقيمته المالية بدقة متناهية.")
 
             uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'], key="sub_upload_ultra")
             
             if uploaded_file is not None:
-                col_img, col_analysis = st.columns([1, 1])
-                
-                with col_img:
-                    st.image(uploaded_file, caption="الرفع الميداني الحالي للموقع", use_container_width=True)
-                    img_bytes = uploaded_file.getvalue()
-                    
-                with col_analysis:
-                    if st.button("🔍 مطابقة الصورة وحساب الكميات والتكلفة المنجزة", type="primary", use_container_width=True, key="sub_inspect_btn_ultra"):
-                        with st.spinner("جاري فحص الصورة عبر محرك الذكاء الاصطناعي الهندسية والمطابقة بالـ BOQ..."):
-                            mock_boq_items = boq_data.get('boq_items', [])
-                            grand_total = boq_data.get('grand_total_usd', 150000)
-                            
-                            # استدعاء المحرك المطور بكامل معايير التكلفة والإنجاز
-                            inspection = LiveTwinEngine.inspect_site_image(img_bytes, mock_boq_items, grand_total)
-                            st.session_state.last_inspection = inspection
+                st.image(uploaded_file, caption="الرفع الميداني الحالي للموقع", use_container_width=True)
 
-            # عرض النتائج التفصيلية للفحص والتدقيق
-            if 'last_inspection' in st.session_state:
-                insp = st.session_state.last_inspection
-
-                # 🛑 1. التحقق من صحة الصورة (الحارس الهيكلي)
-                if not insp.get("is_valid_construction_site", True):
-                    st.error("❌ **تم رفض الصورة:** " + insp.get("rejection_reason", "الصورة المرفوعة لا تعود لموقع إنشائي أو هندسي معتمد. يرجى رفع صورة حقيقية من موقع البناء."))
+            # زر الفحص
+            if st.button("🔍 مطابقة الصورة وحساب الكميات والتكلفة المنجزة", type="primary", use_container_width=True, key="sub_inspect_btn_ultra"):
+                if uploaded_file is not None:
+                    with st.spinner("جاري فحص بكسلات الصورة عبر محرك ConTech Vision Guard والمطابقة بالـ BOQ..."):
+                        img_bytes = uploaded_file.getvalue()
+                        mock_boq_items = boq_data.get('boq_items', [])
+                        grand_total = boq_data.get('grand_total_usd', 150000)
+                        
+                        # استدعاء المحرك الصارم
+                        inspection = LiveTwinEngine.inspect_site_image(img_bytes, mock_boq_items, grand_total)
+                        st.session_state.last_inspection = inspection
                 else:
-                    st.success(f"✅ **تم التحقق بنجاح!** مرحلة البناء الحالية: **{insp.get('construction_phase', 'أعمال إنشائية')}**")
+                    st.warning("⚠️ يرجى اختيار ورصد صورة ميدانية أولاً قبل تشغيل محرك المطابقة.")
 
-                    # 📊 2. عرض نسبة ومبالغ الشغل المنجز
-                    col_val1, col_val2, col_val3 = st.columns(3)
-                    col_val1.metric("📊 نسبة الشغل المنجز الحقيقي", f"{insp['completion_percentage']}%")
-                    col_val2.metric("💵 قيمة الأعمال المنجزة ($ Executed)", f"${insp['executed_value_usd']:,}")
-                    col_val3.metric("⏳ المتبقي من الميزانية ($ Remaining)", f"${insp['remaining_value_usd']:,}")
+            # عرض النتائج في الواجهة بالتصميم الصارم والدقيق
+            if "last_inspection" in st.session_state:
+                res = st.session_state.last_inspection
+                
+                if not res.get("is_valid_construction_site"):
+                    st.error(f"❌ **تم رفض الفحص الميداني:** {res.get('rejection_reason')}")
+                    st.warning("⚠️ يرجى رفع صورة حقيقية واضحة تعود لموقع بناء، خرسانات، أو أعمال إنشائية قائمة.")
+                else:
+                    st.success(f"✅ تم التحقق بنجاح! مرحلة البناء الحالية: {res.get('construction_phase')}")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("نسبة العمل المنجز الحقيقي", f"{res.get('completion_percentage')}%")
+                    col2.metric("قيمة الأعمال المنجزة ($)", f"${res.get('executed_value_usd'):,.2f}")
+                    col3.metric("المتبقي من الميزانية ($)", f"${res.get('remaining_value_usd'):,.2f}")
+                    
+                    st.progress(res.get('completion_percentage', 0) / 100, text=f"تقدم العمل الميداني: {res.get('completion_percentage')}%")
 
-                    st.progress(insp['completion_percentage'] / 100, text=f"تقدم العمل الميداني: {insp['completion_percentage']}%")
-
-                    # 🏗️ 3. المكونات المكتشفة ومؤشر الجودة
-                    st.markdown("#### 🏗️ العناصر الإنشائية المكتشفة في الموقع:")
-                    elements_html = " ".join([f"<span style='background:#6366F1; color:white; padding:4px 10px; border-radius:8px; font-size:12px; margin-right:5px;'>{el}</span>" for el in insp.get('detected_elements', [])])
-                    st.markdown(elements_html, unsafe_allow_html=True)
-
-                    st.write("")
-                    col_i1, col_i2 = st.columns(2)
-                    col_i1.warning(f"⏱️ **الانحراف الجدولي:** {insp['estimated_delay_days']} أيام تأخير متوقعة.")
-                    col_i2.error(f"🚨 **الملاحظات والعيوب الميدانية:** {', '.join(insp['detected_deviations'])}")
-
-                    st.info(f"📋 **ملخص التقرير الهندسي:** {insp.get('engineering_summary', '')}")
+                    st.write("**العناصر الإنشائية المكتشفة في الموقع:**")
+                    st.info(", ".join(res.get("detected_elements", [])))
 
                     st.write("---")
                     st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & ZKP Immutable Escrow)")
                     
                     # توليد توقيع عقد إثبات المعرفة الصفرية ZKP
-                    zkp_proof = ZeroKnowledgeEscrow.generate_zkp_proof("PROJ_ENG_01", insp['completion_percentage'], insp['smart_contract_release_amount'])
-                    ledger_hash = SecurityEngine.generate_smart_contract_hash("المخطط الهندسي المعماري الذكي", insp['completion_percentage'], insp['smart_contract_release_amount'])
+                    release_amt = res.get('smart_contract_release_amount', res.get('executed_value_usd', 0) * 0.9)
+                    zkp_proof = ZeroKnowledgeEscrow.generate_zkp_proof("PROJ_ENG_01", res.get('completion_percentage', 0), release_amt)
+                    ledger_hash = SecurityEngine.generate_smart_contract_hash("المخطط الهندسي المعماري الذكي", res.get('completion_percentage', 0), release_amt)
                     
                     st.markdown(f"""
                     <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
                         <h4 style="color: #6366F1; margin: 0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger & ZKP Protection</h4>
-                        <p style="margin-top: 8px;"><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{insp['escrow_approval']}</span></p>
-                        <p><b>المبلغ المستحق للإفراج الفوري للمقاول (90% من الشغل المنجز):</b> <span style="color:#F59E0B; font-weight:bold;">${insp['smart_contract_release_amount']:,}</span></p>
+                        <p style="margin-top: 8px;"><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{res.get('escrow_approval', 'معتمد تلقائياً')}</span></p>
+                        <p><b>المبلغ المستحق للإفراج الفوري للمقاول (90% من الشغل المنجز):</b> <span style="color:#F59E0B; font-weight:bold;">${release_amt:,.2f}</span></p>
                         <p style="font-family: monospace; font-size: 11px; color: #10B981; word-break: break-all; margin-bottom: 4px;"><b>ZKP Cryptographic Proof:</b> {zkp_proof}</p>
                         <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all; margin: 0;"><b>Block Hash:</b> {ledger_hash}</p>
                     </div>
@@ -529,8 +522,8 @@ def render_engineering_tab(txt):
                             st.session_state.user['email'],
                             "المخطط الهندسي المعماري الذكي",
                             st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
-                            insp['completion_percentage'],
-                            insp['smart_contract_release_amount'],
+                            res.get('completion_percentage', 0),
+                            release_amt,
                             ledger_hash
                         )
                         st.balloons()
