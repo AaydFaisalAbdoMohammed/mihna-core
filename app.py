@@ -3,8 +3,8 @@
 
 """
 ===============================================================================
-© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v13.8 - ULTRA ULTIMATE SaaS
-Geo-Global Dynamic Adaptive Engine Edition with Ultra CAD Generative Floor Plan Engine
+© 2026 PHOENIX & WAKEEL MEHNA PRO ENTERPRISE ARCHITECTURE v14.0 - ULTRA ULTIMATE SaaS
+Geo-Global Dynamic Adaptive Engine Edition with World-Class Architectural Floor Plan Engine
 ===============================================================================
 """
 
@@ -16,6 +16,7 @@ import random
 import re
 import hashlib
 import hmac
+import math
 import requests
 import streamlit as st
 import pandas as pd
@@ -32,7 +33,7 @@ from ai import (
 )
 from auth import render_auth_page
 
-APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ULTRA ENTERPRISE v13.8"
+APP_TITLE = "PHOENIX & WAKEEL MEHNA PRO - ULTRA ENTERPRISE v14.0"
 
 # تهيئة المحرك الهندسي الذكي
 eng_ai = EngineeringAIEngine()
@@ -43,160 +44,303 @@ eng_ai = EngineeringAIEngine()
 class ZeroKnowledgeEscrow:
     """
     محرك التشفير المتقدم لإثبات الانجاز بدون كشف البيانات التجارية الحساسة (ZKP - Zero-Knowledge Proofs)
-    يضمن حماية الأفكار والعقود من التلاعب أو التزييف.
     """
     @staticmethod
     def generate_zkp_proof(project_id: str, completion_pct: float, release_amount: float) -> str:
         secret_salt = os.urandom(32).hex()
         raw_payload = f"{project_id}:{completion_pct}:{release_amount}:{secret_salt}:{time.time()}"
         proof_hash = hashlib.sha3_512(raw_payload.encode('utf-8')).hexdigest()
-        return f"ZKP-v13-{proof_hash[:32].upper()}"
+        return f"ZKP-v14-{proof_hash[:32].upper()}"
 
 # =============================================================================
-# 🏛️ ULTRA ADVANCED CAD GENERATIVE DESIGN ENGINE (محرك الرسم المعماري التنفيذي)
+# 🏛️ WORLD-CLASS GENERATIVE CAD ARCHITECTURAL ENGINE v14.0 (محرك الرسم المعماري التنفيذي)
 # =============================================================================
 class GenerativeArchitecturalEngine:
     """
-    محرك توليد المخططات التنفيذية ورسم الخرائط المعمارية ثلاثية الأبعاد والأبعاد الصافية
-    يقوم بحساب الإحداثيات الدقيقة ورسم المخطط المعماري التفاعلي.
+    محرك توليد المخططات التنفيذية ورسم الخرائط المعمارية والإشعاعية الاحترافية
+    يدعم رسم الجدران الهيكلية، الأعمدة الخرسانية، فتحات الأبواب والنوافذ، المحاور الهندسية والأثاث المفهومي.
     """
     @staticmethod
     def generate_ultra_cad_layout(land_area: float, floors: int, bedrooms: int, budget: float, style: str):
-        # حساب التغطية المعمارية البنائية (Footprint Area ~ 65-75%)
         coverage_ratio = 0.70
         footprint_area = land_area * coverage_ratio
         total_built_area = footprint_area * floors
 
-        # تحديد أبعاد المبنى الافتراضية
-        aspect_ratio = 1.2
-        width = (footprint_area / aspect_ratio) ** 0.5
-        length = width * aspect_ratio
+        aspect_ratio = 1.25
+        width = round((footprint_area / aspect_ratio) ** 0.5, 2)
+        length = round(width * aspect_ratio, 2)
 
         layout_rooms = []
-        
+        wall_thickness = 0.25  # سماكة الجدران بالمتر
+
         # 1. المنطقة الاجتماعية (Social Zone)
-        majlis_w, majlis_l = round(width * 0.45, 2), round(length * 0.40, 2)
-        living_w, living_l = round(width * 0.50, 2), round(length * 0.45, 2)
-        
+        majlis_w, majlis_l = round(width * 0.46, 2), round(length * 0.40, 2)
+        living_w, living_l = round(width - majlis_w, 2), round(length * 0.40, 2)
+
         layout_rooms.append({
-            "room_name": "المجلس الرئيسي (Reception/Majlis)",
+            "id": "room_1",
+            "room_name": "المجلس الرئيسي (Reception / Majlis)",
             "zone": "المنطقة الاجتماعية",
             "x0": 0, "y0": 0, "x1": majlis_w, "y1": majlis_l,
             "width": majlis_w, "length": majlis_l, "area": round(majlis_w * majlis_l, 2),
-            "orientation": "واجهة أصلية (Front Facing)"
+            "orientation": "واجهة أصلية (Front Facing)",
+            "doors": [{"x": majlis_w / 2, "y": 0, "type": "main_entrance"}],
+            "windows": [{"x": 0, "y": majlis_l / 2, "type": "front_window"}],
+            "furniture": ["🛋️ طقم كنب فاخر", "📺 شاشة عرض", "☕ طاولة ضيافة"]
         })
 
         layout_rooms.append({
+            "id": "room_2",
             "room_name": "صالة المعيشة العائلية (Living Hall)",
             "zone": "المنطقة الاجتماعية",
             "x0": majlis_w, "y0": 0, "x1": width, "y1": living_l,
-            "width": round(width - majlis_w, 2), "length": living_l, "area": round((width - majlis_w) * living_l, 2),
-            "orientation": "مركزي (Central Core)"
+            "width": living_w, "length": living_l, "area": round(living_w * living_l, 2),
+            "orientation": "مركزي (Central Core)",
+            "doors": [{"x": majlis_w, "y": living_l / 2, "type": "interior"}],
+            "windows": [{"x": width, "y": living_l / 2, "type": "side_window"}],
+            "furniture": ["🛋️ جلسة عائلية", "🪴 حديقة داخلية", "📺 مركز ترفيه"]
         })
 
         # 2. منطقة الخدمات (Services Zone)
-        kitchen_w, kitchen_l = round(width * 0.35, 2), round(length * 0.30, 2)
+        kitchen_w, kitchen_l = round(width * 0.40, 2), round(length * 0.28, 2)
         layout_rooms.append({
-            "room_name": "المطبخ الرئيسي (Kitchen & Dining)",
+            "id": "room_3",
+            "room_name": "المطبخ وركن الطعام (Kitchen & Dining)",
             "zone": "خدمات",
             "x0": 0, "y0": majlis_l, "x1": kitchen_w, "y1": majlis_l + kitchen_l,
             "width": kitchen_w, "length": kitchen_l, "area": round(kitchen_w * kitchen_l, 2),
-            "orientation": "خلفي/تهوية جانبية"
+            "orientation": "تهوية جانبية",
+            "doors": [{"x": kitchen_w / 2, "y": majlis_l, "type": "interior"}],
+            "windows": [{"x": 0, "y": majlis_l + (kitchen_l / 2), "type": "side_window"}],
+            "furniture": ["🍳 كاونتر مطبخ", "🍽️ طاولة طعام", "🧊 ثلاجة ومؤن"]
         })
 
-        # 3. غرف النوم (Private Zone)
-        rem_length = length - (majlis_l + kitchen_l)
-        if rem_length <= 0: rem_length = length * 0.30
+        # 3. غرف النوم والمنطقة الخاصة (Private Zone)
+        rem_length = round(length - (majlis_l + kitchen_l), 2)
+        if rem_length <= 0: rem_length = round(length * 0.32, 2)
 
-        room_w = width / max(1, min(bedrooms, 3))
+        room_w = round(width / max(1, min(bedrooms, 3)), 2)
         for i in range(bedrooms):
-            r_x0 = (i % 3) * room_w
-            r_y0 = majlis_l + kitchen_l
-            r_w = round(room_w, 2)
-            r_l = round(rem_length, 2)
-            
+            r_x0 = round((i % 3) * room_w, 2)
+            r_y0 = round(majlis_l + kitchen_l, 2)
+            r_w = room_w
+            r_l = rem_length
+
             layout_rooms.append({
-                "room_name": f"غرفة نوم Master #{i+1}" if i==0 else f"غرفة نوم #{i+1}",
+                "id": f"bedroom_{i+1}",
+                "room_name": f"غرفة نوم Master #{i+1}" if i == 0 else f"غرفة نوم #{i+1}",
                 "zone": "المنطقة الخاصة",
-                "x0": r_x0, "y0": r_y0, "x1": r_x0 + r_w, "y1": r_y0 + r_l,
+                "x0": r_x0, "y0": r_y0, "x1": round(r_x0 + r_w, 2), "y1": round(r_y0 + r_l, 2),
                 "width": r_w, "length": r_l, "area": round(r_w * r_l, 2),
-                "orientation": "جانبي/إضاءة طبيعية"
+                "orientation": "جانبي / إضاءة طبيعية",
+                "doors": [{"x": r_x0 + (r_w / 2), "y": r_y0, "type": "interior"}],
+                "windows": [{"x": r_x0, "y": r_y0 + (r_l / 2), "type": "window"}],
+                "furniture": ["🖏 سرير مزدوج", "🗄️ خزانة ملابس", "💻 مكتب عمل"] if i == 0 else ["🖏 سرير", "🗄️ خزانة"]
             })
 
-        # إضافة حمامات وممرات
+        # حمامات وخدمات إضافية
+        bath_w = round(width - kitchen_w, 2)
+        bath_l = kitchen_l
         layout_rooms.append({
+            "id": "room_bath",
             "room_name": "مجمع حمامات وخدمات (Bathrooms)",
             "zone": "خدمات",
-            "x0": kitchen_w, "y0": majlis_l, "x1": width, "y1": majlis_l + (kitchen_l * 0.5),
-            "width": round(width - kitchen_w, 2), "length": round(kitchen_l * 0.5, 2), "area": round((width - kitchen_w) * kitchen_l * 0.5, 2),
-            "orientation": "خدمي"
+            "x0": kitchen_w, "y0": majlis_l, "x1": width, "y1": majlis_l + bath_l,
+            "width": bath_w, "length": bath_l, "area": round(bath_w * bath_l, 2),
+            "orientation": "خدمي / تهوية رأسية",
+            "doors": [{"x": kitchen_w, "y": majlis_l + (bath_l / 2), "type": "interior"}],
+            "windows": [{"x": width, "y": majlis_l + (bath_l / 2), "type": "vent"}],
+            "furniture": ["🚿 كابينة دش", "🚽 مغاسل وحمام"]
         })
+
+        # توليد إحداثيات الأعمدة الخرسانية الإنشائية (Structural Concrete Columns)
+        columns = []
+        x_grid = sorted(list(set([0, majlis_w, kitchen_w, width])))
+        y_grid = sorted(list(set([0, majlis_l, majlis_l + kitchen_l, length])))
+
+        col_id = 1
+        for gx in x_grid:
+            for gy in y_grid:
+                columns.append({
+                    "id": f"C{col_id}",
+                    "x": gx,
+                    "y": gy,
+                    "size": 0.30  # أبعاد العمود 30x30 سم
+                })
+                col_id += 1
 
         return {
             "footprint_area": round(footprint_area, 2),
             "total_built_area": round(total_built_area, 2),
-            "building_width": round(width, 2),
-            "building_length": round(length, 2),
+            "building_width": width,
+            "building_length": length,
+            "wall_thickness": wall_thickness,
             "floors": floors,
             "style": style,
-            "rooms": layout_rooms
+            "rooms": layout_rooms,
+            "columns": columns,
+            "x_grid": x_grid,
+            "y_grid": y_grid
         }
 
     @staticmethod
-    def render_interactive_architectural_plan(cad_data, lang='ar'):
+    def render_interactive_architectural_plan(cad_data, lang='ar', show_furniture=True, show_grid=True):
         """
-        رسم المخطط المعماري التفاعلي الهيكلي باستعمال Plotly Canvas
+        محرك الرسم الهيكلي التفاعلي المتقدم للغاية باستخدام Plotly Engine
+        يرسم الجدران، الأعمدة، المحاور الهندسية، فتحات الأبواب والنوافذ والأثاث.
         """
         fig = go.Figure()
 
-        # ألوان المناطق المعمارية
+        # ألوان المناطق المعمارية المتقدمة
+        is_dark = st.session_state.get('theme', 'light') == 'dark'
+        
         zone_colors = {
-            "المنطقة الاجتماعية": "rgba(99, 102, 241, 0.35)",
-            "المنطقة الخاصة": "rgba(16, 185, 129, 0.35)",
-            "خدمات": "rgba(245, 158, 11, 0.35)"
+            "المنطقة الاجتماعية": "rgba(99, 102, 241, 0.22)" if is_dark else "rgba(99, 102, 241, 0.15)",
+            "المنطقة الخاصة": "rgba(16, 185, 129, 0.22)" if is_dark else "rgba(16, 185, 129, 0.15)",
+            "خدمات": "rgba(245, 158, 11, 0.22)" if is_dark else "rgba(245, 158, 11, 0.15)"
         }
         
         border_colors = {
-            "المنطقة الاجتماعية": "#4F46E5",
-            "المنطقة الخاصة": "#059669",
-            "خدمات": "#D97706"
+            "المنطقة الاجتماعية": "#6366F1",
+            "المنطقة الخاصة": "#10B981",
+            "خدمات": "#F59E0B"
         }
 
         rooms = cad_data["rooms"]
+        cols = cad_data["columns"]
+        width = cad_data["building_width"]
+        length = cad_data["building_length"]
+
+        # 1. رسم أرضيات الغرف والجدران
         for room in rooms:
-            z_bg = zone_colors.get(room["zone"], "rgba(148, 163, 184, 0.3)")
+            z_bg = zone_colors.get(room["zone"], "rgba(148, 163, 184, 0.2)")
             z_line = border_colors.get(room["zone"], "#64748B")
 
-            # رسم الغرفة كشكل مستطيل معماري مع جدران
+            # رسم بلاطة الغرفة
             fig.add_shape(
                 type="rect",
                 x0=room["x0"], y0=room["y0"], x1=room["x1"], y1=room["y1"],
                 fillcolor=z_bg,
-                line=dict(color=z_line, width=3),
+                line=dict(color=z_line, width=2.5, dash="solid"),
             )
 
-            # كتابة اسم الغرفة والمساحة في المركز
+            # كتابة بيانات الغرفة الهندسية
             cx = (room["x0"] + room["x1"]) / 2
             cy = (room["y0"] + room["y1"]) / 2
             
+            furn_str = "<br>".join(room["furniture"]) if show_furniture and "furniture" in room else ""
+            txt_content = f"<b>{room['room_name']}</b><br><span style='color:#6366F1;'>{room['area']} m²</span><br>({room['width']}m × {room['length']}m)"
+            if furn_str:
+                txt_content += f"<br><span style='font-size:10px; color:#64748B;'>{furn_str}</span>"
+
             fig.add_annotation(
                 x=cx, y=cy,
-                text=f"<b>{room['room_name']}</b><br>{room['area']} m²<br>({room['width']}m x {room['length']}m)",
+                text=txt_content,
                 showarrow=False,
-                font=dict(size=12, color="#0F172A" if lang == 'ar' else "#FFFFFF"),
-                align="center"
+                font=dict(size=11, color="#F8FAFC" if is_dark else "#0F172A"),
+                align="center",
+                bgcolor="rgba(15, 23, 42, 0.6)" if is_dark else "rgba(255, 255, 255, 0.75)",
+                bordercolor=z_line,
+                borderwidth=1,
+                borderpad=4
             )
 
-        # ضبط المحاور المعمارية
-        fig.update_xaxes(range=[-1, cad_data["building_width"] + 2], title="عرض المبنى (متر / Meters)", showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)')
-        fig.update_yaxes(range=[-1, cad_data["building_length"] + 2], title="طول المبنى (متر / Meters)", showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)')
+            # رسم فتحات النوافذ والأبواب المفهومية
+            for d in room.get("doors", []):
+                fig.add_shape(
+                    type="circle",
+                    x0=d["x"] - 0.4, y0=d["y"] - 0.4, x1=d["x"] + 0.4, y1=d["y"] + 0.4,
+                    line=dict(color="#EC4899", width=2, dash="dot"),
+                    fillcolor="rgba(236, 72, 153, 0.2)"
+                )
+            for w in room.get("windows", []):
+                fig.add_shape(
+                    type="rect",
+                    x0=w["x"] - 0.5, y0=w["y"] - 0.1, x1=w["x"] + 0.5, y1=w["y"] + 0.1,
+                    fillcolor="#3B82F6",
+                    line=dict(color="#1D4ED8", width=1.5)
+                )
+
+        # 2. رسم الأعمدة الإنشائية الخرسانية (Structural Columns)
+        for c in cols:
+            cs = c["size"]
+            fig.add_shape(
+                type="rect",
+                x0=c["x"] - (cs/2), y0=c["y"] - (cs/2),
+                x1=c["x"] + (cs/2), y1=c["y"] + (cs/2),
+                fillcolor="#EF4444",
+                line=dict(color="#991B1B", width=2)
+            )
+            fig.add_annotation(
+                x=c["x"], y=c["y"] + 0.35,
+                text=f"<b>{c['id']}</b>",
+                showarrow=False,
+                font=dict(size=8, color="#EF4444")
+            )
+
+        # 3. رسم شبكة المحاور الإنشائية (Grid Axis Lines A, B, C / 1, 2, 3)
+        if show_grid:
+            x_grid = cad_data.get("x_grid", [])
+            y_grid = cad_data.get("y_grid", [])
+
+            grid_labels_x = ["Axis A", "Axis B", "Axis C", "Axis D", "Axis E"]
+            for idx, gx in enumerate(x_grid):
+                fig.add_shape(
+                    type="line",
+                    x0=gx, y0=-1.5, x1=gx, y1=length + 1.5,
+                    line=dict(color="rgba(148, 163, 184, 0.5)", width=1, dash="dashdot")
+                )
+                lbl = grid_labels_x[idx] if idx < len(grid_labels_x) else f"Axis {idx+1}"
+                fig.add_annotation(
+                    x=gx, y=length + 1.8, text=f"<b>({lbl})</b>", showarrow=False,
+                    font=dict(size=10, color="#6366F1"), bgcolor="rgba(99, 102, 241, 0.1)"
+                )
+
+            for idx, gy in enumerate(y_grid):
+                fig.add_shape(
+                    type="line",
+                    x0=-1.5, y0=gy, x1=width + 1.5, y1=gy,
+                    line=dict(color="rgba(148, 163, 184, 0.5)", width=1, dash="dashdot")
+                )
+                fig.add_annotation(
+                    x=-1.8, y=gy, text=f"<b>Grid {idx+1}</b>", showarrow=False,
+                    font=dict(size=10, color="#6366F1"), bgcolor="rgba(99, 102, 241, 0.1)"
+                )
+
+        # 4. إضافة سهم الشمال ومقياس الرسم الجرافيكي
+        fig.add_annotation(
+            x=width + 1.2, y=length + 0.5,
+            text="<b>⬆️ N (الشمال)</b>",
+            showarrow=False,
+            font=dict(size=12, color="#10B981"),
+            bgcolor="rgba(16, 185, 129, 0.15)",
+            bordercolor="#10B981", borderwidth=1
+        )
+
+        # ضبط المحاور المعمارية والعرض الفائق
+        fig.update_xaxes(
+            range=[-2.5, width + 2.5],
+            title="عرض المبنى التنفيذي الصافي (متر / Meters)",
+            showgrid=True, gridwidth=1, gridcolor='rgba(148, 163, 184, 0.15)',
+            zeroline=False
+        )
+        fig.update_yaxes(
+            range=[-2.5, length + 2.5],
+            title="طول المبنى التنفيذي الصافي (متر / Meters)",
+            showgrid=True, gridwidth=1, gridcolor='rgba(148, 163, 184, 0.15)',
+            zeroline=False, scaleanchor="x", scaleratio=1
+        )
 
         fig.update_layout(
-            title=f"📐 المخطط المعماري التنفيذي المولد بالذكاء الاصطناعي - الطابق الأرضي ({cad_data['style']})",
-            height=600,
-            margin=dict(l=20, r=20, t=50, b=20),
+            title=dict(
+                text=f"🏛️ <b>المخطط التنفيذي المعماري المتطور v14.0 (Ultra CAD Engine)</b><br><sup>الطراز المعماري: {cad_data['style']} | المساحة المبنية: {cad_data['total_built_area']} م²</sup>",
+                font=dict(size=15, color="#F8FAFC" if is_dark else "#0F172A")
+            ),
+            height=720,
+            margin=dict(l=30, r=30, t=60, b=30),
             paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(241, 245, 249, 0.8)'
+            plot_bgcolor='rgba(15, 23, 42, 0.4)' if is_dark else 'rgba(241, 245, 249, 0.6)',
+            hovermode="closest"
         )
 
         return fig
@@ -211,7 +355,6 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
     loc_raw = user_location.strip() if user_location and user_location.strip() else ("Aden, Yemen" if lang == 'en' else "عدن، اليمن")
     api_key = google_maps_api_key or os.getenv("GOOGLE_MAPS_API_KEY")
 
-    # 🌐 1. مسار الربط المباشر اللحظي عبر Google Maps Places API
     if api_key:
         try:
             search_url = (
@@ -254,7 +397,6 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
         except Exception:
             pass
 
-    # 🏢 2. النظام الاحتياطي الديناميكي المحلي الذكي
     loc_lower = loc_raw.lower()
 
     geo_database = {
@@ -345,7 +487,7 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
 # =============================================================================
 T = {
     'ar': {
-        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
+        'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v14.0 (World-Class Geo-Edition)",
         'subtitle': "المنصة الذكية لهندسة المشاريع، التوأم الرقمي الميداني، والربط الجيومكاني للشركات والمقاولين المحليين.",
         'lang_select': "🌐 لغة الواجهة (Language):",
         'theme_select': "🎨 مظهر التطبيق (Theme):",
@@ -404,7 +546,7 @@ T = {
         # ConTech Translations
         'eng_title': "🏗️ وحدة التخطيط الهندسي وحساب الكميات والتوائم الرقمي (AI-ConTech & Live Twin)",
         'eng_caption': "التصميم المعماري، حساب جدول الكميات (BOQ)، محاكاة الموقع والمقاولون المحليون.",
-        'eng_subtab1': "📐 1. التصميم الجيلاتي المعماري (Ultra CAD Engine)",
+        'eng_subtab1': "📐 1. التصميم الجيلاتي المعماري (Ultra CAD Engine v14)",
         'eng_subtab2': "📊 2. حساب الكميات والتكلفة (Automated BOQ)",
         'eng_subtab3': "🔮 3. التوأم الرقمي والمحاكاة الحية (Live Twin & Stress)",
         'eng_subtab4': "🤝 4. السوق التنفيذي والمقاولون المحليون (Geo-Local Bidding)",
@@ -415,7 +557,7 @@ T = {
         'arch_style': "الطراز المعماري",
         'est_budget': "الميزانية التقديرية ($)",
         'quality_tier': "مستوى جودة التشطيب",
-        'gen_floor_plan_btn': "🚀 توليد المخطط المعماري بالذكاء الاصطناعي (Ultra CAD)",
+        'gen_floor_plan_btn': "🚀 توليد المخطط المعماري العالمي بالذكاء الاصطناعي (Ultra CAD v14)",
         'gen_floor_plan_success': "تم إنشاء المخطط بنجاح! إجمالي المساحة المبنية: ",
         'spatial_dist_title': "📐 التوزيع الهندسي الذكي للمساحات والغرف (Architectural Spatial Zoning)",
         'boq_header': "جدول الكميات والتكلفة التقديرية (Bill of Quantities)",
@@ -423,7 +565,7 @@ T = {
         'risk_buffer_recommendation': "💡 هامش الاحتياطي الموصى به (10% Risk Buffer): ",
         'boq_warning': "⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً.",
         'live_twin_header': "🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)",
-        'live_twin_caption': "ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.",
+        'live_twin_caption': "ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلاحظة عبر رؤية الحاسوب.",
         'live_twin_warn': "⚠️ يرجى توليد المخطط المعماري في (التصميم الجيلاتي) أولاً للتمكن من تشغيل المحاكاة الميدانية والتوأم الرقمي.",
         'stress_sim_title': "1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)",
         'soil_type_label': "نوع التربة الميدانية",
@@ -467,8 +609,8 @@ T = {
         'assign_success': "🎉 تم إسناد العقد إلكترونياً وتوثيقه مع شركة "
     },
     'en': {
-        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
-        'subtitle': "The Ultimate Global AI Architecture & Field Twin Platform with Geo-Localized AI-ConTech Engine.",
+        'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v14.0 (World-Class Geo-Edition)",
+        'subtitle': "The Ultimate Global AI Architecture & Field Twin Platform with World-Class Geo-Localized AI-ConTech Engine.",
         'lang_select': "🌐 Interface Language:",
         'theme_select': "🎨 Application Theme:",
         'dark': "🌙 Dark", 'light': "☀️ Light",
@@ -526,7 +668,7 @@ T = {
         # ConTech Translations
         'eng_title': "🏗️ Engineering, AI Quantity Surveying & Live Twin (AI-ConTech)",
         'eng_caption': "Generative Floor Plan, Automated BOQ, Live Twin Simulation, and Contractor Bidding.",
-        'eng_subtab1': "📐 1. Generative Architectural Design (Ultra CAD Engine)",
+        'eng_subtab1': "📐 1. Generative Architectural Design (Ultra CAD v14 Engine)",
         'eng_subtab2': "📊 2. Automated BOQ & Costing",
         'eng_subtab3': "🔮 3. Live Twin & Stress Simulation",
         'eng_subtab4': "🤝 4. Geo-Localized Contractor Marketplace",
@@ -537,7 +679,7 @@ T = {
         'arch_style': "Architectural Style",
         'est_budget': "Estimated Budget ($)",
         'quality_tier': "Finishing Quality Tier",
-        'gen_floor_plan_btn': "🚀 Generate AI Floor Plan (Ultra CAD)",
+        'gen_floor_plan_btn': "🚀 Generate World-Class AI Floor Plan (Ultra CAD v14)",
         'gen_floor_plan_success': "Layout generated successfully! Total built area: ",
         'spatial_dist_title': "📐 Architectural Spatial Zoning & Room Distribution",
         'boq_header': "Bill of Quantities (BOQ) & Estimated Cost",
@@ -634,25 +776,32 @@ def render_engineering_tab(txt):
         txt['eng_subtab4']
     ])
 
-    # ------------------ SubTab 1: التصميم الجيلاتي المعماري Ultra CAD ------------------
+    # ------------------ SubTab 1: التصميم المعماري الفائق Ultra CAD v14 ------------------
     with tab1:
         st.subheader(txt['land_specs'])
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            land_area = st.number_input(txt['land_area'], min_value=50.0, value=300.0, step=10.0)
+            land_area = st.number_input(txt['land_area'], min_value=50.0, value=350.0, step=10.0)
             floors = st.selectbox(txt['floors_count'], [1, 2, 3, 4], index=1)
         with col2:
             bedrooms = st.number_input(txt['bedrooms_req'], min_value=1, value=4, step=1)
             style = st.selectbox(txt['arch_style'], ["Modern Minimalist", "Classic Luxury", "Neo-Traditional", "Industrial"])
         with col3:
-            budget = st.number_input(txt['est_budget'], min_value=10000, value=150000, step=5000)
+            budget = st.number_input(txt['est_budget'], min_value=10000, value=180000, step=5000)
             quality_opts = ["Economy", "Standard", "Luxury"] if st.session_state.lang == 'en' else ["اقتصادي", "قياسي", "فاخر"]
             quality = st.selectbox(txt['quality_tier'], quality_opts, index=1)
 
+        # خيارات التحكم البصري الفائق للرسم الهيكلي
+        st.markdown("#### ⚙️ خيارات العرض الهندسي المتقدم (Display Options):")
+        c_opt1, c_opt2 = st.columns(2)
+        with c_opt1:
+            show_furniture = st.checkbox("إظهار العفش والأثاث المفهومي (Concept Furniture)", value=True)
+        with c_opt2:
+            show_grid = st.checkbox("إظهار شبكة المحاور الإنشائية الأكسات (Structural Grid Axes)", value=True)
+
         if st.button(txt['gen_floor_plan_btn'], type="primary", use_container_width=True):
-            with st.spinner("⏳ Running Ultra Architectural CAD Matrix & Spatial Zoning Engine..."):
-                # استدعاء محرك الرسم والتخطيط المعماري فائق الدقة
+            with st.spinner("⏳ Running World-Class CAD Structural Engine & Floor Plan Generator..."):
                 cad_data = GenerativeArchitecturalEngine.generate_ultra_cad_layout(land_area, floors, bedrooms, budget, style)
                 eng_plan = eng_ai.generate_generative_floor_plan(land_area, floors, bedrooms, budget, style)
                 
@@ -665,8 +814,10 @@ def render_engineering_tab(txt):
         if 'current_eng_plan' in st.session_state and "cad_data" in st.session_state['current_eng_plan']:
             cad_data = st.session_state['current_eng_plan']["cad_data"]
             
-            # رسم المخطط التفاعلي للخرائط المعمارية
-            fig_cad = GenerativeArchitecturalEngine.render_interactive_architectural_plan(cad_data, lang=st.session_state.lang)
+            # رسم المخطط التفاعلي للخرائط المعمارية بالفئة العالمية المحدثة
+            fig_cad = GenerativeArchitecturalEngine.render_interactive_architectural_plan(
+                cad_data, lang=st.session_state.lang, show_furniture=show_furniture, show_grid=show_grid
+            )
             st.plotly_chart(fig_cad, use_container_width=True)
             
             st.subheader(txt['spatial_dist_title'])
@@ -693,7 +844,7 @@ def render_engineering_tab(txt):
         else:
             st.warning(txt['boq_warning'])
 
-    # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية المتقدمة (ULTRA LIVE TWIN) ------------------
+    # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية ------------------
     with tab3:
         st.subheader(txt['live_twin_header'])
         st.caption(txt['live_twin_caption'])
@@ -721,7 +872,7 @@ def render_engineering_tab(txt):
                 if run_sim:
                     pseudo_plan = {
                         "project_name": "Structural Engineering Architecture Plan",
-                        "budget": boq_data.get('grand_total_usd', 150000),
+                        "budget": boq_data.get('grand_total_usd', 180000),
                         "target_days": 120,
                         "tasks": [{"task": item['item'], "cost": item['total_price']} for item in boq_data.get('boq_items', [])]
                     }
@@ -739,7 +890,6 @@ def render_engineering_tab(txt):
 
             st.write("---")
 
-            # 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية
             st.markdown(f"### {txt['reality_inspection_title']}")
             st.caption(txt['reality_inspection_caption'])
 
@@ -753,7 +903,7 @@ def render_engineering_tab(txt):
                     with st.spinner("Analyzing pixels via ConTech Vision Guard & matching BOQ..."):
                         img_bytes = uploaded_file.getvalue()
                         mock_boq_items = boq_data.get('boq_items', [])
-                        grand_total = boq_data.get('grand_total_usd', 150000)
+                        grand_total = boq_data.get('grand_total_usd', 180000)
                         
                         inspection = LiveTwinEngine.inspect_site_image(img_bytes, mock_boq_items, grand_total)
                         st.session_state.last_inspection = inspection
@@ -831,7 +981,7 @@ def render_engineering_tab(txt):
 
         g_key_input = st.text_input(txt['google_maps_key_label'], type="password", key="g_maps_key_val")
 
-        target_budget = 150000
+        target_budget = 180000
         if 'boq_data' in st.session_state:
             target_budget = st.session_state['boq_data']['grand_total_usd']
 
@@ -872,7 +1022,6 @@ def main():
     st.set_page_config(page_title=APP_TITLE, page_icon="🛡️", layout="wide")
     init_session()
 
-    # تحديث اللغة والتنفيذ المباشر
     lang = st.session_state.lang
     txt = T[lang]
 
@@ -928,7 +1077,7 @@ def main():
 
     with st.sidebar:
         st.title("🛡️ PHOENIX AGENT")
-        st.markdown("<span class='badge-purple'>Enterprise v13.8 Geo-Global</span>", unsafe_allow_html=True)
+        st.markdown("<span class='badge-purple'>Enterprise v14.0 Geo-Global</span>", unsafe_allow_html=True)
         st.divider()
 
         st.radio(txt['lang_select'], ["العربية (Arabic)", "English"], index=0 if lang == 'ar' else 1, key='lang_radio', on_change=update_language)
