@@ -55,13 +55,11 @@ class ZeroKnowledgeEscrow:
 # =============================================================================
 # 🔥 المحرك الجيومكاني العالمي المتطور للشركات والمقاولين والاتصالات المباشرة
 # =============================================================================
-def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_key=None):
+def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_key=None, lang='ar'):
     """
-    محرك البحث والربط الجيومكاني المتقدم:
-    1. يستعلم من Google Maps Places API للربط اللحظي الحي لجلب أرقام هواتف وعناوين حقيقية للشركات.
-    2. يوفر قاعدة بيانات مطابقة استعلامية محددة محلياً ودولياً كخيار احتياطي ذكي (Deterministic Dynamic Fallback).
+    محرك البحث والربط الجيومكاني المتقدم مع دعم التدويل الكامل
     """
-    loc_raw = user_location.strip() if user_location and user_location.strip() else "Aden, Yemen"
+    loc_raw = user_location.strip() if user_location and user_location.strip() else ("Aden, Yemen" if lang == 'en' else "عدن، اليمن")
     api_key = google_maps_api_key or os.getenv("GOOGLE_MAPS_API_KEY")
 
     # 🌐 1. مسار الربط المباشر اللحظي عبر Google Maps Places API
@@ -88,16 +86,20 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
                         phone = details_res.get("formatted_phone_number", "+9671234567")
                         clean_phone = re.sub(r'[\s\-\(\)]', '', phone)
                         
+                        comp_type = "Certified Contracting & Consulting Co. (Google Certified)" if lang == 'en' else "شركة مقاولات واستشارات معتمدة (Google Certified)"
+                        rating_txt = f"⭐ {details_res.get('rating', 4.8)} (Verified via Google Maps)" if lang == 'en' else f"⭐ {details_res.get('rating', 4.8)} (مُحقق عبر Google Maps)"
+                        msg_txt = "Hello,%20we%20would%20like%20to%20inquire%20about%20the%20project%20tender" if lang == 'en' else "مرحباً،%20نود%20الاستفسار%20عن%20مناقصة%20المشروع"
+
                         real_contractors.append({
                             "id": f"g_place_{i+1}",
-                            "company": details_res.get("name", f"شركة المقاولات الهندسية {i+1}"),
-                            "type": "شركة مقاولات واستشارات معتمدة (Google Certified)",
+                            "company": details_res.get("name", f"Engineering Contracting Co. {i+1}" if lang == 'en' else f"شركة المقاولات الهندسية {i+1}"),
+                            "type": comp_type,
                             "location": details_res.get("formatted_address", loc_raw),
-                            "rating": f"⭐ {details_res.get('rating', 4.8)} (مُحقق عبر Google Maps)",
+                            "rating": rating_txt,
                             "bid": round(budget_total * (0.90 + (i * 0.03)), 2),
                             "days": max(30, int(90 - (i * 10))),
                             "phone": phone,
-                            "wa_link": f"https://wa.me/{clean_phone.replace('+', '')}?text=مرحباً،%20نود%20الاستفسار%20عن%20مناقصة%20المشروع"
+                            "wa_link": f"https://wa.me/{clean_phone.replace('+', '')}?text={msg_txt}"
                         })
                     return real_contractors
         except Exception:
@@ -111,36 +113,36 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
         "yemen": {
             "dial": "+967",
             "companies": [
-                "مجموعة الرائدة للمقاولات والهندسة الكهروميكانيكية",
-                "شركة الأمل للإنشاءات والتطوير العقاري",
-                "مكتب السعيد للاستشارات والمقاولات العامة"
+                "Al-Raida Electromechanical Engineering Co." if lang == 'en' else "مجموعة الرائدة للمقاولات والهندسة الكهروميكانيكية",
+                "Al-Amal Construction & Development" if lang == 'en' else "شركة الأمل للإنشاءات والتطوير العقاري",
+                "Al-Saeed Engineering Consulting" if lang == 'en' else "مكتب السعيد للاستشارات والمقاولات العامة"
             ],
             "sample_phones": ["+9672234567", "+967771234567", "+967733456789"]
         },
         "saudi": {
             "dial": "+966",
             "companies": [
-                "شركة الإعمار المتطورة للمقاولات العامة",
-                "مجموعة البناء الحديث للإنشاءات الهندسية",
-                "مكتب الرؤية للاستشارات والمقاولات"
+                "Advanced Construction Group" if lang == 'en' else "شركة الإعمار المتطورة للمقاولات العامة",
+                "Modern Building Contracting" if lang == 'en' else "مجموعة البناء الحديث للإنشاءات الهندسية",
+                "Vision Engineering Bureau" if lang == 'en' else "مكتب الرؤية للاستشارات والمقاولات"
             ],
             "sample_phones": ["+966112345678", "+966501234567", "+966559876543"]
         },
         "uae": {
             "dial": "+971",
             "companies": [
-                "شركة الصرح الهندسية للمقاولات",
-                "مجموعة دبي للإنشاءات والبنية التحتية",
-                "مكتب القمة للاستشارات الهندسية"
+                "Apex Engineering & Contracting" if lang == 'en' else "شركة الصرح الهندسية للمقاولات",
+                "Dubai Infrastructure Group" if lang == 'en' else "مجموعة دبي للإنشاءات والبنية التحتية",
+                "Summit Engineering Solutions" if lang == 'en' else "مكتب القمة للاستشارات الهندسية"
             ],
             "sample_phones": ["+97143210987", "+971501234567", "+971529876543"]
         },
         "egypt": {
             "dial": "+20",
             "companies": [
-                "شركة النيل العامة للمقاولات والهندسة",
-                "مجموعة الأهرام للإنشاءات العقارية",
-                "المكتب الهندسي المتحد للمقاولات"
+                "Nile Contracting & Engineering" if lang == 'en' else "شركة النيل العامة للمقاولات والهندسة",
+                "Pyramids Real Estate Group" if lang == 'en' else "مجموعة الأهرام للإنشاءات العقارية",
+                "United Engineering Bureau" if lang == 'en' else "المكتب الهندسي المتحد للمقاولات"
             ],
             "sample_phones": ["+20227950000", "+201001234567", "+201229876543"]
         },
@@ -156,35 +158,43 @@ def get_geo_contractors_enterprise(user_location, budget_total, google_maps_api_
     }
 
     selected_region = geo_database["global"]
-    if any(k in loc_lower or k in loc_raw for k in ["يمن", "yemen", "عدن", "صنعاء", "تعز", "إب", "المكلا"]):
+    if any(k in loc_lower or k in loc_raw for k in ["يمن", "yemen", "عدن", "صنعاء", "تعز", "إب", "المكلا", "aden"]):
         selected_region = geo_database["yemen"]
-    elif any(k in loc_lower or k in loc_raw for k in ["سعودية", "saudi", "الرياض", "جدة"]):
+    elif any(k in loc_lower or k in loc_raw for k in ["سعودية", "saudi", "الرياض", "جدة", "riyadh"]):
         selected_region = geo_database["saudi"]
-    elif any(k in loc_lower or k in loc_raw for k in ["إمارات", "uae", "دبي", "أبوظبي"]):
+    elif any(k in loc_lower or k in loc_raw for k in ["إمارات", "uae", "دبي", "أبوظبي", "dubai"]):
         selected_region = geo_database["uae"]
-    elif any(k in loc_lower or k in loc_raw for k in ["مصر", "egypt", "القاهرة"]):
+    elif any(k in loc_lower or k in loc_raw for k in ["مصر", "egypt", "القاهرة", "cairo"]):
         selected_region = geo_database["egypt"]
 
     contractors = []
     for i in range(3):
-        comp_name = f"{selected_region['companies'][i]} - فرع {loc_raw}" if has_arabic else f"{selected_region['companies'][i]} ({loc_raw} Branch)"
+        comp_name = f"{selected_region['companies'][i]} - ({loc_raw})"
         phone_num = selected_region["sample_phones"][i]
         clean_phone = re.sub(r'[\s\-\(\)]', '', phone_num)
+
+        comp_type = "Certified Contracting & Consulting Co." if lang == 'en' else "شركة مقاولات واستشارات معتمدة"
+        loc_str = f"Central District / Business Hub, {loc_raw}" if lang == 'en' else f"المنطقة المركزية / حي الأعمال، {loc_raw}"
+        rating_str = f"⭐ {4.9 - (i*0.1):.1f} (Verified Record)" if lang == 'en' else f"⭐ {4.9 - (i*0.1):.1f} (سجل معتمد)"
+        msg_str = "Hello,%20we%20would%20like%20to%20inquire%20about%20the%20project%20tender" if lang == 'en' else "مرحباً،%20نود%20الاستفسار%20عن%20مناقصة%20المشروع"
 
         contractors.append({
             "id": f"contractor_fb_{i+1}",
             "company": comp_name,
-            "type": "شركة مقاولات واستشارات معتمدة",
-            "location": f"المنطقة المركزية / حي الأعمال، {loc_raw}",
-            "rating": f"⭐ {4.9 - (i*0.1):.1f} (سجل معتمد)",
+            "type": comp_type,
+            "location": loc_str,
+            "rating": rating_str,
             "bid": round(budget_total * (0.92 + (i * 0.03)), 2),
             "days": max(25, int(85 + (i * 12))),
             "phone": phone_num,
-            "wa_link": f"https://wa.me/{clean_phone.replace('+', '')}?text=مرحباً،%20نود%20الاستفسار%20عن%20مناقصة%20المشروع"
+            "wa_link": f"https://wa.me/{clean_phone.replace('+', '')}?text={msg_str}"
         })
 
     return contractors
 
+# =============================================================================
+# 🌐 الشامل: قاموس الترجمة الشامل المكتمل للغتين
+# =============================================================================
 T = {
     'ar': {
         'title': "🚀 وكيل مهنة PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
@@ -243,13 +253,70 @@ T = {
         'users_log_title': "📋 سجل جميع المستخدمين وااشتراكاتهم الحية",
         'demands_title': "💬 طلبات ورغبات المستخدمين من جدول التغذية الراجعة (User Demands & Needs)",
         
-        # ConTech Translation
+        # ConTech Translations
         'eng_title': "🏗️ وحدة التخطيط الهندسي وحساب الكميات والتوائم الرقمي (AI-ConTech & Live Twin)",
         'eng_caption': "التصميم المعماري، حساب جدول الكميات (BOQ)، محاكاة الموقع والمقاولون المحليون.",
         'eng_subtab1': "📐 1. التصميم الجيلاتي (Generative Floor Plan)",
         'eng_subtab2': "📊 2. حساب الكميات والتكلفة (Automated BOQ)",
         'eng_subtab3': "🔮 3. التوأم الرقمي والمحاكاة الحية (Live Twin & Stress)",
-        'eng_subtab4': "🤝 4. السوق التنفيذي والمقاولون المحليون (Geo-Local Bidding)"
+        'eng_subtab4': "🤝 4. السوق التنفيذي والمقاولون المحليون (Geo-Local Bidding)",
+        'land_specs': "إدخال مواصفات الأرض والمشروع",
+        'land_area': "مساحة الأرض (متر مربع)",
+        'floors_count': "عدد الطوابق",
+        'bedrooms_req': "عدد غرف النوم المطلوب",
+        'arch_style': "الطراز المعماري",
+        'est_budget': "الميزانية التقديرية ($)",
+        'quality_tier': "مستوى جودة التشطيب",
+        'gen_floor_plan_btn': "🚀 توليد المخطط المعماري بالذكاء الاصطناعي",
+        'gen_floor_plan_success': "تم إنشاء المخطط بنجاح! إجمالي المساحة المبنية: ",
+        'spatial_dist_title': "📐 التوزيع الهندسي الذكي للمساحات",
+        'boq_header': "جدول الكميات والتكلفة التقديرية (Bill of Quantities)",
+        'grand_total_cost': "التكلفة الإجمالية المباشرة",
+        'risk_buffer_recommendation': "💡 هامش الاحتياطي الموصى به (10% Risk Buffer): ",
+        'boq_warning': "⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً.",
+        'live_twin_header': "🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)",
+        'live_twin_caption': "ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.",
+        'live_twin_warn': "⚠️ يرجى توليد المخطط المعماري في (التصميم الجيلاتي) أولاً للتمكن من تشغيل المحاكاة الميدانية والتوأم الرقمي.",
+        'stress_sim_title': "1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)",
+        'soil_type_label': "نوع التربة الميدانية",
+        'seismic_risk_label': "مستوى النشاط الزلزالي",
+        'run_stress_sim_btn': "⚡ تشغيل محاكاة الإجهاد",
+        'safety_index': "🛡️ مؤشر السلامة الإجهادية",
+        'stress_contingency': "💵 احتياطي طوارئ الإجهاد",
+        'sim_sig': "🔑 التوقيع الرقمي للمحاكاة",
+        'eng_recommendation': "💡 توصية الفحص الهندسي: ",
+        'critical_risk_pts': "⚠️ نقاط الخلل المحتملة: ",
+        'reality_inspection_title': "2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)",
+        'reality_inspection_caption': "نظام فحص ذكي لا يقبل إلا صور المواقع الإنشائية الحقيقية. يحسب كميات الشغل المنجز وقيمته المالية بدقة متناهية.",
+        'upload_site_img': "📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق",
+        'run_inspection_btn': "🔍 مطابقة الصورة وحساب الكميات والتكلفة المنجزة",
+        'inspection_rejected': "❌ تم رفض الفحص الميداني: ",
+        'inspection_rejected_warn': "⚠️ يرجى رفع صورة حقيقية واضحة تعود لموقع بناء، خرسانات، أو أعمال إنشائية قائمة.",
+        'inspection_verified': "✅ تم التحقق بنجاح! مرحلة البناء الحالية: ",
+        'executed_pct': "نسبة العمل المنجز الحقيقي",
+        'executed_val': "قيمة الأعمال المنجزة ($)",
+        'remaining_val': "المتبقي من الميزانية ($)",
+        'detected_elements': "العناصر الإنشائية المكتشفة في الموقع:",
+        'smart_contract_title': "3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & ZKP Immutable Escrow)",
+        'smart_contract_box_hdr': "🔗 عقد ذكي مؤمن بالـ Blockchain Ledger & ZKP Protection",
+        'approval_status': "حالة الاعتماد:",
+        'release_amount_label': "المبلغ المستحق للإفراج الفوري للمقاول (90% من الشغل المنجز):",
+        'approve_release_btn': "🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر",
+        'release_success': "🎉 تم الإفراج عن الدفعة المستحقة للمقاول وتوثيقها في السجل الذكي!",
+        'geo_contractors_title': "🌐 شبكة المقاولين والمكاتب الهندسية المعتمدة (Geo-Localized ConTech Marketplace)",
+        'geo_contractors_caption': "ربط جيومكاني لحظي عبر Google Places API والأنظمة المعتمدة يربط مشروعك بأقرب الشركات المعتمدة، مع توفير أرقام التواصل الموثقة والعقود.",
+        'project_loc_label': "📍 حدد الموقع الجغرافي للمشروع (المدينة، الدولة):",
+        'refresh_geo_search': "🔍 تحديث البحث",
+        'google_maps_key_label': "🔑 Google Places API Key (اختياري للاتصال الحي المباشر بخرائط جوجل):",
+        'target_tender_budget': "💵 الميزانية المستهدفة المعتمدة في المناقصة: ",
+        'available_contractors_in': "🏢 الشركاء والمقاولون المتاحون في نطاق: ",
+        'address_label': "العنوان الميداني: ",
+        'financial_offer': "💰 العرض المالي: ",
+        'execution_duration': "⏱️ مدة التنفيذ: ",
+        'direct_phone': "📞 هاتف التواصل المباشر: ",
+        'chat_wa_btn': "📲 تواصل عبر الواتساب المباشر",
+        'assign_contract_btn': "📝 إسناد وتوقيع العقد فورياً مع ",
+        'assign_success': "🎉 تم إسناد العقد إلكترونياً وتوثيقه مع شركة "
     },
     'en': {
         'title': "🚀 Wakeel Mehna PRO | PHOENIX Enterprise v13.8 (Geo-Global Edition)",
@@ -308,13 +375,70 @@ T = {
         'users_log_title': "📋 Active Users & Subscriptions Log",
         'demands_title': "💬 User Demands & Market Feature Requests",
         
-        # ConTech Translation
+        # ConTech Translations
         'eng_title': "🏗️ Engineering, AI Quantity Surveying & Live Twin (AI-ConTech)",
         'eng_caption': "Generative Floor Plan, Automated BOQ, Live Twin Simulation, and Contractor Bidding.",
         'eng_subtab1': "📐 1. Generative Floor Plan",
         'eng_subtab2': "📊 2. Automated BOQ & Costing",
         'eng_subtab3': "🔮 3. Live Twin & Stress Simulation",
-        'eng_subtab4': "🤝 4. Geo-Localized Contractor Marketplace"
+        'eng_subtab4': "🤝 4. Geo-Localized Contractor Marketplace",
+        'land_specs': "Land & Project Specifications",
+        'land_area': "Land Area (sqm)",
+        'floors_count': "Floors Count",
+        'bedrooms_req': "Required Bedrooms",
+        'arch_style': "Architectural Style",
+        'est_budget': "Estimated Budget ($)",
+        'quality_tier': "Finishing Quality Tier",
+        'gen_floor_plan_btn': "🚀 Generate AI Floor Plan",
+        'gen_floor_plan_success': "Layout generated successfully! Total built area: ",
+        'spatial_dist_title': "📐 Smart Spatial Distribution",
+        'boq_header': "Bill of Quantities (BOQ) & Estimated Cost",
+        'grand_total_cost': "Direct Grand Total Cost",
+        'risk_buffer_recommendation': "💡 Recommended 10% Risk Buffer: ",
+        'boq_warning': "⚠️ Please generate the architectural floor plan in the first subtab first.",
+        'live_twin_header': "🔮 AI Live Twin Inspector & Site Simulation",
+        'live_twin_caption': "Connecting architectural design and quantity surveying with ground reality, tracking workflow and budget execution live via computer vision.",
+        'live_twin_warn': "⚠️ Please generate the floor plan in Generative Design first to run site simulation.",
+        'stress_sim_title': "1️⃣ Physics & Structural Stress Simulation",
+        'soil_type_label': "Site Soil Type",
+        'seismic_risk_label': "Seismic Activity Level",
+        'run_stress_sim_btn': "⚡ Run Structural Stress Simulation",
+        'safety_index': "🛡️ Stress Safety Index",
+        'stress_contingency': "💵 Structural Stress Reserve",
+        'sim_sig': "🔑 Simulation Hash Signature",
+        'eng_recommendation': "💡 Inspection Recommendation: ",
+        'critical_risk_pts': "⚠️ Critical Vulnerability Points: ",
+        'reality_inspection_title': "2️⃣ AI Site Reality Inspector (Computer Vision)",
+        'reality_inspection_caption': "Strict vision inspection system validating genuine construction site uploads and computing completed volume & value accurately.",
+        'upload_site_img': "📸 Upload field photo from Site / Drone / Plan for verification",
+        'run_inspection_btn': "🔍 Compare Image & Calculate Executed Quantities",
+        'inspection_rejected': "❌ Field Inspection Rejected: ",
+        'inspection_rejected_warn': "⚠️ Please upload a clear photo of an active construction site, concrete work, or structure.",
+        'inspection_verified': "✅ Inspection Verified! Current Stage: ",
+        'executed_pct': "Real Work Completion Rate",
+        'executed_val': "Executed Work Value ($)",
+        'remaining_val': "Remaining Budget ($)",
+        'detected_elements': "Detected Structural Elements:",
+        'smart_contract_title': "3️⃣ Smart Contract Execution & ZKP Escrow Release",
+        'smart_contract_box_hdr': "🔗 Blockchain Ledger & ZKP Protected Smart Contract",
+        'approval_status': "Approval Status:",
+        'release_amount_label': "Eligible Escrow Release Amount for Contractor (90% Executed Work):",
+        'approve_release_btn': "🏛️ Approve Escrow Payment & Record on Immutable Ledger",
+        'release_success': "🎉 Escrow payment successfully released to contractor and logged!",
+        'geo_contractors_title': "🌐 Geo-Localized Contractor & Engineering Marketplace",
+        'geo_contractors_caption': "Instant geospatial matching via Google Places API connecting your project with nearby certified contractors.",
+        'project_loc_label': "📍 Project Location (City, Country):",
+        'refresh_geo_search': "🔍 Refresh Search",
+        'google_maps_key_label': "🔑 Google Places API Key (Optional for Live Google Maps Integration):",
+        'target_tender_budget': "💵 Approved Target Tender Budget: ",
+        'available_contractors_in': "🏢 Available Contractors in Range: ",
+        'address_label': "Site Address: ",
+        'financial_offer': "💰 Financial Bid: ",
+        'execution_duration': "⏱️ Execution Timeline: ",
+        'direct_phone': "📞 Direct Phone: ",
+        'chat_wa_btn': "📲 Contact via Direct WhatsApp",
+        'assign_contract_btn': "📝 Award & Sign Contract Instantly with ",
+        'assign_success': "🎉 Contract digitally signed and awarded to "
     }
 }
 
@@ -364,35 +488,36 @@ def render_engineering_tab(txt):
 
     # ------------------ SubTab 1: التصميم الجيلاتي ------------------
     with tab1:
-        st.subheader("إدخال مواصفات الأرض والمشروع" if st.session_state.lang == 'ar' else "Land & Project Specifications")
+        st.subheader(txt['land_specs'])
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            land_area = st.number_input("مساحة الأرض (متر مربع)" if st.session_state.lang == 'ar' else "Land Area (sqm)", min_value=50.0, value=300.0, step=10.0)
-            floors = st.selectbox("عدد الطوابق" if st.session_state.lang == 'ar' else "Floors Count", [1, 2, 3, 4], index=1)
+            land_area = st.number_input(txt['land_area'], min_value=50.0, value=300.0, step=10.0)
+            floors = st.selectbox(txt['floors_count'], [1, 2, 3, 4], index=1)
         with col2:
-            bedrooms = st.number_input("عدد غرف النوم المطلوب" if st.session_state.lang == 'ar' else "Required Bedrooms", min_value=1, value=4, step=1)
-            style = st.selectbox("الطراز المعماري" if st.session_state.lang == 'ar' else "Architectural Style", ["Modern Minimalist", "Classic Luxury", "Neo-Traditional", "Industrial"])
+            bedrooms = st.number_input(txt['bedrooms_req'], min_value=1, value=4, step=1)
+            style = st.selectbox(txt['arch_style'], ["Modern Minimalist", "Classic Luxury", "Neo-Traditional", "Industrial"])
         with col3:
-            budget = st.number_input("الميزانية التقديرية ($)" if st.session_state.lang == 'ar' else "Estimated Budget ($)", min_value=10000, value=150000, step=5000)
-            quality = st.selectbox("مستوى جودة التشطيب" if st.session_state.lang == 'ar' else "Finishing Quality Tier", ["Economy", "Standard", "Luxury"], index=1)
+            budget = st.number_input(txt['est_budget'], min_value=10000, value=150000, step=5000)
+            quality_opts = ["Economy", "Standard", "Luxury"] if st.session_state.lang == 'en' else ["اقتصادي", "قياسي", "فاخر"]
+            quality = st.selectbox(txt['quality_tier'], quality_opts, index=1)
 
-        if st.button("🚀 توليد المخطط المعماري بالذكاء الاصطناعي" if st.session_state.lang == 'ar' else "🚀 Generate AI Floor Plan", type="primary", use_container_width=True):
+        if st.button(txt['gen_floor_plan_btn'], type="primary", use_container_width=True):
             with st.spinner("⏳ Generating Generative Floor Layout & Calculating Space Distribution..."):
                 eng_plan = eng_ai.generate_generative_floor_plan(land_area, floors, bedrooms, budget, style)
                 
                 st.session_state['current_eng_plan'] = eng_plan
                 st.session_state['quality_tier'] = quality
                 
-                st.success(f"تم إنشاء المخطط بنجاح! إجمالي المساحة المبنية: {eng_plan['total_built_area']} م²" if st.session_state.lang == 'ar' else f"Layout generated successfully! Total built area: {eng_plan['total_built_area']} sqm")
+                st.success(f"{txt['gen_floor_plan_success']} {eng_plan['total_built_area']} m²")
                 
                 df_layout = pd.DataFrame(eng_plan['layout'])
-                st.subheader("📐 التوزيع الهندسي الذكي للمساحات" if st.session_state.lang == 'ar' else "📐 Smart Spatial Distribution")
+                st.subheader(txt['spatial_dist_title'])
                 st.dataframe(df_layout, use_container_width=True)
 
     # ------------------ SubTab 2: حساب الكميات والتكلفة ------------------
     with tab2:
-        st.subheader("جدول الكميات والتكلفة التقديرية (Bill of Quantities)" if st.session_state.lang == 'ar' else "Bill of Quantities (BOQ) & Estimated Cost")
+        st.subheader(txt['boq_header'])
         
         if 'current_eng_plan' in st.session_state:
             eng_plan = st.session_state['current_eng_plan']
@@ -400,42 +525,44 @@ def render_engineering_tab(txt):
             
             boq_data = eng_ai.calculate_automated_boq(eng_plan['total_built_area'], quality)
             
-            st.metric("التكلفة الإجمالية المباشرة" if st.session_state.lang == 'ar' else "Direct Grand Total Cost", f"${boq_data['grand_total_usd']:,}")
-            st.info(f"💡 هامش الاحتياطي الموصى به (10% Risk Buffer): ${boq_data['contingency_buffer_10pct']:,}" if st.session_state.lang == 'ar' else f"💡 Recommended 10% Risk Buffer: ${boq_data['contingency_buffer_10pct']:,}")
+            st.metric(txt['grand_total_cost'], f"${boq_data['grand_total_usd']:,}")
+            st.info(f"{txt['risk_buffer_recommendation']}${boq_data['contingency_buffer_10pct']:,}")
 
             df_boq = pd.DataFrame(boq_data['boq_items'])
             st.table(df_boq)
             
             st.session_state['boq_data'] = boq_data
         else:
-            st.warning("⚠️ يرجى توليد المخطط المعماري في التبويب الأول أولاً." if st.session_state.lang == 'ar' else "⚠️ Please generate the architectural floor plan in the first subtab first.")
+            st.warning(txt['boq_warning'])
 
     # ------------------ SubTab 3: التوأم الرقمي والمحاكاة الحية المتقدمة (ULTRA LIVE TWIN) ------------------
     with tab3:
-        st.subheader("🔮 وحدة المحاكاة والتحقق الميداني الذكي (AI Live Twin Inspector)")
-        st.caption("ربط التخطيط المعماري وحساب الكميات بالواقع الميداني، ومطابقة سير العمل وتدفق الميزانية لحظة بلحظة عبر رؤية الحاسوب.")
+        st.subheader(txt['live_twin_header'])
+        st.caption(txt['live_twin_caption'])
         
         if 'current_eng_plan' not in st.session_state:
-            st.warning("⚠️ يرجى توليد المخطط المعماري في (التصميم الجيلاتي) أولاً للتمكن من تشغيل المحاكاة الميدانية والتوأم الرقمي.")
+            st.warning(txt['live_twin_warn'])
         else:
             eng_plan = st.session_state['current_eng_plan']
             boq_data = st.session_state.get('boq_data', {})
             
-            st.markdown("### 1️⃣ محاكاة المخاطر الفيزيائية والهندسية (Physics & Stress Simulation)")
+            st.markdown(f"### {txt['stress_sim_title']}")
             
             col_st1, col_st2, col_st3 = st.columns(3)
             with col_st1:
-                soil_type = st.selectbox("نوع التربة الميدانية", ["صخرية صلبة (Rock)", "تربة طينية (Clay)", "تربة رملية (Sand)", "تربة مشبعة بالماء (Silt)"], key="sub_soil")
+                soil_opts = ["Solid Rock", "Clay Soil", "Sandy Soil", "Saturated Silt"] if st.session_state.lang == 'en' else ["صخرية صلبة (Rock)", "تربة طينية (Clay)", "تربة رملية (Sand)", "تربة مشبعة بالماء (Silt)"]
+                soil_type = st.selectbox(txt['soil_type_label'], soil_opts, key="sub_soil")
             with col_st2:
-                seismic_risk = st.selectbox("مستوى النشاط الزلزالي", ["منخفض (Low)", "متوسط (Moderate)", "مرتفع (High)"], key="sub_seismic")
+                seismic_opts = ["Low", "Moderate", "High"] if st.session_state.lang == 'en' else ["منخفض (Low)", "متوسط (Moderate)", "مرتفع (High)"]
+                seismic_risk = st.selectbox(txt['seismic_risk_label'], seismic_opts, key="sub_seismic")
             with col_st3:
                 st.write("<br>", unsafe_allow_html=True)
-                run_sim = st.button("⚡ تشغيل محاكاة الإجهاد", use_container_width=True)
+                run_sim = st.button(txt['run_stress_sim_btn'], use_container_width=True)
 
             if run_sim or 'stress_result' in st.session_state:
                 if run_sim:
                     pseudo_plan = {
-                        "project_name": "مشروع التصميم الهندسي المعماري",
+                        "project_name": "Structural Engineering Architecture Plan",
                         "budget": boq_data.get('grand_total_usd', 150000),
                         "target_days": 120,
                         "tasks": [{"task": item['item'], "cost": item['total_price']} for item in boq_data.get('boq_items', [])]
@@ -445,144 +572,141 @@ def render_engineering_tab(txt):
                 res = st.session_state.stress_result
                 
                 c_m1, c_m2, c_m3 = st.columns(3)
-                c_m1.metric("🛡️ مؤشر السلامة الإجهادية", f"{res['safety_stress_score']}%", delta="آمن structural" if res['safety_stress_score'] > 75 else "يحتاج تدعيم")
-                c_m2.metric("💵 احتياطي طوارئ الإجهاد", f"${res['financial_contingency_usd']:,}")
-                c_m3.metric("🔑 التوقيع الرقمي للمحاكاة", "Verified SHA-256")
+                c_m1.metric(txt['safety_index'], f"{res['safety_stress_score']}%", delta="Secure structural" if res['safety_stress_score'] > 75 else "Needs Reinforcement")
+                c_m2.metric(txt['stress_contingency'], f"${res['financial_contingency_usd']:,}")
+                c_m3.metric(txt['sim_sig'], "Verified SHA-256")
                 
-                st.info(f"💡 **توصية الفحص الهندسي:** {res['engineering_recommendation']}")
-                st.warning(f"⚠️ **نقاط الخلل المحتملة:** {', '.join(res['critical_risk_points'])}")
+                st.info(f"{txt['eng_recommendation']}{res['engineering_recommendation']}")
+                st.warning(f"{txt['critical_risk_pts']}{', '.join(res['critical_risk_points'])}")
 
             st.write("---")
 
-            # -----------------------------------------------------------------------------
-            # 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)
-            # -----------------------------------------------------------------------------
-            st.markdown("### 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية (AI Site Reality Inspector)")
-            st.caption("نظام فحص ذكي لا يقبل إلا صور المواقع الإنشائية الحقيقية. يحسب كميات الشغل المنجز وقيمته المالية بدقة متناهية.")
+            # 2️⃣ مطابقة الواقع مع المخطط عبر الرؤية الحاسوبية
+            st.markdown(f"### {txt['reality_inspection_title']}")
+            st.caption(txt['reality_inspection_caption'])
 
-            uploaded_file = st.file_uploader("📸 ارفع صورة ميدانية من الموقع / الدرون / المخطط للتحقق", type=['png', 'jpg', 'jpeg'], key="sub_upload_ultra")
+            uploaded_file = st.file_uploader(txt['upload_site_img'], type=['png', 'jpg', 'jpeg'], key="sub_upload_ultra")
             
             if uploaded_file is not None:
-                st.image(uploaded_file, caption="الرفع الميداني الحالي للموقع", use_container_width=True)
+                st.image(uploaded_file, caption="Current Field Upload", use_container_width=True)
 
-            # زر الفحص
-            if st.button("🔍 مطابقة الصورة وحساب الكميات والتكلفة المنجزة", type="primary", use_container_width=True, key="sub_inspect_btn_ultra"):
+            if st.button(txt['run_inspection_btn'], type="primary", use_container_width=True, key="sub_inspect_btn_ultra"):
                 if uploaded_file is not None:
-                    with st.spinner("جاري فحص بكسلات الصورة عبر محرك ConTech Vision Guard والمطابقة بالـ BOQ..."):
+                    with st.spinner("Analyzing pixels via ConTech Vision Guard & matching BOQ..."):
                         img_bytes = uploaded_file.getvalue()
                         mock_boq_items = boq_data.get('boq_items', [])
                         grand_total = boq_data.get('grand_total_usd', 150000)
                         
-                        # استدعاء المحرك الصارم
                         inspection = LiveTwinEngine.inspect_site_image(img_bytes, mock_boq_items, grand_total)
                         st.session_state.last_inspection = inspection
                 else:
-                    st.warning("⚠️ يرجى اختيار ورصد صورة ميدانية أولاً قبل تشغيل محرك المطابقة.")
+                    st.warning("⚠️ Please select a field photo first.")
 
-            # عرض النتائج في الواجهة بالتصميم الصارم والدقيق
             if "last_inspection" in st.session_state:
                 res = st.session_state.last_inspection
                 
                 if not res.get("is_valid_construction_site"):
-                    st.error(f"❌ **تم رفض الفحص الميداني:** {res.get('rejection_reason')}")
-                    st.warning("⚠️ يرجى رفع صورة حقيقية واضحة تعود لموقع بناء، خرسانات، أو أعمال إنشائية قائمة.")
+                    st.error(f"{txt['inspection_rejected']}{res.get('rejection_reason')}")
+                    st.warning(txt['inspection_rejected_warn'])
                 else:
-                    st.success(f"✅ تم التحقق بنجاح! مرحلة البناء الحالية: {res.get('construction_phase')}")
+                    st.success(f"{txt['inspection_verified']}{res.get('construction_phase')}")
                     
                     col1, col2, col3 = st.columns(3)
-                    col1.metric("نسبة العمل المنجز الحقيقي", f"{res.get('completion_percentage')}%")
-                    col2.metric("قيمة الأعمال المنجزة ($)", f"${res.get('executed_value_usd'):,.2f}")
-                    col3.metric("المتبقي من الميزانية ($)", f"${res.get('remaining_value_usd'):,.2f}")
+                    col1.metric(txt['executed_pct'], f"{res.get('completion_percentage')}%")
+                    col2.metric(txt['executed_val'], f"${res.get('executed_value_usd'):,.2f}")
+                    col3.metric(txt['remaining_val'], f"${res.get('remaining_value_usd'):,.2f}")
                     
-                    st.progress(res.get('completion_percentage', 0) / 100, text=f"تقدم العمل الميداني: {res.get('completion_percentage')}%")
+                    st.progress(res.get('completion_percentage', 0) / 100, text=f"Progress: {res.get('completion_percentage')}%")
 
-                    st.write("**العناصر الإنشائية المكتشفة في الموقع:**")
+                    st.write(f"**{txt['detected_elements']}**")
                     st.info(", ".join(res.get("detected_elements", [])))
 
                     st.write("---")
-                    st.markdown("### 3️⃣ التوقيع العقدي الذكي وإفراج الدفعات (Smart Contract & ZKP Immutable Escrow)")
+                    st.markdown(f"### {txt['smart_contract_title']}")
                     
-                    # توليد توقيع عقد إثبات المعرفة الصفرية ZKP
                     release_amt = res.get('smart_contract_release_amount', res.get('executed_value_usd', 0) * 0.9)
                     zkp_proof = ZeroKnowledgeEscrow.generate_zkp_proof("PROJ_ENG_01", res.get('completion_percentage', 0), release_amt)
-                    ledger_hash = SecurityEngine.generate_smart_contract_hash("المخطط الهندسي المعماري الذكي", res.get('completion_percentage', 0), release_amt)
+                    ledger_hash = SecurityEngine.generate_smart_contract_hash("Smart Engineering Floor Plan", res.get('completion_percentage', 0), release_amt)
                     
+                    approved_txt = "Automatically Approved" if st.session_state.lang == 'en' else "معتمد تلقائياً"
                     st.markdown(f"""
                     <div style="background-color: #0F172A; border: 2px solid #6366F1; padding: 18px; border-radius: 12px; margin-top: 10px;">
-                        <h4 style="color: #6366F1; margin: 0;">🔗 عقد ذكي مؤمن بالـ Blockchain Ledger & ZKP Protection</h4>
-                        <p style="margin-top: 8px;"><b>حالة الاعتماد:</b> <span style="color:#10B981; font-weight:bold;">{res.get('escrow_approval', 'معتمد تلقائياً')}</span></p>
-                        <p><b>المبلغ المستحق للإفراج الفوري للمقاول (90% من الشغل المنجز):</b> <span style="color:#F59E0B; font-weight:bold;">${release_amt:,.2f}</span></p>
+                        <h4 style="color: #6366F1; margin: 0;">{txt['smart_contract_box_hdr']}</h4>
+                        <p style="margin-top: 8px;"><b>{txt['approval_status']}</b> <span style="color:#10B981; font-weight:bold;">{res.get('escrow_approval', approved_txt)}</span></p>
+                        <p><b>{txt['release_amount_label']}</b> <span style="color:#F59E0B; font-weight:bold;">${release_amt:,.2f}</span></p>
                         <p style="font-family: monospace; font-size: 11px; color: #10B981; word-break: break-all; margin-bottom: 4px;"><b>ZKP Cryptographic Proof:</b> {zkp_proof}</p>
                         <p style="font-family: monospace; font-size: 11px; color: #94A3B8; word-break: break-all; margin: 0;"><b>Block Hash:</b> {ledger_hash}</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    if st.button("🏛️ اعتماد إفراج دفعة الضمان وتسجيلها في السجل المشفر", use_container_width=True, key="sub_escrow_btn_ultra"):
+                    if st.button(txt['approve_release_btn'], use_container_width=True, key="sub_escrow_btn_ultra"):
                         HybridDatabaseEngine.log_live_twin_inspection(
                             st.session_state.user['email'],
-                            "المخطط الهندسي المعماري الذكي",
+                            "Smart Engineering Floor Plan",
                             st.session_state.stress_result.get('safety_stress_score', 85) if 'stress_result' in st.session_state else 85,
                             res.get('completion_percentage', 0),
                             release_amt,
                             ledger_hash
                         )
                         st.balloons()
-                        st.success("🎉 تم الإفراج عن الدفعة المستحقة للمقاول وتوثيقها في السجل الذكي!")
+                        st.success(txt['release_success'])
 
-    # ------------------ SubTab 4: السوق التنفيذي والمناقصات (الربط العالمي الديناميكي) ------------------
+    # ------------------ SubTab 4: السوق التنفيذي والمناقصات ------------------
     with tab4:
-        st.subheader("🌐 شبكة المقاولين والمكاتب الهندسية المعتمدة (Geo-Localized ConTech Marketplace)" if st.session_state.lang == 'ar' else "🌐 Geo-Localized Contractor & Engineering Marketplace")
-        st.caption("ربط جيومكاني لحظي عبر Google Places API والأنظمة المعتمدة يربط مشروعك بأقرب الشركات المعتمدة، مع توفير أرقام التواصل الموثقة والعقود.")
+        st.subheader(txt['geo_contractors_title'])
+        st.caption(txt['geo_contractors_caption'])
 
         col_loc1, col_loc2 = st.columns([3, 1])
         with col_loc1:
+            default_loc = "Aden, Yemen" if st.session_state.lang == 'en' else "عدن، اليمن"
             user_current_location = st.text_input(
-                "📍 حدد الموقع الجغرافي للمشروع (المدينة، الدولة):" if st.session_state.lang == 'ar' else "📍 Project Location (City, Country):",
-                value=st.session_state.get('user_geo_loc', "عدن، اليمن"),
+                txt['project_loc_label'],
+                value=st.session_state.get('user_geo_loc', default_loc),
                 key="geo_loc_input"
             )
             st.session_state['user_geo_loc'] = user_current_location
 
         with col_loc2:
             st.write("<br>", unsafe_allow_html=True)
-            if st.button("🔍 تحديث البحث" if st.session_state.lang == 'ar' else "🔍 Refresh Geo-Search", use_container_width=True):
+            if st.button(txt['refresh_geo_search'], use_container_width=True):
                 st.rerun()
 
-        g_key_input = st.text_input("🔑 Google Places API Key (اختياري للاتصال الحي المباشر بخرائط جوجل):", type="password", key="g_maps_key_val")
+        g_key_input = st.text_input(txt['google_maps_key_label'], type="password", key="g_maps_key_val")
 
         target_budget = 150000
         if 'boq_data' in st.session_state:
             target_budget = st.session_state['boq_data']['grand_total_usd']
 
-        st.info(f"💵 **الميزانية المستهدفة المعتمدة في المناقصة:** ${target_budget:,.2f}")
+        st.info(f"{txt['target_tender_budget']}${target_budget:,.2f}")
 
-        contractors = get_geo_contractors_enterprise(user_current_location, target_budget, google_maps_api_key=g_key_input)
+        contractors = get_geo_contractors_enterprise(user_current_location, target_budget, google_maps_api_key=g_key_input, lang=st.session_state.lang)
 
-        st.markdown(f"### 🏢 الشركاء والمقاولون المتاحون في نطاق: **{user_current_location}**")
+        st.markdown(f"### {txt['available_contractors_in']} **{user_current_location}**")
 
         for c in contractors:
+            days_unit = "days" if st.session_state.lang == 'en' else "يوم"
             st.markdown(f"""
             <div style="background: rgba(15, 23, 42, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 12px; padding: 16px; margin-bottom: 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h4 style="margin: 0; color: #6366F1;">🏗️ {c['company']}</h4>
                     <span style="background: #10B981; color: white; padding: 4px 10px; border-radius: 8px; font-weight: bold; font-size: 12px;">{c['type']}</span>
                 </div>
-                <p style="margin: 8px 0; font-size: 13px;">📍 <b>العنوان الميداني:</b> {c['location']} | {c['rating']}</p>
+                <p style="margin: 8px 0; font-size: 13px;">📍 <b>{txt['address_label']}</b> {c['location']} | {c['rating']}</p>
                 <div style="display: flex; gap: 20px; font-size: 14px; margin-bottom: 10px;">
-                    <span>💰 العرض المالي: <b>${c['bid']:,.2f}</b></span>
-                    <span>⏱️ مدة التنفيذ: <b>{c['days']} يوم</b></span>
-                    <span>📞 هاتف التواصل المباشر: <b style="color:#2563EB;">{c['phone']}</b></span>
+                    <span>{txt['financial_offer']} <b>${c['bid']:,.2f}</b></span>
+                    <span>{txt['execution_duration']} <b>{c['days']} {days_unit}</b></span>
+                    <span>{txt['direct_phone']} <b style="color:#2563EB;">{c['phone']}</b></span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
             col_btn1, col_btn2 = st.columns([1, 1])
             with col_btn1:
-                st.markdown(f'<a href="{c["wa_link"]}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">📲 تواصل عبر الواتساب المباشر</a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="{c["wa_link"]}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">{txt["chat_wa_btn"]}</a>', unsafe_allow_html=True)
             with col_btn2:
-                if st.button(f"📝 إسناد وتوقيع العقد فورياً مع {c['company'][:15]}...", key=f"assign_{c['id']}", use_container_width=True):
+                if st.button(f"{txt['assign_contract_btn']} {c['company'][:15]}...", key=f"assign_{c['id']}", use_container_width=True):
                     st.balloons()
-                    st.success(f"🎉 تم إسناد العقد إلكترونياً وتوثيقه مع شركة **{c['company']}**! تم إرسال نسخة المخططات وجدول الـ BOQ إلى رقم الهاتف **{c['phone']}**.")
+                    st.success(f"{txt['assign_success']} **{c['company']}**!")
             
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -590,6 +714,7 @@ def main():
     st.set_page_config(page_title=APP_TITLE, page_icon="🛡️", layout="wide")
     init_session()
 
+    # تحديث اللغة والتنفيذ المباشر
     lang = st.session_state.lang
     txt = T[lang]
 
@@ -725,12 +850,17 @@ def main():
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.subheader(txt['quick_templates'])
         col_t1, col_t2, col_t3 = st.columns(3)
-        col_t1.button(txt['ecom'], use_container_width=True, on_click=apply_template, args=("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل"))
-        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=("منصة تعليمية تتيح رفع الكورسات وااختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية"))
-        col_t3.button(txt['delivery'], use_container_width=True, on_click=apply_template, args=("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع"))
+        
+        ecom_tpl = ("E-Commerce Store with Payment Gateway & Inventory", "E-Commerce", 4500, 35, "Full E-Commerce Platform") if lang == 'en' else ("تطبيق متجر إلكتروني لبيع المنتجات مع بوابة دفع سريعة ونظام إدارة المخزون", "التجارة الإلكترونية", 4500, 35, "متجر إلكتروني متكامل")
+        edu_tpl = ("E-Learning Platform with Video Hosting & Interactive Certificates", "E-Learning", 3000, 25, "Smart Learning Hub") if lang == 'en' else ("منصة تعليمية تتيح رفع الكورسات وااختبارات تفاعلية وشهادات تلقائية", "التعليم الرقمي", 3000, 25, "منصة تعليمية ذكية")
+        del_tpl = ("Delivery App with Real-Time GPS Driver Tracking", "Logistics", 6000, 50, "Express Logistics App") if lang == 'en' else ("تطبيق توصيل طلبات يعتمد على الخرائط التفاعلية وتتبع السائقين في الوقت الفعلي", "الخدمات واللوجستيات", 6000, 50, "تطبيق توصيل سريع")
 
-        domain_options = ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
-        domain_idx = domain_options.index(st.session_state.form_domain) if st.session_state.form_domain in domain_options else 0
+        col_t1.button(txt['ecom'], use_container_width=True, on_click=apply_template, args=ecom_tpl)
+        col_t2.button(txt['edu'], use_container_width=True, on_click=apply_template, args=edu_tpl)
+        col_t3.button(txt['delivery'], use_container_width=True, on_click=apply_template, args=del_tpl)
+
+        domain_options = ["E-Commerce", "E-Learning", "Logistics", "Artificial Intelligence", "SaaS Systems"] if lang == 'en' else ["التجارة الإلكترونية", "التعليم الرقمي", "الخدمات واللوجستيات", "الذكاء الاصطناعي", "أنظمة SaaS"]
+        domain_idx = 0
 
         with st.form("project_form"):
             col1, col2 = st.columns(2)
@@ -741,18 +871,19 @@ def main():
             with col2:
                 tech_stack = st.text_input(txt['tech_stack'], value="Flutter, Node.js, PostgreSQL, Supabase")
                 target_days = st.number_input(txt['target_days'], min_value=5, key="form_days")
-                risk_tolerance = st.select_slider(txt['risk_level'], options=["Low", "Medium", "High"] if lang=='en' else ["منخفض جداً", "متوسط", "عالي"])
+                risk_options = ["Low", "Medium", "High"] if lang == 'en' else ["منخفض جداً", "متوسط", "عالي"]
+                risk_tolerance = st.select_slider(txt['risk_level'], options=risk_options)
 
-            project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="أدخل نطاق العمل والمواصفات الفنية بالتفصيل...")
-            gemini_key = st.text_input("Gemini API Key (اختياري للربط المباشر)", type="password")
+            project_scope = st.text_area(txt['scope'], key="form_scope", placeholder="Scope of work & specs..." if lang == 'en' else "أدخل نطاق العمل والمواصفات الفنية بالتفصيل...")
+            gemini_key = st.text_input("Gemini API Key (Optional)", type="password")
 
             submit_btn = st.form_submit_button(txt['generate_btn'], use_container_width=True)
 
         if submit_btn:
             if st.session_state.user['credits'] < 1 and not st.session_state.user['is_subscribed']:
-                st.error("❌ نفدت النقاط المجانية! يرجى ترقية الحساب للاستمرار.")
+                st.error("❌ Out of free credits! Please upgrade your plan." if lang == 'en' else "❌ نفدت النقاط المجانية! يرجى ترقية الحساب للاستمرار.")
             else:
-                with st.spinner("⏳ جاري تحليل المشاريع، توزيع الأجور، وتوليد التوقيع الرقمي HMAC-SHA512..."):
+                with st.spinner("⏳ Analyzing architecture, calculating payroll & generating HMAC-SHA512 digital signature..."):
                     req = {
                         "project_name": project_name, "domain": domain, "budget": budget,
                         "target_days": target_days, "tech_stack": tech_stack, "scope": project_scope, "risk": risk_tolerance
@@ -767,7 +898,7 @@ def main():
 
                     st.session_state.current_plan = plan
                     st.session_state.plan_signature = plan.get("signature")
-                    st.success("✅ تم توليد الخطة التنفيذية والتوقيع المشفر بنجاح!")
+                    st.success("✅ Plan generated & signed successfully!" if lang == 'en' else "✅ تم توليد الخطة التنفيذية والتوقيع المشفر بنجاح!")
 
         if st.session_state.current_plan:
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
@@ -796,7 +927,7 @@ def main():
 
             col_dl1, col_dl2, col_dl3 = st.columns(3)
             with col_dl1:
-                st.download_button("📦 تصدير JSON", json.dumps(st.session_state.current_plan, ensure_ascii=False), "plan.json", "application/json", use_container_width=True)
+                st.download_button("📦 Export JSON", json.dumps(st.session_state.current_plan, ensure_ascii=False), "plan.json", "application/json", use_container_width=True)
             with col_dl2:
                 excel_bytes = generate_excel_download(df_tasks)
                 st.download_button(txt['export_excel'], excel_bytes, f"{st.session_state.current_plan['project_name']}_Tasks.xlsx", use_container_width=True)
@@ -807,14 +938,14 @@ def main():
 
             st.divider()
             col_n1, col_n2 = st.columns(2)
-            msg_body = f"🚀 مشروع: {st.session_state.current_plan['project_name']}\n💰 الميزانية: ${st.session_state.current_plan['budget']}\n⏱️ المدة: {st.session_state.current_plan['target_days']} يوم\n🔑 التوقيع: {st.session_state.plan_signature[:20]}..."
+            msg_body = f"🚀 Project: {st.session_state.current_plan['project_name']}\n💰 Budget: ${st.session_state.current_plan['budget']}\n⏱️ Timeline: {st.session_state.current_plan['target_days']} days\n🔑 HMAC Signature: {st.session_state.plan_signature[:20]}..."
             wa_url = NotificationEngine.create_whatsapp_link(st.session_state.notify_whatsapp, msg_body)
 
             with col_n1:
                 st.markdown(f'<a href="{wa_url}" target="_blank" style="display:block; text-align:center; background-color:#25D366; color:white; padding:10px; border-radius:8px; font-weight:bold; text-decoration:none;">{txt["send_wa"]}</a>', unsafe_allow_html=True)
             with col_n2:
                 if st.button(txt['send_tg'], use_container_width=True):
-                    st.success(f"✅ تم إرسال الإشعار إلى {st.session_state.notify_telegram}")
+                    st.success(f"✅ Notification sent to {st.session_state.notify_telegram}")
             st.markdown("</div>", unsafe_allow_html=True)
 
     # TAB ENGINEERING: AI-ConTech MODULE
@@ -836,7 +967,7 @@ def main():
             p_hours = p_days * 8
             daily_cost = p_budget / max(1, p_days)
             
-            risk_val = plan.get('risk', 'متوسط')
+            risk_val = plan.get('risk', 'Medium')
             risk_penalty = 20 if risk_val in ["عالي", "High"] else (10 if risk_val in ["متوسط", "Medium"] else 5)
             budget_efficiency = min(100, max(40, int((p_budget / (p_days * 100)) * 50)))
             success_rate = min(98, max(55, int(budget_efficiency + (40 - risk_penalty))))
