@@ -18,6 +18,9 @@ pandas>=2.0.0
 numpy>=1.24.0
 plotly
 
+# --- Engineering & CAD / DXF Engine ---
+ezdxf>=1.1.0
+
 # --- Export & PDF Generation (Arabic Support Included) ---
 reportlab
 arabic-reshaper
