@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import re
 import json
 import time
@@ -27,7 +28,7 @@ class EngineeringAIEngine:
     محرك الذكاء الاصطناعي الخاص بالتخطيط المعماري والتصميم الجيلاتي وحساب الكميات (AI-ConTech).
     """
     def __init__(self, gemini_api_key: str = None):
-        self.api_key = gemini_api_key
+        self.api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
 
     def generate_generative_floor_plan(self, land_area: float, num_floors: int, num_bedrooms: int, budget: float, style: str) -> dict:
         """
@@ -136,7 +137,7 @@ class LiveTwinEngine:
         """
         1. محاكاة المخاطر الفيزيائية والهندسية وتوليد مؤشر السلامة الإجهادية (Safety & Stress Score)
         """
-        key = api_key or getattr(st, "session_state", {}).get("gemini_api_key")
+        key = api_key or getattr(st, "session_state", {}).get("gemini_api_key") or os.getenv("GEMINI_API_KEY")
         
         prompt = f"""
         Act as a Principal Structural & Geotechnical Engineer.
@@ -193,7 +194,6 @@ class LiveTwinEngine:
         # تحويل الصورة إلى Base64
         base64_image = base64.b64encode(image_bytes).decode('utf-8')
         
-        # مطالبة النظام الهندسية الصارمة (Strict Structural Prompt)
         prompt = f"""
         You are a Senior Civil & Structural Inspection AI Specialist.
         Examine this image carefully against civil engineering & construction standards.
@@ -233,30 +233,26 @@ class LiveTwinEngine:
 
         if api_key:
             try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-                payload = {
-                    "contents": [{
-                        "parts": [
-                            {"text": prompt},
-                            {"inline_data": {"mime_type": "image/jpeg", "data": base64_image}}
-                        ]
-                    }]
-                }
-                res = requests.post(url, json=payload, timeout=12)
-                if res.status_code == 200:
-                    raw_text = res.json()['candidates'][0]['content']['parts'][0]['text']
-                    clean_json = raw_text.replace("```json", "").replace("```", "").strip()
-                    parsed_res = json.loads(clean_json)
-                    
-                    # حساب مبالغ الضمان التلقائي
-                    rel_amount = round(parsed_res.get("executed_value_usd", 0) * 0.90, 2)
-                    parsed_res["smart_contract_release_amount"] = rel_amount
-                    parsed_res["escrow_approval"] = "Approved for Release" if parsed_res.get("is_valid_construction_site") and parsed_res.get("completion_percentage", 0) > 0 else "Pending Inspection"
-                    return parsed_res
-            except Exception as e:
-                logging.error(f"[LiveTwinEngine] Vision API call failed: {e}")
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel("gemini-2.5-flash")
+                response = model.generate_content([
+                    prompt,
+                    {"mime_type": "image/jpeg", "data": base64_image}
+                ])
+                
+                raw_text = response.text
+                clean_json = raw_text.replace("```json", "").replace("```", "").strip()
+                parsed_res = json.loads(clean_json)
+                
+                rel_amount = round(parsed_res.get("executed_value_usd", 0) * 0.90, 2)
+                parsed_res["smart_contract_release_amount"] = rel_amount
+                parsed_res["escrow_approval"] = "Approved for Release" if parsed_res.get("is_valid_construction_site") and parsed_res.get("completion_percentage", 0) > 0 else "Pending Inspection"
+                return parsed_res
 
-        # ---------------- Fallback Dynamic Deterministic Engine ----------------
+            except Exception as e:
+                logging.error(f"[LiveTwinEngine] Vision Gemini API call failed: {e}")
+
+        # Fallback Dynamic Deterministic Engine
         est_pct = 65.0
         executed_val = round(total_boq_budget * (est_pct / 100.0), 2)
         remaining_val = round(total_boq_budget - executed_val, 2)
@@ -280,10 +276,20 @@ class LiveTwinEngine:
 
 class PhoenixAI:
     @staticmethod
+    def _generate_proprietary_watermark(data: dict) -> str:
+        """
+        خوارزمية بصمة التوقيع الرقمي للملكية غير القابلة للتقلييد.
+        """
+        raw = f"{data.get('project_name')}_{data.get('budget')}_{data.get('generated_at')}_NEXUS_CORE_PROPRIETARY"
+        return hashlib.sha3_512(raw.encode()).hexdigest()[:32].upper()
+
+    @staticmethod
     def generate_architecture(req: dict, api_key: str = None) -> dict:
-        if api_key:
+        key = api_key or getattr(st, "session_state", {}).get("gemini_api_key") or os.getenv("GEMINI_API_KEY")
+        
+        if key:
             try:
-                genai.configure(api_key=api_key)
+                genai.configure(api_key=key)
                 model = genai.GenerativeModel("gemini-2.5-flash")
                 prompt = f"""قم بإنشاء خطة معمارية هندسية بتنسيق JSON للمشروع التالي:
 اسم المشروع: {req['project_name']}
@@ -299,8 +305,9 @@ class PhoenixAI:
                 if match:
                     data = json.loads(match.group())
                     data["scope"] = req['scope']
-                    data["signature"] = SecurityEngine.generate_signature(data)
                     data["generated_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                    data["signature"] = SecurityEngine.generate_signature(data)
+                    data["proprietary_watermark"] = PhoenixAI._generate_proprietary_watermark(data)
                     return data
             except Exception as e:
                 logging.error(f"Gemini API Exception fallback: {e}")
@@ -334,6 +341,7 @@ class PhoenixAI:
             "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         }
         data["signature"] = SecurityEngine.generate_signature(data)
+        data["proprietary_watermark"] = PhoenixAI._generate_proprietary_watermark(data)
         return data
 
     @staticmethod
@@ -474,6 +482,7 @@ def build_detailed_plan_text(plan: dict) -> str:
     tech = plan.get('tech', plan.get('tech_stack', 'Flutter, Node.js, Supabase, PostgreSQL'))
     risk = plan.get('risk', 'متوسط')
     tasks = plan.get('tasks', [])
+    watermark = plan.get('proprietary_watermark', 'NEXUS-PROPRIETARY-PROTECTED')
     
     working_hours_per_day = 8
     total_man_hours = days * working_hours_per_day
@@ -548,7 +557,8 @@ def build_detailed_plan_text(plan: dict) -> str:
 
 ---
 
-### 5. مصفوفة الأمان والتوقيع الرقمي المشفر (Digital HMAC Signature)
+### 5. مصفوفة الأمان والتوقيع الرقمي المشفر (Digital HMAC Signature & Proof-of-Execution)
 * **التوقيع الرقمي:** تم توقيع هذه الخطة رسمياً وحفظها في قاعدة بيانات Cloud SQL.
 * **تشفير HMAC-SHA512:** المعيار السري المعتمد في المؤسسة.
+* **بصمة الملكية الرقمية (Proprietary Watermark):** `{watermark}`
 """
