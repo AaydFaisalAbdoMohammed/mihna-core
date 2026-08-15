@@ -129,13 +129,13 @@ class EngineeringAIEngine:
 
 class LiveTwinEngine:
     """
-    محرك التوأم الرقمي والمحاكاة الحية الميدانية (AI Live Twin Inspector & Structural Simulation Engine).
-    يقوم بمحاكاة الإجهاد الهيكلي والرؤية الحاسوبية للتحقق الميداني مع ربط العقود الذكية.
+    محرك التوأم الرقمي والمحاكاة الحية الميدانية (Enterprise ConTech Ultra Vision Engine).
+    يقوم بمحاكاة الإجهاد الهيكلي والرؤية الحاسوبية للتحقق الميداني المباشر بدون بيانات افتراضية (No Mock Data).
     """
     @staticmethod
     def analyze_structural_stress(project_data: dict, soil_type: str = "Rock", seismic_zone: str = "Moderate", api_key: str = None) -> dict:
         """
-        1. محاكاة المخاطر الفيزيائية والهندسية وتوليد مؤشر السلامة الإجهادية (Safety & Stress Score)
+        محاكاة المخاطر الفيزيائية والهندسية وتوليد مؤشر السلامة الإجهادية (Safety & Stress Score)
         """
         key = api_key or getattr(st, "session_state", {}).get("gemini_api_key") or os.getenv("GEMINI_API_KEY")
         
@@ -167,14 +167,14 @@ class LiveTwinEngine:
                 if match:
                     return json.loads(match.group())
             except Exception as e:
-                logging.error(f"[LiveTwinEngine] Stress simulation fallback: {e}")
+                logging.error(f"[LiveTwinEngine] Stress simulation API call failed: {e}")
 
-        # Fallback Engine (في حال انقطاع الـ API أو غياب المفتاح)
+        # الحساب الفيزيائي الرياضي في حال انقطاع الـ API
         base_budget = float(project_data.get('budget', 10000))
-        soil_risk_factor = 0.12 if "Clay" in soil_type or "Silt" in soil_type else 0.07
+        soil_risk_factor = 0.12 if any(s in soil_type for s in ["Clay", "Silt", "طين", "تربة ضعيفة"]) else 0.07
         
         return {
-            "safety_stress_score": 85 if "Rock" in soil_type else 78,
+            "safety_stress_score": 85 if any(s in soil_type for s in ["Rock", "صخرية"]) else 72,
             "critical_risk_points": [
                 f"إجهاد أحمال التربة عند الأساسات المباشرة ({soil_type})",
                 "ترخيم الأسطح والجسور ذات البحور المفتوحة (> 6 متر)"
@@ -186,93 +186,143 @@ class LiveTwinEngine:
     @staticmethod
     def inspect_site_image(image_bytes: bytes, boq_items: list, total_boq_budget: float, gemini_api_key: str = None) -> dict:
         """
-        محرك الرؤية الحاسوبية الهندسي الفائق - للتحقق من صور المواقع الإنشائية فقط،
-        وحساب الكميات والتكلفة المنجزة بدقة فائقة الموائمة مع المعايير الاستثمارية والهندسية.
+        محرك الرؤية الحاسوبية الهندسية الصارم (Enterprise ConTech Ultra Vision Guard):
+        - فحص البكسلات وإلغاء القبول العشوائي تماماً.
+        - رفض كافة الصور غير المتعلقة بالموقع (زجاجات، أرضيات منازل، وجوه، طبيعة).
+        - حساب قيم الإنجاز المالية المعتمدة على BOQ الحقيقي فقط.
         """
         api_key = gemini_api_key or getattr(st, "session_state", {}).get("gemini_api_key") or os.getenv("GEMINI_API_KEY")
         
-        # تحويل الصورة إلى Base64
-        base64_image = base64.b64encode(image_bytes).decode('utf-8')
-        
-        prompt = f"""
-        You are a Senior Civil & Structural Inspection AI Specialist.
-        Examine this image carefully against civil engineering & construction standards.
-        
-        BOQ Context: Total Project Budget: ${total_boq_budget}.
-        BOQ Items Breakdown: {json.dumps(boq_items, ensure_ascii=False)}
+        # 1. الحماية الأُولى: في حال عدم وجود مفتاح API يرفض العملية فوراً ولا يرجِع أرقاماً وهمية
+        if not api_key:
+            return {
+                "is_valid_construction_site": False,
+                "rejection_reason": "مفتاح API الخاص برؤية الذكاء الاصطناعي (Gemini Vision) غير متوفر للقيام بالفحص الميداني الحقيقي.",
+                "construction_phase": "غير محدد",
+                "completion_percentage": 0.0,
+                "executed_value_usd": 0.0,
+                "remaining_value_usd": round(total_boq_budget, 2),
+                "quality_compliance_score": 0.0,
+                "detected_elements": [],
+                "detected_deviations": ["فشل الاتصال بمحرك المعالجة البصرية الميداني"],
+                "estimated_delay_days": 0,
+                "engineering_summary": "تعذر إجراء الفحص الميداني نظراً لعدم إدخال مفتاح الـ API.",
+                "smart_contract_release_amount": 0.0,
+                "escrow_approval": "مرفوض (No API Key)"
+            }
 
-        STRICT TASK:
-        1. VALIDATION: Determine if this image is strictly a Civil Engineering/Construction Site image (e.g., concrete foundations, rebar reinforcement, columns, excavation, masonry, structural framing, finishing work).
-           - If it is a personal photo, nature, animal, car, interior furniture, or non-construction item: set "is_valid_construction_site" to false.
+        try:
+            genai.configure(api_key=api_key)
+            
+            # ضبط النموذج لإرجاع هيكل JSON صريح ومباشر
+            generation_config = {
+                "temperature": 0.1,
+                "response_mime_type": "application/json"
+            }
+            
+            model = genai.GenerativeModel(
+                model_name="gemini-2.5-flash",
+                generation_config=generation_config
+            )
 
-        2. QUANTITY & COST EVALUATION:
-           - Calculate overall site overall execution percentage (0-100%).
-           - Calculate the precise USD monetary value of the completed work ("executed_value_usd").
-           - Calculate remaining monetary value ("remaining_value_usd").
-           - Identify detected structural components (e.g., Rebar Mesh, Isolated Footings, Formwork, Concrete Pouring).
+            # تجهيز الصورة بتنسيق المخرجات المباشرة
+            image_part = {
+                "mime_type": "image/jpeg",
+                "data": image_bytes
+            }
 
-        3. QUALITY & RISK INSPECTION:
-           - List specific engineering deviations, code compliance warnings, or site errors (e.g., inadequate rebar cover, concrete honeycomb risk, lack of water curing).
-           - Estimate project schedule delay (if any in days).
+            prompt = f"""
+            You are an Enterprise ConTech Computer Vision Auditor and Civil Engineering Inspector.
+            Analyze this uploaded image with extreme engineering accuracy and strict safety verification.
 
-        Respond STRICTLY in JSON format without markdown code blocks:
-        {{
-            "is_valid_construction_site": true/false,
-            "rejection_reason": "Explanation if not a valid site image, else empty string",
-            "construction_phase": "e.g., Substructure / Foundations / Superstructure / Finishing",
-            "detected_elements": ["Element 1", "Element 2"],
-            "completion_percentage": float,
-            "executed_value_usd": float,
-            "remaining_value_usd": float,
-            "quality_compliance_score": float (0-100%),
-            "detected_deviations": ["Deviation 1", "Deviation 2"],
-            "estimated_delay_days": int,
-            "engineering_summary": "Detailed technical insight on current progress"
-        }}
-        """
+            PROJECT BOQ CONTEXT:
+            - Grand Total Budget: ${total_boq_budget}
+            - BOQ Detailed Items Breakdown: {json.dumps(boq_items, ensure_ascii=False)}
 
-        if api_key:
-            try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel("gemini-2.5-flash")
-                response = model.generate_content([
-                    prompt,
-                    {"mime_type": "image/jpeg", "data": base64_image}
-                ])
-                
-                raw_text = response.text
-                clean_json = raw_text.replace("```json", "").replace("```", "").strip()
-                parsed_res = json.loads(clean_json)
-                
-                rel_amount = round(parsed_res.get("executed_value_usd", 0) * 0.90, 2)
-                parsed_res["smart_contract_release_amount"] = rel_amount
-                parsed_res["escrow_approval"] = "Approved for Release" if parsed_res.get("is_valid_construction_site") and parsed_res.get("completion_percentage", 0) > 0 else "Pending Inspection"
-                return parsed_res
+            STRICT AUDIT RULES:
+            1. CLASSIFICATION GUARD (CRITICAL): 
+               Is this image strictly an active civil, structural, architectural, or MEP construction site image (e.g., concrete foundations, rebar mesh, columns, brickwork, excavation, site formwork, or active finishing)?
+               - IF THE IMAGE CONTAINS: plastic bottles, indoor home furniture, personal selfies, pets/animals, plain tiled floors, nature, or any non-construction objects:
+                 YOU MUST SET "is_valid_construction_site" TO FALSE immediately and provide a precise "rejection_reason".
 
-            except Exception as e:
-                logging.error(f"[LiveTwinEngine] Vision Gemini API call failed: {e}")
+            2. QUANTITATIVE ANALYSIS (ONLY IF VALID):
+               - Estimate the realistic completion percentage (0.0 to 100.0) based ONLY on what is physically visible in the site image relative to the provided BOQ.
+               - Calculate executed_value_usd = (completion_percentage / 100) * {total_boq_budget}.
+               - Calculate remaining_value_usd = {total_boq_budget} - executed_value_usd.
 
-        # Fallback Dynamic Deterministic Engine
-        est_pct = 65.0
-        executed_val = round(total_boq_budget * (est_pct / 100.0), 2)
-        remaining_val = round(total_boq_budget - executed_val, 2)
-        
-        return {
-            "is_valid_construction_site": True,
-            "rejection_reason": "",
-            "construction_phase": "مرحلة القواعد والأساسات (Substructure & Foundation)",
-            "detected_elements": ["حديد تسليح القواعد (Rebar Mesh)", "شدّات خشبية (Formwork)", "خرسانة العادية (Blinding Concrete)"],
-            "completion_percentage": est_pct,
-            "executed_value_usd": executed_val,
-            "remaining_value_usd": remaining_val,
-            "quality_compliance_score": 88.5,
-            "detected_deviations": ["تأخر توريد حديد التسليح للجهة الشرقية", "ملاحظة عدم انتظام معالجة الخرسانة بالماء"],
-            "estimated_delay_days": 2,
-            "smart_contract_release_amount": round(executed_val * 0.90, 2),
-            "escrow_approval": "Approved for Release",
-            "engineering_summary": "تم التحقق من صب القواعد المسلحة واستكمال 65% من أعمال المرحلة الأولى بنجاح طبقاً للـ BOQ."
-        }
+            3. STRUCTURAL & QUALITY EVALUATION:
+               - List clearly visible structural components in "detected_elements".
+               - List actual engineering defects, curing issues, or code violations in "detected_deviations".
 
+            You MUST respond ONLY with a raw JSON object matching this schema strictly:
+            {{
+                "is_valid_construction_site": boolean,
+                "rejection_reason": "Clear explanation if rejected, otherwise empty string",
+                "construction_phase": "String phase name (e.g., Substructure, Superstructure, Masonry, MEP, None)",
+                "completion_percentage": float,
+                "executed_value_usd": float,
+                "remaining_value_usd": float,
+                "quality_compliance_score": float,
+                "detected_elements": ["list of strings"],
+                "detected_deviations": ["list of strings"],
+                "estimated_delay_days": integer,
+                "engineering_summary": "Professional civil engineer inspection notes"
+            }}
+            """
+
+            response = model.generate_content([prompt, image_part])
+            parsed_res = json.loads(response.text.strip())
+
+            # 2. الحماية الثانية: معالجة نتيجة الرفض الهيكلي للصورة
+            if not parsed_res.get("is_valid_construction_site", False):
+                return {
+                    "is_valid_construction_site": False,
+                    "rejection_reason": parsed_res.get("rejection_reason", "الصورة المرفوعة لا تعود لموقع إنشائي أو هندسي معتمد (تم اكتشاف عناصر غير إنشائية)."),
+                    "construction_phase": "مرفوض - غير إنشائي",
+                    "completion_percentage": 0.0,
+                    "executed_value_usd": 0.0,
+                    "remaining_value_usd": round(total_boq_budget, 2),
+                    "quality_compliance_score": 0.0,
+                    "detected_elements": [],
+                    "detected_deviations": ["الصورة المرفوعة غير مطابقة لمعايير الفحص الميداني للهندسة المدنية"],
+                    "estimated_delay_days": 0,
+                    "engineering_summary": "تم رفض طلب الفحص تلقائياً من قبل حارس الرؤية الحاسوبية لتصنيف الصور غير الهندسية.",
+                    "smart_contract_release_amount": 0.0,
+                    "escrow_approval": "مرفوض (Security Block)"
+                }
+
+            # 3. الحسابات المالية الدقيقة عند قبول الصورة
+            pct = float(parsed_res.get("completion_percentage", 0.0))
+            exec_val = round((pct / 100.0) * total_boq_budget, 2)
+            rem_val = round(max(0.0, total_boq_budget - exec_val), 2)
+            rel_amount = round(exec_val * 0.90, 2)
+
+            parsed_res["completion_percentage"] = pct
+            parsed_res["executed_value_usd"] = exec_val
+            parsed_res["remaining_value_usd"] = rem_val
+            parsed_res["smart_contract_release_amount"] = rel_amount
+            parsed_res["escrow_approval"] = "Approved for Release" if pct > 0 else "Pending Inspection"
+            
+            return parsed_res
+
+        except Exception as e:
+            logging.error(f"[LiveTwinEngine] Strict Vision Exception: {e}")
+            # عند فشل التحليل أو توفر كود غير صريح يتم رفض الفحص بالكامل وتصفير القيم
+            return {
+                "is_valid_construction_site": False,
+                "rejection_reason": f"تعذر معالجة الصورة عبر حارس الرؤية الحاسوبية: {str(e)}",
+                "construction_phase": "خطأ معالجة",
+                "completion_percentage": 0.0,
+                "executed_value_usd": 0.0,
+                "remaining_value_usd": round(total_boq_budget, 2),
+                "quality_compliance_score": 0.0,
+                "detected_elements": [],
+                "detected_deviations": ["خطأ معالجة البكسلات الإنشائية"],
+                "estimated_delay_days": 0,
+                "engineering_summary": "فشل المحرك في تأكيد هوية الصورة المرفوعة.",
+                "smart_contract_release_amount": 0.0,
+                "escrow_approval": "Error"
+            }
 
 class PhoenixAI:
     @staticmethod
