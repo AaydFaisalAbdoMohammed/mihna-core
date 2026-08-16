@@ -58,7 +58,7 @@ class EngineeringTakeoffEngine:
         """
         file_ext = os.path.splitext(file_name)[1].lower()
         
-        # 1. جدار الحماية الأمني واختبار الصلاحية الهندسية للملفات
+        # 1. جدار الحماية الأمني وااختبار الصلاحية الهندسية للملفات
         valid_extensions = ['.pdf', '.dwg', '.dxf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp']
         if file_ext not in valid_extensions:
             return {
@@ -164,7 +164,7 @@ class ZeroKnowledgeEscrow:
     def generate_zkp_proof(project_id: str, completion_pct: float, release_amount: float) -> str:
         secret_salt = os.urandom(32).hex()
         raw_payload = f"{project_id}:{completion_pct}:{release_amount}:{secret_salt}:{time.time()}"
-        proof_hash = hashlib.sha3_512(raw_payload.encode('utf-8')).hexdigest()
+        proof_hash = hashlib.sha512(raw_payload.encode('utf-8')).hexdigest()
         return f"ZKP-v15-{proof_hash[:32].upper()}"
 
 # =============================================================================
@@ -1520,167 +1520,146 @@ def main():
         st.subheader(txt['pricing_adapted_title'])
         st.caption(txt['pricing_adapted_caption'])
 
-        col_fb1, col_fb2 = st.columns([1, 1])
+        with st.form("feedback_form"):
+            st.markdown(f"### {txt['share_feedback_title']}")
+            rating = st.slider(txt['star_rating_label'], 1, 5, 5)
+            fb_text = st.text_area("رأيك وانطباعك المباشر حول المنصة:", placeholder="أدخل ملحوظاتك، اقتراحاتك، أو أية ميزات ترغب بإضافتها...")
+            requested_feature = st.text_input("ميزة أو إضافة تقنية ترغب في ريتها مستقبلاً (Feature Request):")
+            fb_submit = st.form_submit_button("🚀 إرسال التغذية الراجعة كسب 1 نقطة مجانية")
 
-        with col_fb1:
-            st.markdown("### " + txt['share_feedback_title'])
-            st.markdown(f"**{txt['star_rating_label']}**")
-            stars_selection = st.feedback("stars")
-            rating_stars = (stars_selection + 1) if stars_selection is not None else 5
-            
-            star_display = "🌟" * rating_stars
-            st.caption(f"Rating: **{star_display}** ({rating_stars}/5)")
-
-            with st.form("feedback_form"):
-                suggested_p = st.number_input("Fair Monthly Price ($)", min_value=5, max_value=200, value=29)
-                req_feature = st.selectbox("Most Demanded Feature", [
-                    "Export Professional Arabic PDF",
-                    "Direct Cloud SQL & Cloud Run Sync",
-                    "WhatsApp & Telegram Alerts",
-                    "Direct Gemini Pro Integration",
-                    "Multi-Currency Budgeting"
-                ])
-                comments = st.text_area("Additional Feedback & Comments", placeholder="Write feedback here...")
-                submit_fb = st.form_submit_button("🚀 Submit Feedback & Claim 1 Free Credit")
-
-                if submit_fb:
-                    if HybridDatabaseEngine.save_feedback(st.session_state.user['email'], rating_stars, suggested_p, req_feature, comments):
+            if fb_submit:
+                if fb_text.strip():
+                    HybridDatabaseEngine.save_feedback(
+                        st.session_state.user['email'],
+                        rating,
+                        fb_text,
+                        requested_feature
+                    )
+                    if not st.session_state.user['is_subscribed']:
                         new_c = st.session_state.user['credits'] + 1
                         HybridDatabaseEngine.update_credits(st.session_state.user['email'], new_c)
                         st.session_state.user['credits'] = new_c
-                        
-                        st.balloons()
-                        st.success("🎉 Feedback saved! 1 free bonus credit added.")
-                        time.sleep(1)
-                        st.rerun()
+                    st.balloons()
+                    st.success("🎉 شكراً لمشاركتك! تم تسجيل ملاحظاتك وإضافة 1 نقطة مجانية لرصيدك.")
+                else:
+                    st.warning("⚠️ يرجى كتابة تعليق أو ملاحظة قبل الإرسال.")
 
-        with col_fb2:
-            st.markdown("### " + txt['market_proof_title'])
-            feedbacks = HybridDatabaseEngine.get_all_feedback()
-            adapted = PhoenixAI.analyze_feedback_and_adapt_pricing(feedbacks)
+        st.divider()
+        st.markdown(f"### {txt['market_proof_title']}")
+        
+        all_fb = HybridDatabaseEngine.get_all_feedback()
+        adapted_insights = PhoenixAI.analyze_feedback_and_adapt_pricing(all_fb)
 
-            st.markdown(f"""
-            <div style="background: rgba(37,99,235,0.08); border-radius: 12px; padding: 16px; margin-bottom: 15px;">
-                <h4 style="color: #2563EB;">🤖 AI Dynamic Pricing Response:</h4>
-                <p>• <b>Avg User Price:</b> ${adapted['recommended_monthly']}/month</p>
-                <p>• <b>Calculated Yearly:</b> ${adapted['recommended_yearly']}/year</p>
-                <p>• <b>Product-Market Fit Score:</b> {adapted['market_satisfaction_score']}%</p>
-                <p>• <b>Total Feedback Recorded:</b> {len(feedbacks)} reviews</p>
-            </div>
-            """, unsafe_allow_html=True)
+        col_f1, col_f2, col_f3 = st.columns(3)
+        col_f1.metric("متوسط تقييم العملاء (Rating)", f"⭐ {adapted_insights['avg_rating']} / 5.0")
+        col_f2.metric("السعر الشهري المكيّف (Pro Monthly)", f"${adapted_insights['recommended_monthly']} / شهر")
+        col_f3.metric("السعر السنوي المكيّف (Enterprise Yearly)", f"${adapted_insights['recommended_yearly']} / سنة")
 
-            st.markdown(f"#### {txt['live_feedback_stream']}")
-            if feedbacks:
-                for f in feedbacks:
-                    stars_count = f.get('rating', 5) or 5
-                    stars_str = "🌟" * stars_count
-                    comment_text = f.get('comments', '') or "No comment."
-                    
-                    st.markdown(f"""
-                    <div style="background: rgba(0,0,0,0.03); border-left: 4px solid #F59E0B; padding: 10px; border-radius: 6px; margin-bottom: 8px;">
-                        <b>👤 {f['user_email']}</b> - {stars_str} ({stars_count}/5)<br>
-                        <small>💵 Price: ${f['suggested_price']} | 💡 Feature: {f['requested_feature']}</small><br>
-                        <i>💬 "{comment_text}"</i>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No feedback entries yet.")
+        st.markdown(f"#### {txt['live_feedback_stream']}")
+        if all_fb:
+            df_fb = pd.DataFrame(all_fb)
+            st.dataframe(df_fb, use_container_width=True)
+        else:
+            st.info("💡 لا توجد آراء مسجلة حتى الآن. كن أول من يشارك رأيه!")
         st.markdown("</div>", unsafe_allow_html=True)
 
     # TAB 5: ACCOUNT & SUBSCRIPTIONS
     with tab5:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.subheader(txt['tab5'])
-        col_acc1, col_acc2 = st.columns(2)
-        with col_acc1:
-            st.markdown(f"### {txt['account_info_title']}")
-            st.write(f"**Name:** {st.session_state.user['username']}")
-            st.write(f"**Email:** {st.session_state.user['email']}")
-            st.write(f"**Role:** {st.session_state.user['role']}")
-            st.write(f"**Credits:** {st.session_state.user['credits']}")
+        st.subheader(txt['account_info_title'])
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            st.write(f"**الاسم الكامل:** {st.session_state.user['username']}")
+            st.write(f"**البريد الإلكتروني:** {st.session_state.user['email']}")
+        with col_a2:
+            st.write(f"**نوع الحساب الحالي:** {st.session_state.user['role']}")
+            st.write(f"**الرصيد المتاح:** {st.session_state.user['credits']} نقاط")
 
-        with col_acc2:
-            st.markdown(f"### {txt['upgrade_plans_title']}")
-            st.markdown(f'<a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 Pro Monthly (${adapted_insights["recommended_monthly"]})</a>', unsafe_allow_html=True)
-            st.write("")
-            st.markdown(f'<a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 Enterprise Yearly (${adapted_insights["recommended_yearly"]})</a>', unsafe_allow_html=True)
+        st.divider()
+        st.subheader(txt['upgrade_plans_title'])
+        
+        p_col1, p_col2 = st.columns(2)
+        with p_col1:
+            st.markdown(f"""
+            <div style="background: rgba(37, 99, 235, 0.1); border: 2px solid #2563EB; border-radius: 14px; padding: 20px; text-align: center;">
+                <h3>⚡ Pro Monthly Plan</h3>
+                <h2 style="color: #2563EB;">${adapted_insights['recommended_monthly']} <span style="font-size: 14px;">/ شهر</span></h2>
+                <p>توليد غير محدود للخطط، التوأم الرقمي الميداني، وقراءة المخططات CAD/PDF Takeoff.</p>
+                <a href="{PAYMENT_LINK_MONTHLY}" target="_blank" class="checkout-btn">💳 اشترك الآن (Monthly Pro)</a>
+            </div>
+            """, unsafe_allow_html=True)
 
-        if st.session_state.payment_notifications:
-            st.divider()
-            st.markdown(f"### {txt['payment_logs_title']}")
-            for notif in st.session_state.payment_notifications:
-                st.markdown(f"""
-                <div style="background: rgba(16,185,129,0.08); border-radius:12px; padding:12px; margin-bottom:10px;">
-                    <b>To:</b> {notif['to']}<br>
-                    <b>Order ID:</b> {notif['order_id']}<br>
-                    <b>Plan:</b> {notif['plan_name']} ({notif['amount']})<br>
-                    <b>Date:</b> {notif['date']}
-                </div>
-                """, unsafe_allow_html=True)
+        with p_col2:
+            st.markdown(f"""
+            <div style="background: rgba(124, 58, 237, 0.1); border: 2px solid #7C3AED; border-radius: 14px; padding: 20px; text-align: center;">
+                <h3>👑 Enterprise Yearly Plan</h3>
+                <h2 style="color: #7C3AED;">${adapted_insights['recommended_yearly']} <span style="font-size: 14px;">/ سنة</span></h2>
+                <p>دعم أولوية، تخصيص العقود الذكية ZKP، وتكامل كامل مع Cloud SQL & Geo-Marketplace.</p>
+                <a href="{PAYMENT_LINK_YEARLY}" target="_blank" class="checkout-btn-yearly">👑 اشترك الآن (Yearly Enterprise)</a>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.divider()
+        st.subheader(txt['payment_logs_title'])
+        user_p_logs = HybridDatabaseEngine.get_payment_logs_for_user(st.session_state.user['email'])
+        if user_p_logs:
+            st.table(pd.DataFrame(user_p_logs))
+        else:
+            st.info("💡 لا توجد عمليات دفع مسجلة لهذا الحساب حالياً.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # TAB 6: CLOUD SQL ARCHIVE
+    # TAB 6: CLOUD SQL ARCHIVE (7-Tables Schema)
     with tab6:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
         st.subheader(txt['cloudsql_title'])
         st.caption(txt['cloudsql_caption'])
-        
-        saved_projs = HybridDatabaseEngine.get_projects(st.session_state.user['email'])
-        if saved_projs:
-            st.dataframe(pd.DataFrame(saved_projs), use_container_width=True)
+
+        all_projects = HybridDatabaseEngine.get_all_projects_7tables()
+        if all_projects:
+            df_cloud = pd.DataFrame(all_projects)
+            st.dataframe(df_cloud, use_container_width=True)
         else:
-            st.info("No saved projects found.")
+            st.info("🗄️ الأرشيف فارغ حالياً. قم بتوليد خطط جديدة لحفظها تلقائياً في السجل السحابي.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # TAB ADMIN: CEO CONTROL CENTER
+    # TAB ADMIN: CEO CONTROL CENTER (Visible only to SUPER_ADMIN / Authorized CEO)
     if is_ceo_owner:
         with tab_admin:
             st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
             st.subheader(txt['ceo_title'])
             st.caption(txt['ceo_caption'])
 
-            all_users = HybridDatabaseEngine.get_all_users_admin()
-            total_users_count = len(all_users)
-            subscribed_count = len([u for u in all_users if u['is_subscribed']])
-            admin_supervisors_count = len([u for u in all_users if u.get('is_admin')])
-
-            m_adm1, m_adm2, m_adm3, m_adm4 = st.columns(4)
-            m_adm1.metric("👥 Total Registered Users", total_users_count)
-            m_adm2.metric("💳 Paid Subscriptions", subscribed_count)
-            m_adm3.metric("👑 Admin Supervisors", admin_supervisors_count)
-            m_adm4.metric("📈 Conversion Rate", f"{round((subscribed_count/max(1, total_users_count))*100, 1)}%")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.divider()
             st.markdown(f"### {txt['grant_admin_title']}")
-            col_add_adm1, col_add_adm2 = st.columns([2, 1])
-            with col_add_adm1:
-                target_admin_email = st.text_input("Enter user email to promote to supervisor admin", placeholder="supervisor@domain.com").strip().lower()
-            with col_add_adm2:
-                st.write("<br>", unsafe_allow_html=True)
-                if st.button(txt['grant_admin_btn'], type="primary", use_container_width=True):
-                    if target_admin_email:
-                        if HybridDatabaseEngine.add_admin_privilege(target_admin_email):
-                            st.success(f"✅ Granted Admin supervisor privileges to `{target_admin_email}`!")
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.error("❌ Email address not found.")
-            st.markdown("</div>", unsafe_allow_html=True)
+            with st.form("grant_admin_form"):
+                new_admin_email = st.text_input("أدخل البريد الإلكتروني للمستخدم لمنحه صلاحية المشرف (Supervisor):")
+                grant_btn = st.form_submit_button(txt['grant_admin_btn'])
 
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-            st.markdown(f"### {txt['users_log_title']}")
-            if all_users:
-                df_admin_users = pd.DataFrame(all_users)
-                st.dataframe(df_admin_users[["id", "full_name", "email", "role", "credits", "is_subscribed", "is_admin", "created_at"]], use_container_width=True)
+                if grant_btn:
+                    if new_admin_email.strip():
+                        res = HybridDatabaseEngine.make_user_admin(new_admin_email.strip())
+                        if res:
+                            st.success(f"✅ تم تفعيل صلاحية المشرف بنجاح للحساب: {new_admin_email}")
+                        else:
+                            st.error("❌ لم يتم العثور على البريد الإلكتروني المدخل في قاعدة البيانات.")
+                    else:
+                        st.warning("⚠️ يرجى إدخال بريد إلكتروني صحيح.")
 
             st.divider()
+            st.markdown(f"### {txt['users_log_title']}")
+            all_users = HybridDatabaseEngine.get_all_users()
+            if all_users:
+                st.dataframe(pd.DataFrame(all_users), use_container_width=True)
+            else:
+                st.info("💡 لا يوجد مستخدمون مسجلون حالياً.")
 
+            st.divider()
             st.markdown(f"### {txt['demands_title']}")
-            admin_fb = HybridDatabaseEngine.get_all_feedback()
-            if admin_fb:
-                df_admin_fb = pd.DataFrame(admin_fb)
-                st.dataframe(df_admin_fb[["user_email", "rating", "suggested_price", "requested_feature", "comments", "created_at"]], use_container_width=True)
+            all_demands = HybridDatabaseEngine.get_all_feedback()
+            if all_demands:
+                st.dataframe(pd.DataFrame(all_demands), use_container_width=True)
+            else:
+                st.info("💡 لا توجد طلبات أو رغبات مسجلة حتى الآن.")
             st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
